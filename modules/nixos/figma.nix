@@ -39,6 +39,7 @@ in
           fontDirs: [
             "/run/current-system/sw/share/X11/fonts",
             "/run/current-system/sw/share/fonts",
+            "/home/mariano/Fonts",
             "/home/mariano/.local/share/fonts",
             "/home/mariano/.fonts"
           ]

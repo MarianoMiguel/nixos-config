@@ -22,8 +22,14 @@ layout {
     }
 
     border {
-        off
+        width 2
+        active-color "#ebbcba"
+        inactive-color "#26233a"
     }
+}
+
+overview {
+    backdrop-color "#14131e"
 }
 
 spawn-at-startup "xwayland-satellite"

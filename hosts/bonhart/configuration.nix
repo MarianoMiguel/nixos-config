@@ -6,6 +6,7 @@
     ../../modules/nixos/apps.nix
     ../../modules/nixos/desktop.nix
     ../../modules/nixos/development.nix
+    ../../modules/nixos/fonts.nix
     ../../modules/nixos/networking.nix
     ../../modules/nixos/neovim.nix
     ../../modules/nixos/niri.nix

@@ -35,6 +35,11 @@ hotkey-overlay {
 
 prefer-no-csd
 
+window-rule {
+    geometry-corner-radius 8
+    clip-to-geometry true
+}
+
 binds {
     Mod+Return hotkey-overlay-title="Open Terminal" { spawn "ghostty"; }
     Mod+B hotkey-overlay-title="Open Browser" { spawn "brave"; }

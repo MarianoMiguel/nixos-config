@@ -12,6 +12,9 @@ input {
     }
 }
 
+include "dms/outputs.kdl"
+include "dms/cursor.kdl"
+
 layout {
     gaps 8
 
@@ -23,10 +26,12 @@ layout {
 
     border {
         width 2
-        active-color "#ebbcba"
-        inactive-color "#26233a"
     }
 }
+
+include "dms/colors.kdl"
+include "dms/wpblur.kdl"
+include "dms/alttab.kdl"
 
 overview {
     backdrop-color "#14131e"
@@ -41,10 +46,14 @@ hotkey-overlay {
 
 prefer-no-csd
 
+include "dms/windowrules.kdl"
+
 window-rule {
     geometry-corner-radius 8
     clip-to-geometry true
 }
+
+include "dms/binds.kdl"
 
 binds {
     Mod+Return hotkey-overlay-title="Open Terminal" { spawn "ghostty"; }

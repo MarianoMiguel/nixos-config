@@ -33,6 +33,12 @@ in
 
   system.activationScripts.niriConfig.text = ''
     install -d -m 0755 -o mariano -g users /home/mariano/.config/niri
+    install -d -m 0755 -o mariano -g users /home/mariano/.config/niri/dms
+    for dms_niri_include in outputs.kdl cursor.kdl colors.kdl wpblur.kdl alttab.kdl windowrules.kdl binds.kdl; do
+      if [ ! -e "/home/mariano/.config/niri/dms/$dms_niri_include" ]; then
+        install -m 0644 -o mariano -g users /dev/null "/home/mariano/.config/niri/dms/$dms_niri_include"
+      fi
+    done
     install -m 0644 -o mariano -g users ${../../dotfiles/niri/config.kdl} /home/mariano/.config/niri/config.kdl
 
     install -d -m 0755 -o mariano -g users /home/mariano/.config/DankMaterialShell

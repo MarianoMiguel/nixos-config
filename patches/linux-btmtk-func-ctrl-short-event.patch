@@ -1,0 +1,14 @@
+diff --git a/drivers/bluetooth/btmtk.c b/drivers/bluetooth/btmtk.c
+index ab34f1dd42bc..68a32d11e5ec 100644
+--- a/drivers/bluetooth/btmtk.c
++++ b/drivers/bluetooth/btmtk.c
+@@ -719,8 +719,8 @@ static int btmtk_usb_hci_wmt_sync(struct hci_dev *hdev,
+ 	case BTMTK_WMT_FUNC_CTRL:
+ 		if (!skb_pull_data(data->evt_skb,
+ 				   sizeof(wmt_evt_funcc->status))) {
+-			err = -EINVAL;
+-			goto err_free_skb;
++			status = BTMTK_WMT_ON_UNDONE;
++			break;
+ 		}
+ 		wmt_evt_funcc = (struct btmtk_hci_wmt_evt_funcc *)wmt_evt;

@@ -1,4 +1,8 @@
-{ pkgs, ... }:
+{ codex-desktop-linux, pkgs, ... }:
+
+let
+  system = pkgs.stdenv.hostPlatform.system;
+in
 
 {
   programs.firefox.enable = true;
@@ -48,5 +52,7 @@
     krita
     inkscape
     gimp
+  ] ++ [
+    codex-desktop-linux.packages.${system}.codex-desktop
   ];
 }

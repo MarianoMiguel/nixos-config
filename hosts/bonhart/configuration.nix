@@ -23,6 +23,12 @@
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
   boot.kernelPackages = pkgs.linuxPackages_latest;
+  boot.kernelPatches = [
+    {
+      name = "btmtk-accept-short-wmt-func-ctrl-events";
+      patch = ../../patches/linux-btmtk-func-ctrl-short-event.patch;
+    }
+  ];
 
   time.timeZone = "America/Argentina/Buenos_Aires";
 

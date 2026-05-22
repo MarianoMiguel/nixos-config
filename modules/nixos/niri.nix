@@ -198,44 +198,22 @@ in
     dms_settings_tmp="$(mktemp)"
     if [ -f "$dms_settings" ]; then
       ${pkgs.jq}/bin/jq \
+        --slurpfile barConfigs ${../../dotfiles/dms/bar-configs.json} \
         '. + {
           currentThemeCategory: "custom",
           currentThemeName: "custom",
           customThemeFile: "/home/mariano/.config/DankMaterialShell/theme.json"
         }
-        | .barConfigs = ((.barConfigs // []) | if length == 0 then [{
-            id: "default",
-            name: "Main Bar",
-            enabled: true,
-            position: 0,
-            screenPreferences: ["all"],
-            showOnLastDisplay: true,
-            leftWidgets: ["launcherButton", "workspaceSwitcher", "focusedWindow"],
-            centerWidgets: ["music", "clock", "weather"],
-            rightWidgets: ["systemTray", "clipboard", "cpuUsage", "memUsage", "notificationButton", "battery", "controlCenterButton"]
-          }] else . end)
-        | .barConfigs[0].rightWidgets = (
-            (.barConfigs[0].rightWidgets // [])
-            + (["codexBar", "codeIsland", "catWidget"] - (.barConfigs[0].rightWidgets // []))
-          )' \
+        | .barConfigs = $barConfigs[0]' \
         "$dms_settings" > "$dms_settings_tmp"
     else
       ${pkgs.jq}/bin/jq -n \
+        --slurpfile barConfigs ${../../dotfiles/dms/bar-configs.json} \
         '{
           currentThemeCategory: "custom",
           currentThemeName: "custom",
           customThemeFile: "/home/mariano/.config/DankMaterialShell/theme.json",
-          barConfigs: [{
-            id: "default",
-            name: "Main Bar",
-            enabled: true,
-            position: 0,
-            screenPreferences: ["all"],
-            showOnLastDisplay: true,
-            leftWidgets: ["launcherButton", "workspaceSwitcher", "focusedWindow"],
-            centerWidgets: ["music", "clock", "weather"],
-            rightWidgets: ["systemTray", "clipboard", "cpuUsage", "memUsage", "notificationButton", "battery", "controlCenterButton", "codexBar", "codeIsland", "catWidget"]
-          }]
+          barConfigs: $barConfigs[0]
         }' > "$dms_settings_tmp"
     fi
     install -m 0644 -o mariano -g users "$dms_settings_tmp" "$dms_settings"

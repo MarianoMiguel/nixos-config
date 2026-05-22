@@ -1,0 +1,116 @@
+[
+  {
+    "id": "default",
+    "name": "Main Bar",
+    "enabled": true,
+    "position": 0,
+    "screenPreferences": [
+      "all"
+    ],
+    "showOnLastDisplay": true,
+    "leftWidgets": [
+      "launcherButton",
+      "workspaceSwitcher",
+      "focusedWindow",
+      {
+        "id": "music",
+        "enabled": true,
+        "mediaSize": 0
+      }
+    ],
+    "centerWidgets": [
+      {
+        "id": "catWidget",
+        "enabled": true
+      },
+      {
+        "id": "clock",
+        "enabled": true
+      },
+      {
+        "id": "weather",
+        "enabled": true
+      },
+      {
+        "id": "codeIsland",
+        "enabled": true
+      }
+    ],
+    "rightWidgets": [
+      {
+        "id": "codexBar",
+        "enabled": true
+      },
+      {
+        "id": "systemTray",
+        "enabled": true
+      },
+      {
+        "id": "clipboard",
+        "enabled": true
+      },
+      {
+        "id": "cpuUsage",
+        "enabled": true
+      },
+      {
+        "id": "memUsage",
+        "enabled": true
+      },
+      {
+        "id": "notificationButton",
+        "enabled": true
+      },
+      {
+        "id": "battery",
+        "enabled": true
+      },
+      {
+        "id": "controlCenterButton",
+        "enabled": true
+      }
+    ],
+    "spacing": 8,
+    "innerPadding": 4,
+    "bottomGap": 0,
+    "transparency": 0,
+    "widgetTransparency": 1,
+    "squareCorners": false,
+    "noBackground": false,
+    "maximizeWidgetIcons": false,
+    "maximizeWidgetText": false,
+    "removeWidgetPadding": false,
+    "widgetPadding": 8,
+    "gothCornersEnabled": false,
+    "gothCornerRadiusOverride": false,
+    "gothCornerRadiusValue": 12,
+    "borderEnabled": false,
+    "borderColor": "surfaceText",
+    "borderOpacity": 1,
+    "borderThickness": 1,
+    "widgetOutlineEnabled": false,
+    "widgetOutlineColor": "primary",
+    "widgetOutlineOpacity": 1,
+    "widgetOutlineThickness": 1,
+    "fontScale": 1,
+    "iconScale": 1,
+    "autoHide": false,
+    "autoHideStrict": false,
+    "autoHideDelay": 250,
+    "showOnWindowsOpen": false,
+    "openOnOverview": false,
+    "visible": true,
+    "popupGapsAuto": true,
+    "popupGapsManual": 4,
+    "maximizeDetection": true,
+    "useOverlayLayer": false,
+    "scrollEnabled": true,
+    "scrollXBehavior": "column",
+    "scrollYBehavior": "workspace",
+    "shadowIntensity": 0,
+    "shadowOpacity": 60,
+    "shadowColorMode": "default",
+    "shadowCustomColor": "#000000",
+    "clickThrough": false
+  }
+]

@@ -20,6 +20,19 @@ in
   };
   services.blueman.enable = true;
 
+  systemd.services.bluetooth-rfkill-unblock = {
+    description = "Unblock Bluetooth rfkill switches";
+    wantedBy = [ "bluetooth.service" ];
+    before = [ "bluetooth.service" ];
+    serviceConfig = {
+      Type = "oneshot";
+      ExecStart = "${pkgs.util-linux}/bin/rfkill unblock bluetooth";
+    };
+  };
+  system.activationScripts.bluetoothRfkillUnblock.text = ''
+    ${pkgs.util-linux}/bin/rfkill unblock bluetooth || true
+  '';
+
   services.input-remapper.enable = true;
   services.keyd = {
     enable = true;
@@ -64,6 +77,8 @@ in
   environment.systemPackages = with pkgs; [
     blueman
     bluez-tools
+    pciutils
+    usbutils
     kdePackages.kconfig
   ];
 }

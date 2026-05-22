@@ -25,8 +25,9 @@ in
   };
 
   services.xserver.xkb = {
-    layout = "us";
-    variant = "";
+    layout = "us,es";
+    variant = ",";
+    options = "grp:alt_shift_toggle";
   };
 
   services.pulseaudio.enable = false;

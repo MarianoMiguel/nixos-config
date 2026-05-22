@@ -38,6 +38,7 @@
     brave
     spotify
     slack
+    obsidian
     localsend
     mpv
     qbittorrent

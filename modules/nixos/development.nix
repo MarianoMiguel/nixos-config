@@ -4,7 +4,6 @@
   environment.systemPackages = with pkgs; [
     ghostty
     vim
-    tmux
 
     nodejs_22
     nodePackages.npm
@@ -25,6 +24,7 @@
     fd
     fzf
     jq
+    wl-clipboard
     bat
     eza
     fastfetch

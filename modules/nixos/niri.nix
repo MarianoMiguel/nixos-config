@@ -109,7 +109,6 @@ in
       description = "CodeIsland daemon";
       wantedBy = [ "graphical-session.target" ];
       partOf = [ "graphical-session.target" ];
-      after = [ "graphical-session.target" ];
       serviceConfig = {
         ExecStart = "${codeIslandLinux}/bin/codeisland-server";
         Restart = "on-failure";
@@ -193,6 +192,67 @@ in
     fi
     install -m 0644 -o mariano -g users "$dms_plugins_tmp" "$dms_plugins"
     rm -f "$dms_plugins_tmp"
+
+    mariano_uid="$(${pkgs.coreutils}/bin/id -u mariano)"
+    codeisland_socket="/run/user/$mariano_uid/codeislandd.sock"
+
+    install -d -m 0700 -o mariano -g users /home/mariano/.codex
+    codex_config=/home/mariano/.codex/config.toml
+    codex_config_tmp="$(mktemp)"
+    if [ -f "$codex_config" ]; then
+      if ${pkgs.gnugrep}/bin/grep -q '^\[features\][[:space:]]*$' "$codex_config"; then
+        ${pkgs.gawk}/bin/awk '
+          /^\[features\][[:space:]]*$/ {
+            in_features = 1
+            print
+            next
+          }
+          /^\[/ && in_features {
+            if (!wrote_hooks) {
+              print "hooks = true"
+              wrote_hooks = 1
+            }
+            in_features = 0
+          }
+          in_features && /^[[:space:]]*hooks[[:space:]]*=/ {
+            print "hooks = true"
+            wrote_hooks = 1
+            next
+          }
+          { print }
+          END {
+            if (in_features && !wrote_hooks) {
+              print "hooks = true"
+            }
+          }
+        ' "$codex_config" > "$codex_config_tmp"
+      else
+        ${pkgs.coreutils}/bin/cp "$codex_config" "$codex_config_tmp"
+        printf '\n[features]\nhooks = true\n' >> "$codex_config_tmp"
+      fi
+    else
+      printf '[features]\nhooks = true\n' > "$codex_config_tmp"
+    fi
+    install -m 0644 -o mariano -g users "$codex_config_tmp" "$codex_config"
+    rm -f "$codex_config_tmp"
+
+    ${pkgs.util-linux}/bin/runuser -u mariano -- env \
+      HOME=/home/mariano \
+      CODEX_HOME=/home/mariano/.codex \
+      ${codeIslandLinux}/bin/codeisland-codex_hook install \
+        --global \
+        --codex-home /home/mariano/.codex \
+        --socket-path "$codeisland_socket" \
+        --python ${pkgs.python3}/bin/python
+
+    install -d -m 0700 -o mariano -g users /home/mariano/.claude
+    ${pkgs.util-linux}/bin/runuser -u mariano -- env \
+      HOME=/home/mariano \
+      CLAUDE_HOME=/home/mariano/.claude \
+      ${codeIslandLinux}/bin/codeisland-claude_hook install \
+        --settings /home/mariano/.claude/settings.json \
+        --socket-path "$codeisland_socket" \
+        --python ${pkgs.python3}/bin/python
 
     dms_settings=/home/mariano/.config/DankMaterialShell/settings.json
     dms_settings_tmp="$(mktemp)"

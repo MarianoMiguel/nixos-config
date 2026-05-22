@@ -8,6 +8,7 @@
     ../../modules/nixos/development.nix
     ../../modules/nixos/networking.nix
     ../../modules/nixos/neovim.nix
+    ../../modules/nixos/niri.nix
     ../../modules/nixos/nix.nix
     ../../modules/nixos/tmux.nix
     ../../modules/nixos/users.nix

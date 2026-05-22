@@ -22,13 +22,17 @@
       url = "github:payprays/codeIsland-dms";
       flake = false;
     };
+    figma-linux-font-helper = {
+      url = "github:Figma-Linux/figma-linux-font-helper";
+      flake = false;
+    };
   };
 
-  outputs = { nixpkgs, nixpkgs-unstable, dms, quickshell, codex-desktop-linux, dms-codexbar, cat-dms, codeIsland-dms, ... }: {
+  outputs = { nixpkgs, nixpkgs-unstable, dms, quickshell, codex-desktop-linux, dms-codexbar, cat-dms, codeIsland-dms, figma-linux-font-helper, ... }: {
     nixosConfigurations.bonhart = nixpkgs.lib.nixosSystem {
       system = "x86_64-linux";
       specialArgs = {
-        inherit dms quickshell codex-desktop-linux dms-codexbar cat-dms codeIsland-dms;
+        inherit dms quickshell codex-desktop-linux dms-codexbar cat-dms codeIsland-dms figma-linux-font-helper;
         pkgsUnstable = import nixpkgs-unstable {
           system = "x86_64-linux";
           config.allowUnfree = true;

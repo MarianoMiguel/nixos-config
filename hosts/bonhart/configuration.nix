@@ -6,6 +6,7 @@
     ../../modules/nixos/apps.nix
     ../../modules/nixos/desktop.nix
     ../../modules/nixos/development.nix
+    ../../modules/nixos/figma.nix
     ../../modules/nixos/fonts.nix
     ../../modules/nixos/ghostty.nix
     ../../modules/nixos/networking.nix

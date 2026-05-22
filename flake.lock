@@ -86,6 +86,22 @@
         "type": "github"
       }
     },
+    "figma-linux-font-helper": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1709735258,
+        "narHash": "sha256-0Akdz5Bc15Ph9B/2nvvYwAAq1hjV6+k7eY9+W2n8ODo=",
+        "owner": "Figma-Linux",
+        "repo": "figma-linux-font-helper",
+        "rev": "c10f43b9d8f1e7c1bb16d7dcf6a8caf084e65a65",
+        "type": "github"
+      },
+      "original": {
+        "owner": "Figma-Linux",
+        "repo": "figma-linux-font-helper",
+        "type": "github"
+      }
+    },
     "flake-compat": {
       "flake": false,
       "locked": {
@@ -195,6 +211,7 @@
         "codex-desktop-linux": "codex-desktop-linux",
         "dms": "dms",
         "dms-codexbar": "dms-codexbar",
+        "figma-linux-font-helper": "figma-linux-font-helper",
         "nixpkgs": "nixpkgs_3",
         "nixpkgs-unstable": [
           "dms",

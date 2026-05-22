@@ -14,6 +14,7 @@
     ../../modules/nixos/tmux.nix
     ../../modules/nixos/users.nix
     ../../modules/nixos/virtualisation.nix
+    ../../modules/nixos/wallpapers.nix
   ];
 
   networking.hostName = "bonhart";

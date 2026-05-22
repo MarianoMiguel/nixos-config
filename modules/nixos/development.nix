@@ -7,8 +7,14 @@
 
     nodejs_22
     nodePackages.npm
+    python3
+    python3Packages.pip
+    uv
+    mise
 
     gh
+    docker
+    docker-compose
 
     git
     curl
@@ -20,6 +26,8 @@
     jq
     bat
     eza
+    fastfetch
+    btop
     gcc
     gnumake
     tree-sitter

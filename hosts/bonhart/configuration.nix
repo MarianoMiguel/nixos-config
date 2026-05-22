@@ -10,6 +10,7 @@
     ../../modules/nixos/neovim.nix
     ../../modules/nixos/nix.nix
     ../../modules/nixos/users.nix
+    ../../modules/nixos/virtualisation.nix
   ];
 
   networking.hostName = "bonhart";
@@ -33,9 +34,13 @@
     LC_TIME = "es_AR.UTF-8";
   };
 
-  services.printing.enable = true;
-
-  programs.zsh.enable = true;
+  services.printing = {
+    enable = true;
+    drivers = with pkgs; [
+      brlaser
+      cups-brother-hl1210w
+    ];
+  };
 
   system.stateVersion = "25.11";
 }

@@ -4,6 +4,8 @@
   services.displayManager.sddm.enable = true;
   services.desktopManager.plasma6.enable = true;
 
+  services.input-remapper.enable = true;
+
   services.xserver.xkb = {
     layout = "us";
     variant = "";

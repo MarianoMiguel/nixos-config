@@ -1,6 +1,24 @@
 { pkgs, ... }:
 
 {
+  programs.nix-ld = {
+    enable = true;
+    libraries = with pkgs; [
+      curl
+      expat
+      fontconfig
+      freetype
+      glib
+      icu
+      libGL
+      libxkbcommon
+      openssl
+      sqlite
+      stdenv.cc.cc
+      zlib
+    ];
+  };
+
   environment.systemPackages = with pkgs; [
     ghostty
     vim

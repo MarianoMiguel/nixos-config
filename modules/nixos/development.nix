@@ -4,6 +4,7 @@
   environment.systemPackages = with pkgs; [
     ghostty
     vim
+    tmux
 
     nodejs_22
     nodePackages.npm

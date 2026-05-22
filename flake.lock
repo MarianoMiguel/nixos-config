@@ -1,5 +1,37 @@
 {
   "nodes": {
+    "cat-dms": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1776072445,
+        "narHash": "sha256-KD2G805Hq0K9aPW9Aq4hNo2XKji4kzdc24M4AcRhsPk=",
+        "owner": "xi-ve",
+        "repo": "cat-dms",
+        "rev": "eb7b5138b672be3c06445dd80de6bc30c3076030",
+        "type": "github"
+      },
+      "original": {
+        "owner": "xi-ve",
+        "repo": "cat-dms",
+        "type": "github"
+      }
+    },
+    "codeIsland-dms": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1778666534,
+        "narHash": "sha256-yoLScXCx66ZD7iQEgCmmwVy75qVph0Gfsfdcum6dLSo=",
+        "owner": "payprays",
+        "repo": "codeIsland-dms",
+        "rev": "f6143cecc61c5edd9c31bf4862ce48423fbdc975",
+        "type": "github"
+      },
+      "original": {
+        "owner": "payprays",
+        "repo": "codeIsland-dms",
+        "type": "github"
+      }
+    },
     "codex-desktop-linux": {
       "inputs": {
         "flake-utils": "flake-utils",
@@ -35,6 +67,22 @@
       "original": {
         "owner": "AvengeMedia",
         "repo": "DankMaterialShell",
+        "type": "github"
+      }
+    },
+    "dms-codexbar": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1772354900,
+        "narHash": "sha256-mh4hcMQPIRwb3uApLlK71z1tcABcQHqBxKzGDwBDa9A=",
+        "owner": "zakstam",
+        "repo": "dms-codexbar",
+        "rev": "e6bde0e4ebfa38fedf26038314353e666eb286af",
+        "type": "github"
+      },
+      "original": {
+        "owner": "zakstam",
+        "repo": "dms-codexbar",
         "type": "github"
       }
     },
@@ -142,8 +190,11 @@
     },
     "root": {
       "inputs": {
+        "cat-dms": "cat-dms",
+        "codeIsland-dms": "codeIsland-dms",
         "codex-desktop-linux": "codex-desktop-linux",
         "dms": "dms",
+        "dms-codexbar": "dms-codexbar",
         "nixpkgs": "nixpkgs_3",
         "nixpkgs-unstable": [
           "dms",

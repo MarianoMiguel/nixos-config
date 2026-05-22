@@ -9,6 +9,17 @@ in
   services.displayManager.sddm.enable = true;
   services.desktopManager.plasma6.enable = true;
 
+  hardware.bluetooth = {
+    enable = true;
+    powerOnBoot = true;
+    settings = {
+      General = {
+        Experimental = true;
+      };
+    };
+  };
+  services.blueman.enable = true;
+
   services.input-remapper.enable = true;
   services.keyd = {
     enable = true;
@@ -51,6 +62,8 @@ in
   '';
 
   environment.systemPackages = with pkgs; [
+    blueman
+    bluez-tools
     kdePackages.kconfig
   ];
 }

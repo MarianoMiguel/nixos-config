@@ -14,6 +14,7 @@
   services.opensnitch.enable = true;
 
   environment.systemPackages = with pkgs; [
+    tailscale
     opensnitch-ui
     protonvpn-gui
   ];

@@ -10,6 +10,19 @@ in
   services.desktopManager.plasma6.enable = true;
 
   services.input-remapper.enable = true;
+  services.keyd = {
+    enable = true;
+    keyboards.default = {
+      ids = [ "*" ];
+      settings = {
+        alt = {
+          q = "A-f4";
+          w = "A-f4";
+          enter = "A-f11";
+        };
+      };
+    };
+  };
 
   services.xserver.xkb = {
     layout = "us";
@@ -28,8 +41,8 @@ in
   system.activationScripts.kdeShortcuts.text = ''
     install -d -m 0755 -o mariano -g users /home/mariano/.config
 
-    ${kwriteconfig} --file /home/mariano/.config/kglobalshortcutsrc --group kwin --key "Window Close" "Alt+Q\tAlt+W\tAlt+F4,Alt+Q\tAlt+W\tAlt+F4,Close Window"
-    ${kwriteconfig} --file /home/mariano/.config/kglobalshortcutsrc --group kwin --key "Window Fullscreen" "Alt+Enter,Alt+Enter,Make Window Fullscreen"
+    ${kwriteconfig} --file /home/mariano/.config/kglobalshortcutsrc --group kwin --key "Window Close" "Alt+F4,Alt+F4,Close Window"
+    ${kwriteconfig} --file /home/mariano/.config/kglobalshortcutsrc --group kwin --key "Window Fullscreen" "Alt+F11,Alt+F11,Make Window Fullscreen"
     ${kwriteconfig} --file /home/mariano/.config/kdeglobals --group KDE --key AnimationDurationFactor 0
 
     chown mariano:users /home/mariano/.config/kglobalshortcutsrc

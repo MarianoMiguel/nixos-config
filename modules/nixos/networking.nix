@@ -11,7 +11,10 @@
 
   networking.firewall.trustedInterfaces = [ "ts0" ];
 
-  services.opensnitch.enable = true;
+  services.opensnitch = {
+    enable = true;
+    settings.ProcMonitorMethod = "proc";
+  };
 
   environment.systemPackages = with pkgs; [
     tailscale

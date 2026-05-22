@@ -70,7 +70,11 @@
     "root": {
       "inputs": {
         "dms": "dms",
-        "nixpkgs": "nixpkgs_2"
+        "nixpkgs": "nixpkgs_2",
+        "nixpkgs-unstable": [
+          "dms",
+          "nixpkgs"
+        ]
       }
     }
   },

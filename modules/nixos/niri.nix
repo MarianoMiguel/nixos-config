@@ -1,4 +1,4 @@
-{ dms, pkgs, ... }:
+{ dms, pkgs, pkgsUnstable, ... }:
 
 let
   system = pkgs.stdenv.hostPlatform.system;
@@ -10,7 +10,7 @@ in
   programs.dank-material-shell = {
     enable = true;
     package = dms.packages.${system}.dms-shell;
-    quickshell.package = dms.packages.${system}.quickshell;
+    quickshell.package = pkgsUnstable.quickshell;
 
     # dgop is not available in the current nixpkgs pin.
     enableSystemMonitoring = false;

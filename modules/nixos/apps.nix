@@ -43,6 +43,7 @@ in
     spotify
     slack
     obsidian
+    gearlever
     localsend
     mpv
     qbittorrent

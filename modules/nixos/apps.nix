@@ -44,6 +44,7 @@ in
     slack
     obsidian
     gearlever
+    font-manager
     localsend
     mpv
     qbittorrent

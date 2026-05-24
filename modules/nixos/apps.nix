@@ -45,6 +45,7 @@ in
     obsidian
     gearlever
     font-manager
+    zed-editor
     localsend
     mpv
     qbittorrent

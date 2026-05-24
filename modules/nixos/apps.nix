@@ -2,6 +2,15 @@
 
 let
   system = pkgs.stdenv.hostPlatform.system;
+  zedEditorWithCli = pkgs.symlinkJoin {
+    name = "zed-editor-with-zed-cli";
+    paths = [ pkgs.zed-editor ];
+    postBuild = ''
+      if [ ! -e "$out/bin/zed" ]; then
+        ln -s ${pkgs.zed-editor}/bin/zeditor "$out/bin/zed"
+      fi
+    '';
+  };
 in
 
 {
@@ -45,7 +54,7 @@ in
     obsidian
     gearlever
     font-manager
-    zed-editor
+    zedEditorWithCli
     localsend
     mpv
     qbittorrent

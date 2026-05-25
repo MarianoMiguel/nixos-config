@@ -48,6 +48,15 @@ in
     };
   };
 
+  environment.etc."libinput/local-overrides.quirks".text = ''
+    [Logitech MX Master 4 Bluetooth high-resolution wheel]
+    MatchUdevType=mouse
+    MatchBus=bluetooth
+    MatchVendor=0x046D
+    MatchProduct=0xB042
+    AttrEventCode=-REL_WHEEL_HI_RES;-REL_HWHEEL_HI_RES
+  '';
+
   services.xserver.xkb = {
     layout = "us,es";
     variant = ",";

@@ -43,10 +43,7 @@ in
           left = "home";
           right = "end";
         };
-        "control+alt" = {
-          left = "C-A-left";
-          right = "C-A-right";
-        };
+        "control+alt" = { };
       };
     };
   };

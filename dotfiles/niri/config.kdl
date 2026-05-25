@@ -4,7 +4,7 @@ input {
     keyboard {
         xkb {
             layout "us,es"
-            options "grp:alt_shift_toggle"
+            options "grp:shift_caps_toggle"
         }
         numlock
     }

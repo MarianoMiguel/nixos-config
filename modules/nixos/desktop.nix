@@ -40,8 +40,10 @@ in
       ids = [ "*" ];
       settings = {
         alt = {
+          d = "pagedown";
           left = "home";
           right = "end";
+          u = "pageup";
         };
         "control+alt" = { };
       };

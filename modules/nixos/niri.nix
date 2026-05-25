@@ -98,6 +98,7 @@ in
     playerctl
     swayidle
     swaylock
+    wl-kbptr
     wtype
     xwayland-satellite
     codexbar

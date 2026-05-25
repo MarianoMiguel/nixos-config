@@ -34,19 +34,6 @@ in
   '';
 
   services.input-remapper.enable = true;
-  services.keyd = {
-    enable = true;
-    keyboards.default = {
-      ids = [ "*" ];
-      settings = {
-        alt = {
-          q = "A-f4";
-          w = "A-f4";
-          enter = "A-f11";
-        };
-      };
-    };
-  };
 
   environment.etc."libinput/local-overrides.quirks".text = ''
     [Logitech MX Master 4 Bluetooth high-resolution wheel]

@@ -61,7 +61,9 @@ binds {
     Mod+Return hotkey-overlay-title="Open Terminal" { spawn "ghostty"; }
     Mod+B hotkey-overlay-title="Open Browser" { spawn "brave"; }
     Mod+E hotkey-overlay-title="Open Files" { spawn "dolphin"; }
-    Mod+Space hotkey-overlay-title="Open Launcher" { spawn "dms" "ipc" "call" "spotlight" "toggle"; }
+    Alt+Space hotkey-overlay-title="Open Launcher" { spawn "dms" "ipc" "call" "spotlight" "toggle"; }
+    Mod+Space hotkey-overlay-title="Keyboard Pointer" { spawn "wl-kbptr" "-o" "modes=floating,click" "-o" "mode_floating.source=detect"; }
+    Mod+Ctrl+Space hotkey-overlay-title="Keyboard Pointer Grid" { spawn "wl-kbptr" "-o" "modes=tile,click"; }
     Mod+Tab hotkey-overlay-title="Overview" { toggle-overview; }
     Mod+D hotkey-overlay-title="Open Launcher" { spawn "dms" "ipc" "call" "spotlight" "toggle"; }
     Mod+Shift+V hotkey-overlay-title="Clipboard" { spawn "dms" "ipc" "call" "clipboard" "toggle"; }
@@ -69,7 +71,7 @@ binds {
 
     Alt+Q repeat=false { close-window; }
     Alt+W repeat=false { close-window; }
-    Alt+Return repeat=false { fullscreen-window; }
+    Alt+Return hotkey-overlay-title="Open Terminal" { spawn "ghostty"; }
     Mod+Q repeat=false { close-window; }
     Mod+W repeat=false { close-window; }
     Mod+Shift+F repeat=false { fullscreen-window; }

@@ -152,6 +152,9 @@ in
     done
     install -m 0644 -o mariano -g users ${../../dotfiles/niri/config.kdl} /home/mariano/.config/niri/config.kdl
 
+    install -d -m 0755 -o mariano -g users /home/mariano/.config/wl-kbptr
+    install -m 0644 -o mariano -g users ${../../dotfiles/wl-kbptr/config} /home/mariano/.config/wl-kbptr/config
+
     install -d -m 0755 -o mariano -g users /home/mariano/.config/DankMaterialShell
     install -m 0644 -o mariano -g users ${../../dotfiles/dms/theme.json} /home/mariano/.config/DankMaterialShell/theme.json
 

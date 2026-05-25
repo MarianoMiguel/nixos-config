@@ -3,9 +3,10 @@
 {
   services.logind.settings.Login = {
     # Some ThinkPad wake paths replay the wake event as a short power-key press
-    # after resume, which logind can interpret as a request to suspend again.
+    # after resume. Let lid close drive suspend; ignore software power-key
+    # actions so bogus resume events cannot immediately suspend or power off.
     HandlePowerKey = "ignore";
-    HandlePowerKeyLongPress = "poweroff";
+    HandlePowerKeyLongPress = "ignore";
 
     HandleLidSwitch = "suspend";
     HandleLidSwitchExternalPower = "suspend";

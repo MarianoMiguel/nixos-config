@@ -34,6 +34,10 @@ in
   '';
 
   services.input-remapper.enable = true;
+  hardware.opentabletdriver.enable = true;
+  hardware.uinput.enable = true;
+  boot.kernelModules = [ "uinput" ];
+
   services.keyd = {
     enable = true;
     keyboards.default = {

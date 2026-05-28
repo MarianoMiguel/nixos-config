@@ -1,0 +1,19 @@
+{
+  "currentThemeCategory": "dynamic",
+  "currentThemeName": "dynamic",
+  "customThemeFile": "/home/mariano/.config/DankMaterialShell/theme.json",
+  "launcherStyle": "spotlight",
+  "launcherUseOverlayLayer": false,
+  "dankLauncherV2Size": "compact",
+  "dankLauncherV2UnloadOnClose": false,
+  "runDmsMatugenTemplates": true,
+  "runUserMatugenTemplates": true,
+  "matugenScheme": "scheme-monochrome",
+  "matugenContrast": 0,
+  "matugenTemplateGhostty": true,
+  "matugenTemplateGtk": true,
+  "matugenTemplateNeovim": false,
+  "matugenTemplateNiri": true,
+  "syncModeWithPortal": true,
+  "terminalsAlwaysDark": false
+}

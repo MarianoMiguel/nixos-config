@@ -263,25 +263,16 @@ in
     dms_settings_tmp="$(mktemp)"
     if [ -f "$dms_settings" ]; then
       ${pkgs.jq}/bin/jq \
+        --slurpfile settingsDefaults ${../../dotfiles/dms/settings-defaults.json} \
         --slurpfile barConfigs ${../../dotfiles/dms/bar-configs.json} \
-        '. + {
-          currentThemeCategory: "custom",
-          currentThemeName: "custom",
-          customThemeFile: "/home/mariano/.config/DankMaterialShell/theme.json",
-          runUserMatugenTemplates: true,
-          matugenTemplateGhostty: true
-        }
+        '. + $settingsDefaults[0]
         | .barConfigs = $barConfigs[0]' \
         "$dms_settings" > "$dms_settings_tmp"
     else
       ${pkgs.jq}/bin/jq -n \
+        --slurpfile settingsDefaults ${../../dotfiles/dms/settings-defaults.json} \
         --slurpfile barConfigs ${../../dotfiles/dms/bar-configs.json} \
-        '{
-          currentThemeCategory: "custom",
-          currentThemeName: "custom",
-          customThemeFile: "/home/mariano/.config/DankMaterialShell/theme.json",
-          runUserMatugenTemplates: true,
-          matugenTemplateGhostty: true,
+        '$settingsDefaults[0] + {
           barConfigs: $barConfigs[0]
         }' > "$dms_settings_tmp"
     fi
@@ -293,17 +284,13 @@ in
     dms_session_tmp="$(mktemp)"
     if [ -f "$dms_session" ]; then
       ${pkgs.jq}/bin/jq \
-        '. + {
-          weatherLocation: "Campana, Buenos Aires, Argentina",
-          weatherCoordinates: "-34.16327,-58.95919"
-        }' \
+        --slurpfile sessionDefaults ${../../dotfiles/dms/session-defaults.json} \
+        '. + $sessionDefaults[0]' \
         "$dms_session" > "$dms_session_tmp"
     else
       ${pkgs.jq}/bin/jq -n \
-        '{
-          weatherLocation: "Campana, Buenos Aires, Argentina",
-          weatherCoordinates: "-34.16327,-58.95919"
-        }' > "$dms_session_tmp"
+        --slurpfile sessionDefaults ${../../dotfiles/dms/session-defaults.json} \
+        '$sessionDefaults[0]' > "$dms_session_tmp"
     fi
     install -m 0644 -o mariano -g users "$dms_session_tmp" "$dms_session"
     rm -f "$dms_session_tmp"

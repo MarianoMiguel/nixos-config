@@ -1,3 +1,5 @@
+[config]
+
 [templates.nvim-dankcolors]
 input_path = '/home/mariano/.config/matugen/templates/neovim-dankcolors.lua'
 output_path = '/home/mariano/.config/nvim/lua/plugins/dankcolors.lua'

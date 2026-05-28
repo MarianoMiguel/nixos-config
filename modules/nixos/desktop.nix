@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ lib, pkgs, ... }:
 
 let
   kwriteconfig = "${pkgs.kdePackages.kconfig}/bin/kwriteconfig6";
@@ -6,8 +6,28 @@ in
 {
   services.xserver.enable = true;
 
-  services.displayManager.sddm.enable = true;
+  services.displayManager.sddm.enable = false;
   services.desktopManager.plasma6.enable = true;
+
+  users.groups.greeter = { };
+  users.users.greeter = {
+    isSystemUser = true;
+    group = "greeter";
+    home = "/var/lib/dms-greeter";
+  };
+
+  services.greetd.settings.default_session.user = "greeter";
+  security.pam.services.greetd.allowNullPassword = lib.mkForce false;
+
+  programs.dank-material-shell.greeter = {
+    enable = true;
+    compositor.name = "niri";
+    configHome = "/home/mariano";
+    logs = {
+      save = true;
+      path = "/var/lib/dms-greeter/dms-greeter.log";
+    };
+  };
 
   hardware.bluetooth = {
     enable = true;

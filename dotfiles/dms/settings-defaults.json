@@ -6,6 +6,7 @@
   "launcherUseOverlayLayer": false,
   "dankLauncherV2Size": "compact",
   "dankLauncherV2UnloadOnClose": false,
+  "greeterEnableU2f": true,
   "runDmsMatugenTemplates": true,
   "runUserMatugenTemplates": true,
   "matugenScheme": "scheme-monochrome",

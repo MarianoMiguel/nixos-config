@@ -40,6 +40,7 @@
       };
       modules = [
         dms.nixosModules.dank-material-shell
+        dms.nixosModules.greeter
         ./hosts/bonhart/configuration.nix
       ];
     };

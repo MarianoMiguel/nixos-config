@@ -90,7 +90,7 @@ in
     systemd.enable = false;
   };
 
-  services.iio-niri.enable = true;
+  services.iio-niri.enable = false;
 
   environment.systemPackages = with pkgs; [
     brightnessctl

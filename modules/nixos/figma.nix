@@ -1,6 +1,19 @@
 { figma-linux-font-helper, pkgs, ... }:
 
 let
+  desktopUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+  figmaBraveAppId = "mcjdlkonbhobpbhflaaeilimpiandlci";
+  figmaBravePwaDesktop = pkgs.writeText "brave-${figmaBraveAppId}-Default.desktop" ''
+    [Desktop Entry]
+    Version=1.0
+    Terminal=false
+    Type=Application
+    Name=Figma
+    Exec=brave --profile-directory=Default --user-agent="${desktopUserAgent}" --app-id=${figmaBraveAppId}
+    Icon=brave-${figmaBraveAppId}-Default
+    StartupWMClass=crx_${figmaBraveAppId}
+  '';
+
   fontHelper = pkgs.rustPlatform.buildRustPackage {
     pname = "figma-linux-font-helper";
     version = "0.1.8";
@@ -47,5 +60,12 @@ in
       }' > /home/mariano/.config/figma-linux/settings.json
     chown mariano:users /home/mariano/.config/figma-linux/settings.json
     chmod 0644 /home/mariano/.config/figma-linux/settings.json
+  '';
+
+  system.activationScripts.figmaBravePwaDesktop.text = ''
+    install -d -m 0755 -o mariano -g users /home/mariano/.local/share/applications
+    install -d -m 0755 -o mariano -g users /home/mariano/Desktop
+    install -m 0644 -o mariano -g users ${figmaBravePwaDesktop} /home/mariano/.local/share/applications/brave-${figmaBraveAppId}-Default.desktop
+    install -m 0755 -o mariano -g users ${figmaBravePwaDesktop} /home/mariano/Desktop/brave-${figmaBraveAppId}-Default.desktop
   '';
 }

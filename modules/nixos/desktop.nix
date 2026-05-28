@@ -95,5 +95,6 @@ in
     pciutils
     usbutils
     kdePackages.kconfig
+    kdePackages.ksshaskpass
   ];
 }

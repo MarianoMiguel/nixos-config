@@ -7,7 +7,6 @@
     control = "sufficient";
     settings = {
       cue = true;
-      nouserok = true;
       userpresence = 1;
     };
   };

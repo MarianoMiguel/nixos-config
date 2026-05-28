@@ -152,6 +152,10 @@ in
     done
     install -m 0644 -o mariano -g users ${../../dotfiles/niri/config.kdl} /home/mariano/.config/niri/config.kdl
 
+    install -d -m 0755 -o mariano -g users /home/mariano/.config/matugen/templates
+    install -m 0644 -o mariano -g users ${../../dotfiles/matugen/config.toml} /home/mariano/.config/matugen/config.toml
+    install -m 0644 -o mariano -g users ${../../dotfiles/matugen/templates/neovim-dankcolors.lua} /home/mariano/.config/matugen/templates/neovim-dankcolors.lua
+
     install -d -m 0755 -o mariano -g users /home/mariano/.config/DankMaterialShell
     install -m 0644 -o mariano -g users ${../../dotfiles/dms/theme.json} /home/mariano/.config/DankMaterialShell/theme.json
 
@@ -263,7 +267,9 @@ in
         '. + {
           currentThemeCategory: "custom",
           currentThemeName: "custom",
-          customThemeFile: "/home/mariano/.config/DankMaterialShell/theme.json"
+          customThemeFile: "/home/mariano/.config/DankMaterialShell/theme.json",
+          runUserMatugenTemplates: true,
+          matugenTemplateGhostty: true
         }
         | .barConfigs = $barConfigs[0]' \
         "$dms_settings" > "$dms_settings_tmp"
@@ -274,6 +280,8 @@ in
           currentThemeCategory: "custom",
           currentThemeName: "custom",
           customThemeFile: "/home/mariano/.config/DankMaterialShell/theme.json",
+          runUserMatugenTemplates: true,
+          matugenTemplateGhostty: true,
           barConfigs: $barConfigs[0]
         }' > "$dms_settings_tmp"
     fi

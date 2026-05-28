@@ -2,6 +2,7 @@
 
 let
   system = pkgs.stdenv.hostPlatform.system;
+  defaultBrowserDesktop = "com.google.Chrome.desktop";
   zedEditorWithCli = pkgs.symlinkJoin {
     name = "zed-editor-with-zed-cli";
     paths = [ pkgs.zed-editor ];
@@ -86,11 +87,11 @@ in
   };
 
   xdg.mime.defaultApplications = {
-    "text/html" = "brave-browser.desktop";
-    "x-scheme-handler/http" = "brave-browser.desktop";
-    "x-scheme-handler/https" = "brave-browser.desktop";
-    "x-scheme-handler/about" = "brave-browser.desktop";
-    "x-scheme-handler/unknown" = "brave-browser.desktop";
+    "text/html" = defaultBrowserDesktop;
+    "x-scheme-handler/http" = defaultBrowserDesktop;
+    "x-scheme-handler/https" = defaultBrowserDesktop;
+    "x-scheme-handler/about" = defaultBrowserDesktop;
+    "x-scheme-handler/unknown" = defaultBrowserDesktop;
     "application/pdf" = "firefox.desktop";
     "x-scheme-handler/paper" = "paper-desktop.desktop";
     "x-scheme-handler/paper-dev" = "paper-desktop.desktop";
@@ -116,6 +117,7 @@ in
 
   environment.systemPackages = with pkgs; [
     brave
+    google-chrome
     spotify
     slack
     obsidian

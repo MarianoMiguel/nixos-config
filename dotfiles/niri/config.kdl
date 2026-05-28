@@ -59,7 +59,7 @@ include "dms/binds.kdl"
 
 binds {
     Mod+Return hotkey-overlay-title="Open Terminal" { spawn "ghostty"; }
-    Mod+B hotkey-overlay-title="Open Browser" { spawn "brave"; }
+    Mod+B hotkey-overlay-title="Open Browser" { spawn "google-chrome-stable"; }
     Mod+E hotkey-overlay-title="Open Files" { spawn "dolphin"; }
     Alt+Space hotkey-overlay-title="Open Launcher" { spawn "dms" "ipc" "call" "spotlight" "toggle"; }
     Mod+Space hotkey-overlay-title="Keyboard Pointer" { spawn "wl-kbptr" "-o" "modes=floating,click" "-o" "mode_floating.source=detect" "-o" "mode_floating.label_font_size=22 50% 100"; }

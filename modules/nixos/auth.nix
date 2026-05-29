@@ -3,7 +3,7 @@
 let
   luksRootDevice = "luks-7cdf3e08-99fb-4ac5-9480-f0c6c662cbd2";
 
-  yubikeyOnlyPamServices = [
+  interactivePamServices = [
     "greetd"
     "i3lock"
     "i3lock-color"
@@ -18,6 +18,9 @@ let
     "xlock"
     "xscreensaver"
   ];
+
+  # Flip only after /etc/u2f-mappings contains tested primary and backup keys.
+  enforceYubikeyOnly = false;
 in
 
 {
@@ -38,9 +41,9 @@ in
     };
   };
 
-  security.pam.services = lib.genAttrs yubikeyOnlyPamServices (_: {
+  security.pam.services = lib.genAttrs interactivePamServices (_: {
     u2fAuth = true;
-    unixAuth = false;
+    unixAuth = !enforceYubikeyOnly;
   });
 
   environment.systemPackages = with pkgs; [

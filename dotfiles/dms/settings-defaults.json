@@ -1,7 +1,7 @@
 {
-  "currentThemeCategory": "dynamic",
-  "currentThemeName": "dynamic",
-  "customThemeFile": "/home/mariano/.config/DankMaterialShell/theme.json",
+  "currentThemeCategory": "registry",
+  "currentThemeName": "custom",
+  "customThemeFile": "/home/mariano/.config/DankMaterialShell/themes/dms-ayu/theme.json",
   "launcherStyle": "spotlight",
   "launcherUseOverlayLayer": false,
   "dankLauncherV2Size": "compact",

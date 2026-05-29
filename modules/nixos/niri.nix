@@ -158,6 +158,8 @@ in
 
     install -d -m 0755 -o mariano -g users /home/mariano/.config/DankMaterialShell
     install -m 0644 -o mariano -g users ${../../dotfiles/dms/theme.json} /home/mariano/.config/DankMaterialShell/theme.json
+    install -d -m 0755 -o mariano -g users /home/mariano/.config/DankMaterialShell/themes/dms-ayu
+    install -m 0644 -o mariano -g users ${../../dotfiles/dms/themes/dms-ayu/theme.json} /home/mariano/.config/DankMaterialShell/themes/dms-ayu/theme.json
 
     dms_plugins=/home/mariano/.config/DankMaterialShell/plugin_settings.json
     dms_plugins_tmp="$(mktemp)"

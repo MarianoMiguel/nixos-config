@@ -1,8 +1,29 @@
-{ codex-desktop-linux, pkgs, ... }:
+{ codex-desktop-linux, lib, pkgs, ... }:
 
 let
   system = pkgs.stdenv.hostPlatform.system;
-  defaultBrowserDesktop = "com.google.Chrome.desktop";
+  defaultBrowserDesktop = "google-chrome.desktop";
+  browserMimeTypes = [
+    "text/html"
+    "text/xml"
+    "application/xhtml+xml"
+    "application/xml"
+    "application/rss+xml"
+    "application/rdf+xml"
+    "x-scheme-handler/about"
+    "x-scheme-handler/chrome"
+    "x-scheme-handler/ftp"
+    "x-scheme-handler/http"
+    "x-scheme-handler/https"
+    "x-scheme-handler/unknown"
+    "x-scheme-handler/webcal"
+  ];
+  browserMimeDefaults = lib.genAttrs browserMimeTypes (_: defaultBrowserDesktop);
+  browserMimeAssociations = lib.genAttrs browserMimeTypes (_: [ defaultBrowserDesktop ]);
+  braveMimeAssociations = lib.genAttrs browserMimeTypes (_: [
+    "brave-browser.desktop"
+    "com.brave.Browser.desktop"
+  ]);
   zedEditorWithCli = pkgs.symlinkJoin {
     name = "zed-editor-with-zed-cli";
     paths = [ pkgs.zed-editor ];
@@ -86,17 +107,14 @@ in
     enableVirtualCamera = true;
   };
 
-  xdg.mime.defaultApplications = {
-    "text/html" = defaultBrowserDesktop;
-    "x-scheme-handler/http" = defaultBrowserDesktop;
-    "x-scheme-handler/https" = defaultBrowserDesktop;
-    "x-scheme-handler/about" = defaultBrowserDesktop;
-    "x-scheme-handler/unknown" = defaultBrowserDesktop;
+  xdg.mime.defaultApplications = browserMimeDefaults // {
     "application/pdf" = "firefox.desktop";
     "x-scheme-handler/paper" = "paper-desktop.desktop";
     "x-scheme-handler/paper-dev" = "paper-desktop.desktop";
     "x-scheme-handler/pencil" = "pencil.desktop";
   };
+  xdg.mime.addedAssociations = browserMimeAssociations;
+  xdg.mime.removedAssociations = braveMimeAssociations;
 
   xdg.terminal-exec = {
     enable = true;
@@ -108,8 +126,65 @@ in
 
   environment.etc."xdg/kdeglobals".text = ''
     [General]
+    BrowserApplication=${defaultBrowserDesktop}
     TerminalApplication=ghostty
     TerminalService=com.mitchellh.ghostty.desktop
+  '';
+
+  environment.sessionVariables = {
+    BROWSER = "google-chrome-stable";
+    DEFAULT_BROWSER = defaultBrowserDesktop;
+  };
+
+  system.activationScripts.chromeDefaultBrowser.text = ''
+    install -d -m 0755 -o mariano -g users /home/mariano/.config
+
+    for mime in ${lib.escapeShellArgs browserMimeTypes}; do
+      ${pkgs.util-linux}/bin/runuser -u mariano -- env \
+        HOME=/home/mariano \
+        XDG_CONFIG_HOME=/home/mariano/.config \
+        ${pkgs.xdg-utils}/bin/xdg-mime default ${defaultBrowserDesktop} "$mime"
+    done
+
+    ${pkgs.kdePackages.kconfig}/bin/kwriteconfig6 \
+      --file /home/mariano/.config/kdeglobals \
+      --group General \
+      --key BrowserApplication \
+      ${defaultBrowserDesktop}
+    chown mariano:users /home/mariano/.config/kdeglobals
+
+    mimeapps=/home/mariano/.config/mimeapps.list
+    if [ -f "$mimeapps" ]; then
+      tmp="$(${pkgs.coreutils}/bin/mktemp)"
+      ${pkgs.gawk}/bin/awk \
+        -v browser="${defaultBrowserDesktop}" \
+        -v browser_mimes="${lib.concatStringsSep " " browserMimeTypes}" '
+        BEGIN {
+          count = split(browser_mimes, mimes, " ");
+          for (i = 1; i <= count; i++) {
+            browser_mime[mimes[i]] = 1;
+          }
+          section = "";
+        }
+
+        /^\[/ {
+          section = $0;
+        }
+
+        section == "[Added Associations]" && index($0, "=") {
+          key = $0;
+          sub(/=.*/, "", key);
+          if (key in browser_mime) {
+            print key "=" browser ";";
+            next;
+          }
+        }
+
+        { print }
+      ' "$mimeapps" > "$tmp"
+      install -m 0644 -o mariano -g users "$tmp" "$mimeapps"
+      rm -f "$tmp"
+    fi
   '';
 
   services.flatpak.enable = true;

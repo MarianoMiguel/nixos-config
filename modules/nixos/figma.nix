@@ -13,6 +13,19 @@ let
     Icon=brave-${figmaBraveAppId}-Default
     StartupWMClass=crx_${figmaBraveAppId}
   '';
+  figmaUrlHandlerDesktop = pkgs.writeTextDir "share/applications/figma-linux-url-handler.desktop" ''
+    [Desktop Entry]
+    Version=1.5
+    Type=Application
+    Name=Figma URL Handler
+    Comment=Open Figma links in Figma Linux
+    Exec=${pkgs.figma-linux}/bin/figma-linux %U
+    Icon=figma-linux
+    Terminal=false
+    NoDisplay=true
+    MimeType=x-scheme-handler/figma;
+    Categories=Graphics;Network;
+  '';
 
   fontHelper = pkgs.rustPlatform.buildRustPackage {
     pname = "figma-linux-font-helper";
@@ -29,7 +42,17 @@ in
   environment.systemPackages = with pkgs; [
     figma-linux
     fontHelper
+  ] ++ [
+    figmaUrlHandlerDesktop
   ];
+
+  xdg.mime.addedAssociations = {
+    "x-scheme-handler/figma" = "figma-linux-url-handler.desktop";
+  };
+
+  xdg.mime.defaultApplications = {
+    "x-scheme-handler/figma" = "figma-linux-url-handler.desktop";
+  };
 
   systemd.user.services.figma-fonthelper = {
     description = "Font Helper for Figma";

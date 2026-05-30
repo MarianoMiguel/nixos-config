@@ -24,6 +24,17 @@ in
     DMS_SAVE_SESSION = "false";
   };
 
+  xdg.portal.config.niri = {
+    default = [
+      "gnome"
+      "gtk"
+    ];
+    "org.freedesktop.impl.portal.Access" = "gtk";
+    "org.freedesktop.impl.portal.AppChooser" = "gtk";
+    "org.freedesktop.impl.portal.Notification" = "gtk";
+    "org.freedesktop.impl.portal.Secret" = "gnome-keyring";
+  };
+
   programs.dank-material-shell.greeter = {
     enable = true;
     compositor.name = "niri";

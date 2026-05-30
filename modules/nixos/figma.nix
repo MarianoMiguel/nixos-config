@@ -3,6 +3,14 @@
 let
   desktopUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
   figmaBraveAppId = "mcjdlkonbhobpbhflaaeilimpiandlci";
+  figmaLinux = pkgs.figma-linux.overrideAttrs (oldAttrs: {
+    postInstall = (oldAttrs.postInstall or "") + ''
+      main_js="$out/share/figma-linux/resources/app/main/main.js"
+      substituteInPlace "$main_js" \
+        --replace-fail 'return e.app.emit("focusLastWindow"),void e.app.quit();' 'return void e.app.quit();' \
+        --replace-fail 'setTimeout((()=>{""!==t&&this.windowManager.openUrl(t)}),1500)' 'setTimeout((()=>{""!==t&&(this.windowManager.tryHandleAppAuthRedeemUrl(t)||this.windowManager.openUrl(t))}),1500)'
+    '';
+  });
   figmaBravePwaDesktop = pkgs.writeText "brave-${figmaBraveAppId}-Default.desktop" ''
     [Desktop Entry]
     Version=1.0
@@ -19,7 +27,7 @@ let
     Type=Application
     Name=Figma URL Handler
     Comment=Open Figma links in Figma Linux
-    Exec=${pkgs.figma-linux}/bin/figma-linux %U
+    Exec=${figmaLinux}/bin/figma-linux %U
     Icon=figma-linux
     Terminal=false
     NoDisplay=true
@@ -40,9 +48,9 @@ in
 
 {
   environment.systemPackages = with pkgs; [
-    figma-linux
     fontHelper
   ] ++ [
+    figmaLinux
     figmaUrlHandlerDesktop
   ];
 

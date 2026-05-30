@@ -8,6 +8,7 @@ in
 
   services.displayManager.sddm.enable = false;
   services.desktopManager.plasma6.enable = true;
+  services.displayManager.sessionPackages = lib.mkForce [ pkgs.niri ];
 
   users.groups.greeter = { };
   users.users.greeter = {
@@ -18,6 +19,10 @@ in
 
   services.greetd.settings.default_session.user = "greeter";
   security.pam.services.greetd.allowNullPassword = lib.mkForce false;
+  systemd.services.greetd.environment = {
+    DMS_GREET_REMEMBER_LAST_SESSION = "0";
+    DMS_SAVE_SESSION = "false";
+  };
 
   programs.dank-material-shell.greeter = {
     enable = true;

@@ -37,6 +37,7 @@ in
     settings = {
       authfile = "/etc/u2f-mappings";
       cue = true;
+      timeout = 30;
       userpresence = 1;
     };
   };
@@ -50,4 +51,11 @@ in
     pam_u2f
     yubico-piv-tool
   ];
+
+  system.activationScripts.u2fMappingsPermissions.text = ''
+    if [ -e /etc/u2f-mappings ]; then
+      ${pkgs.coreutils}/bin/chown root:root /etc/u2f-mappings
+      ${pkgs.coreutils}/bin/chmod 0600 /etc/u2f-mappings
+    fi
+  '';
 }

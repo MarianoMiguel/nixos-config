@@ -77,16 +77,6 @@ let
         sourceProvenance = with pkgs.lib.sourceTypes; [ binaryNativeCode ];
       };
     };
-  paperDesign = wrapDesignAppImage {
-    pname = "paper-design";
-    version = "0.3.1";
-    url = "https://download.paper.design/linux/appImage";
-    hash = "sha256-RwrexWyvJtK9RtsLSWiIn1TRCmJlh4aQtDLvLSJcKf4=";
-    desktopFile = "paper-desktop.desktop";
-    iconFile = "paper-desktop.png";
-    description = "Design app for visuals, user interfaces, prototypes, and assets";
-    homepage = "https://paper.design/";
-  };
   pencilDev = wrapDesignAppImage {
     pname = "pencil-dev";
     version = "1.1.57";
@@ -109,8 +99,6 @@ in
 
   xdg.mime.defaultApplications = browserMimeDefaults // {
     "application/pdf" = "firefox.desktop";
-    "x-scheme-handler/paper" = "paper-desktop.desktop";
-    "x-scheme-handler/paper-dev" = "paper-desktop.desktop";
     "x-scheme-handler/pencil" = "pencil.desktop";
   };
   xdg.mime.addedAssociations = browserMimeAssociations;
@@ -209,7 +197,6 @@ in
     inkscape
     gimp
     darktable
-    paperDesign
     pencilDev
   ] ++ [
     codex-desktop-linux.packages.${system}.codex-desktop

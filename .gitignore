@@ -2,3 +2,4 @@ result
 result-*
 .direnv
 .envrc
+hosts/*/hardware-configuration.nix

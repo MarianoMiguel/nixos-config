@@ -1,5 +1,30 @@
 return {
-  -- TokyoNight as fallback (used until DMS generates dankcolors.lua via Matugen)
+  {
+    "Shatur/neovim-ayu",
+    name = "ayu",
+    priority = 1000,
+    opts = {
+      mirage = true,
+      terminal = true,
+    },
+    config = function(_, opts)
+      require("ayu").setup(opts)
+    end,
+  },
+  {
+    "datsfilipe/vesper.nvim",
+    name = "vesper",
+    opts = {
+      transparent = true,
+    },
+  },
+  {
+    "catppuccin/nvim",
+    name = "catppuccin",
+    opts = {
+      flavour = "latte",
+    },
+  },
   {
     "folke/tokyonight.nvim",
     opts = {
@@ -14,7 +39,7 @@ return {
   {
     "LazyVim/LazyVim",
     opts = {
-      colorscheme = "tokyonight",
+      colorscheme = "ayu-mirage",
     },
   },
 }

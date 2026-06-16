@@ -1,1 +1,3 @@
-// Managed by DMS at runtime.
+output "eDP-1" {
+    scale 1
+}

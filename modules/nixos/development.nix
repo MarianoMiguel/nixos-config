@@ -29,6 +29,9 @@
     python3Packages.pip
     uv
     mise
+    (writeShellScriptBin "opencode" ''
+      exec /home/mariano/.opencode/bin/opencode "$@"
+    '')
 
     gh
     git-lfs

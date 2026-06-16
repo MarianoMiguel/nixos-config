@@ -132,6 +132,7 @@ in
     google-chrome
     spotify
     slack
+    lmstudio
     obsidian
     vscode
     gearlever

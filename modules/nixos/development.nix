@@ -23,7 +23,7 @@
     ghostty
     vim
 
-    nodejs_22
+    nodejs_24
     nodePackages.npm
     python3
     python3Packages.pip
@@ -31,6 +31,7 @@
     mise
 
     gh
+    git-lfs
     docker
     docker-compose
 
@@ -47,8 +48,12 @@
     eza
     fastfetch
     btop
+    duf
+    file
     gcc
     gnumake
+    pkg-config
+    openssl
     tree-sitter
     lua-language-server
     stylua

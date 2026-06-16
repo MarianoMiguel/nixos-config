@@ -6,7 +6,7 @@
   "launcherUseOverlayLayer": false,
   "dankLauncherV2Size": "compact",
   "dankLauncherV2UnloadOnClose": false,
-  "greeterEnableU2f": true,
+  "greeterEnableU2f": false,
   "greeterRememberLastSession": false,
   "runDmsMatugenTemplates": true,
   "runUserMatugenTemplates": true,

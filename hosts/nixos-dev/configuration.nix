@@ -1,22 +1,15 @@
-{ lib, pkgs, ... }:
+{ lib, ... }:
 
 {
   imports = [
-    ../nixos-dev/hardware-configuration.nix
+    ./hardware-configuration.nix
     ../../profiles/workstation.nix
   ] ++ lib.optional (builtins.pathExists ./local.nix) ./local.nix;
 
-  networking.hostName = "bonhart";
+  boot.loader.systemd-boot.enable = lib.mkDefault true;
+  boot.loader.efi.canTouchEfiVariables = lib.mkDefault true;
 
-  boot.loader.systemd-boot.enable = true;
-  boot.loader.efi.canTouchEfiVariables = true;
-  boot.kernelPackages = pkgs.linuxPackages_latest;
-  boot.kernelPatches = [
-    {
-      name = "btmtk-accept-short-wmt-func-ctrl-events";
-      patch = ../../patches/linux-btmtk-func-ctrl-short-event.patch;
-    }
-  ];
+  networking.hostName = lib.mkDefault "nixos-dev";
 
   time.timeZone = "America/Argentina/Buenos_Aires";
 
@@ -33,15 +26,6 @@
     LC_TIME = "es_AR.UTF-8";
   };
 
-  services.printing = {
-    enable = true;
-    drivers = with pkgs; [
-      brlaser
-      cups-brother-hl1210w
-    ];
-  };
-
   system.stateVersion = "25.11";
-
   nixpkgs.config.permittedInsecurePackages = [ "docker-28.5.2" ];
 }

@@ -1,0 +1,14 @@
+{
+  "isLightMode": false,
+  "wallpaperPath": "#131721",
+  "weatherLocation": "Buenos Aires, Argentina",
+  "weatherCoordinates": "-34.6037,-58.3816",
+  "pinnedApps": [
+    "org.kde.dolphin",
+    "google-chrome",
+    "com.mitchellh.ghostty",
+    "codex-desktop",
+    "slack"
+  ],
+  "configVersion": 3
+}

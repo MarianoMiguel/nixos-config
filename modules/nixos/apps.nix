@@ -77,16 +77,16 @@ let
         sourceProvenance = with pkgs.lib.sourceTypes; [ binaryNativeCode ];
       };
     };
-  pencilDev = wrapDesignAppImage {
-    pname = "pencil-dev";
-    version = "1.1.57";
-    url = "https://www.pencil.dev/download/Pencil-linux-x86_64.AppImage";
-    hash = "sha256-nuf4jVPU5wsR1MwFXr0llAOGxQ4vwiQNEoiBwPwbAXQ=";
-    desktopFile = "pencil.desktop";
-    iconFile = "pencil.png";
-    description = "Vector design canvas that lives alongside code";
-    homepage = "https://www.pencil.dev/";
-  };
+#   pencilDev = wrapDesignAppImage {
+#     pname = "pencil-dev";
+#     version = "1.1.57";
+#     url = "https://www.pencil.dev/download/Pencil-linux-x86_64.AppImage";
+#     hash = "sha256-nuf4jVPU5wsR1MwFXr0llAOGxQ4vwiQNEoiBwPwbAXQ=";
+#     desktopFile = "pencil.desktop";
+#     iconFile = "pencil.png";
+#     description = "Vector design canvas that lives alongside code";
+#     homepage = "https://www.pencil.dev/";
+#   };
 in
 
 {
@@ -99,7 +99,7 @@ in
 
   xdg.mime.defaultApplications = browserMimeDefaults // {
     "application/pdf" = "firefox.desktop";
-    "x-scheme-handler/pencil" = "pencil.desktop";
+    # "x-scheme-handler/pencil" = "pencil.desktop";
   };
   xdg.mime.addedAssociations = browserMimeAssociations;
   xdg.mime.removedAssociations = braveMimeAssociations;
@@ -124,57 +124,6 @@ in
     DEFAULT_BROWSER = defaultBrowserDesktop;
   };
 
-  system.activationScripts.chromeDefaultBrowser.text = ''
-    install -d -m 0755 -o mariano -g users /home/mariano/.config
-
-    for mime in ${lib.escapeShellArgs browserMimeTypes}; do
-      ${pkgs.util-linux}/bin/runuser -u mariano -- env \
-        HOME=/home/mariano \
-        XDG_CONFIG_HOME=/home/mariano/.config \
-        ${pkgs.xdg-utils}/bin/xdg-mime default ${defaultBrowserDesktop} "$mime"
-    done
-
-    ${pkgs.kdePackages.kconfig}/bin/kwriteconfig6 \
-      --file /home/mariano/.config/kdeglobals \
-      --group General \
-      --key BrowserApplication \
-      ${defaultBrowserDesktop}
-    chown mariano:users /home/mariano/.config/kdeglobals
-
-    mimeapps=/home/mariano/.config/mimeapps.list
-    if [ -f "$mimeapps" ]; then
-      tmp="$(${pkgs.coreutils}/bin/mktemp)"
-      ${pkgs.gawk}/bin/awk \
-        -v browser="${defaultBrowserDesktop}" \
-        -v browser_mimes="${lib.concatStringsSep " " browserMimeTypes}" '
-        BEGIN {
-          count = split(browser_mimes, mimes, " ");
-          for (i = 1; i <= count; i++) {
-            browser_mime[mimes[i]] = 1;
-          }
-          section = "";
-        }
-
-        /^\[/ {
-          section = $0;
-        }
-
-        section == "[Added Associations]" && index($0, "=") {
-          key = $0;
-          sub(/=.*/, "", key);
-          if (key in browser_mime) {
-            print key "=" browser ";";
-            next;
-          }
-        }
-
-        { print }
-      ' "$mimeapps" > "$tmp"
-      install -m 0644 -o mariano -g users "$tmp" "$mimeapps"
-      rm -f "$tmp"
-    fi
-  '';
-
   services.flatpak.enable = true;
   services.packagekit.enable = true;
 
@@ -184,6 +133,7 @@ in
     spotify
     slack
     obsidian
+    vscode
     gearlever
     font-manager
     zedEditorWithCli
@@ -197,7 +147,7 @@ in
     inkscape
     gimp
     darktable
-    pencilDev
+    # pencilDev
   ] ++ [
     codex-desktop-linux.packages.${system}.codex-desktop
   ];

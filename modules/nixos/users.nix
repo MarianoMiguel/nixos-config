@@ -8,7 +8,12 @@
     description = "Mariano";
     extraGroups = [
       "docker"
+      "input"
+      "lp"
       "networkmanager"
+      "scanner"
+      "uinput"
+      "video"
       "wheel"
     ];
     packages = with pkgs; [
@@ -18,18 +23,5 @@
 
   programs.zsh = {
     enable = true;
-    autosuggestions.enable = true;
-    syntaxHighlighting.enable = true;
-    ohMyZsh = {
-      enable = true;
-      theme = "robbyrussell";
-      plugins = [
-        "git"
-        "sudo"
-      ];
-    };
-    interactiveShellInit = ''
-      eval "$(${pkgs.mise}/bin/mise activate zsh)"
-    '';
   };
 }

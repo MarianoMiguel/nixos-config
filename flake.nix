@@ -3,6 +3,10 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
+    home-manager = {
+      url = "github:nix-community/home-manager/release-25.11";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     dms.url = "github:AvengeMedia/DankMaterialShell";
     nixpkgs-unstable.follows = "dms/nixpkgs";
     quickshell = {
@@ -28,50 +32,57 @@
     };
   };
 
-  outputs = { nixpkgs, nixpkgs-unstable, dms, quickshell, codex-desktop-linux, dms-codexbar, cat-dms, codeIsland-dms, figma-linux-font-helper, ... }:
+  outputs = inputs@{ self, nixpkgs, nixpkgs-unstable, home-manager, dms, quickshell, codex-desktop-linux, dms-codexbar, cat-dms, codeIsland-dms, figma-linux-font-helper, ... }:
     let
       system = "x86_64-linux";
-      hardwareConfigPath =
-        let
-          configuredPath = builtins.getEnv "NIXOS_HARDWARE_CONFIG";
-        in
-        if configuredPath != "" then /. + configuredPath else /etc/nixos/hardware-configuration.nix;
-      localHardwareConfig = { lib, ... }: {
-        assertions = [
-          {
-            assertion = builtins.pathExists hardwareConfigPath;
-            message = "Expected local hardware config at ${toString hardwareConfigPath}. Run nixos-rebuild with --impure so the flake can import the machine's hardware-configuration.nix, or set NIXOS_HARDWARE_CONFIG to a generated hardware config path.";
-          }
-        ];
-
-        imports = lib.optionals (builtins.pathExists hardwareConfigPath) [
-          hardwareConfigPath
-        ];
+      pkgsUnstable = import nixpkgs-unstable {
+        inherit system;
+        config.allowUnfree = true;
       };
+      specialArgs = inputs // {
+        inherit pkgsUnstable;
+      };
+      sharedModules = [
+        home-manager.nixosModules.home-manager
+        dms.nixosModules.dank-material-shell
+        dms.nixosModules.greeter
+      ];
+      mkSystem = modules: nixpkgs.lib.nixosSystem {
+        inherit system specialArgs;
+        modules = sharedModules ++ modules;
+      };
+      standardSystem = mkSystem [
+        ./hosts/standard/configuration.nix
+      ];
+      nixosDevSystem = mkSystem [
+        ./hosts/nixos-dev/configuration.nix
+      ];
     in
     {
-      nixosConfigurations.bonhart = nixpkgs.lib.nixosSystem {
-        inherit system;
-        specialArgs = {
-          inherit dms quickshell codex-desktop-linux dms-codexbar cat-dms codeIsland-dms figma-linux-font-helper;
-          pkgsUnstable = import nixpkgs-unstable {
-            inherit system;
-            config.allowUnfree = true;
-          };
-        };
-        modules = [
-          localHardwareConfig
-          dms.nixosModules.dank-material-shell
-          dms.nixosModules.greeter
+      nixosConfigurations = {
+        bonhart = mkSystem [
           ./hosts/bonhart/configuration.nix
         ];
+
+        standard = standardSystem;
+
+        # Compatibility aliases for plain `nixos-rebuild --flake .` on this
+        # machine before and after this flake's hostname is active.
+        nixos = nixosDevSystem;
+        "nixos-dev" = nixosDevSystem;
+
+        installer = mkSystem [
+          ./hosts/installer/configuration.nix
+        ];
       };
-      nixosModules.bonhart = {
+
+      nixosModules.workstation = {
         imports = [
-          dms.nixosModules.dank-material-shell
-          dms.nixosModules.greeter
-          ./hosts/bonhart/configuration.nix
+          ./profiles/workstation.nix
         ];
       };
+
+      packages.${system}.installerIso =
+        self.nixosConfigurations.installer.config.system.build.isoImage;
     };
 }

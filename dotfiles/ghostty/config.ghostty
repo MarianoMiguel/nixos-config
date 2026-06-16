@@ -1,7 +1,7 @@
-font-family = "JetBrainsMono Nerd Font"
-font-size = 12
-
+theme = Ayu
+background-opacity = 1
 window-padding-x = 12
 window-padding-y = 12
-
-theme = dankcolors
+window-padding-balance = true
+command = direct:/run/current-system/sw/bin/zsh
+env = SHELL=/run/current-system/sw/bin/zsh

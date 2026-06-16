@@ -71,22 +71,19 @@ in
       };
       catWidget = {
         src = cat-dms;
-        settings = {
-          enabled = true;
-        };
+        settings.enabled = true;
       };
       codeIsland = {
         src = codeIsland-dms;
-        settings = {
-          enabled = true;
-        };
+        settings.enabled = true;
       };
     };
 
     # dgop is not available in the current nixpkgs pin.
     enableSystemMonitoring = false;
 
-    # The Niri config starts DMS, which keeps it out of the Plasma session.
+    # The niri session starts DMS through the checked-in niri config. Keeping
+    # the service disabled avoids starting the shell inside Plasma sessions.
     systemd.enable = false;
   };
 
@@ -141,160 +138,4 @@ in
       };
     };
   };
-
-  system.activationScripts.niriConfig.text = ''
-    install -d -m 0755 -o mariano -g users /home/mariano/.config/niri
-    install -d -m 0755 -o mariano -g users /home/mariano/.config/niri/dms
-    for dms_niri_include in outputs.kdl cursor.kdl colors.kdl wpblur.kdl alttab.kdl windowrules.kdl binds.kdl; do
-      if [ ! -e "/home/mariano/.config/niri/dms/$dms_niri_include" ]; then
-        install -m 0644 -o mariano -g users /dev/null "/home/mariano/.config/niri/dms/$dms_niri_include"
-      fi
-    done
-    install -m 0644 -o mariano -g users ${../../dotfiles/niri/config.kdl} /home/mariano/.config/niri/config.kdl
-
-    install -d -m 0755 -o mariano -g users /home/mariano/.config/matugen/templates
-    install -m 0644 -o mariano -g users ${../../dotfiles/matugen/config.toml} /home/mariano/.config/matugen/config.toml
-    install -m 0644 -o mariano -g users ${../../dotfiles/matugen/templates/neovim-dankcolors.lua} /home/mariano/.config/matugen/templates/neovim-dankcolors.lua
-
-    install -d -m 0755 -o mariano -g users /home/mariano/.config/DankMaterialShell
-    install -m 0644 -o mariano -g users ${../../dotfiles/dms/theme.json} /home/mariano/.config/DankMaterialShell/theme.json
-    install -d -m 0755 -o mariano -g users /home/mariano/.config/DankMaterialShell/themes/dms-ayu
-    install -m 0644 -o mariano -g users ${../../dotfiles/dms/themes/dms-ayu/theme.json} /home/mariano/.config/DankMaterialShell/themes/dms-ayu/theme.json
-
-    dms_plugins=/home/mariano/.config/DankMaterialShell/plugin_settings.json
-    dms_plugins_tmp="$(mktemp)"
-    if [ -f "$dms_plugins" ]; then
-      ${pkgs.jq}/bin/jq \
-        '. + {
-          codexBar: ((.codexBar // {}) + {
-            enabled: true,
-            codexbarPath: "${codexbar}/bin/codexbar",
-            refreshInterval: "120000",
-            sourceMode: "oauth"
-          }),
-          catWidget: ((.catWidget // {}) + {
-            enabled: true
-          }),
-          codeIsland: ((.codeIsland // {}) + {
-            enabled: true
-          })
-        }' \
-        "$dms_plugins" > "$dms_plugins_tmp"
-    else
-      ${pkgs.jq}/bin/jq -n \
-        '{
-          codexBar: {
-            enabled: true,
-            codexbarPath: "${codexbar}/bin/codexbar",
-            refreshInterval: "120000",
-            sourceMode: "oauth"
-          },
-          catWidget: {
-            enabled: true
-          },
-          codeIsland: {
-            enabled: true
-          }
-        }' > "$dms_plugins_tmp"
-    fi
-    install -m 0644 -o mariano -g users "$dms_plugins_tmp" "$dms_plugins"
-    rm -f "$dms_plugins_tmp"
-
-    mariano_uid="$(${pkgs.coreutils}/bin/id -u mariano)"
-    codeisland_socket="/run/user/$mariano_uid/codeislandd.sock"
-
-    install -d -m 0700 -o mariano -g users /home/mariano/.codex
-    codex_config=/home/mariano/.codex/config.toml
-    codex_config_tmp="$(mktemp)"
-    if [ -f "$codex_config" ]; then
-      if ${pkgs.gnugrep}/bin/grep -q '^\[features\][[:space:]]*$' "$codex_config"; then
-        ${pkgs.gawk}/bin/awk '
-          /^\[features\][[:space:]]*$/ {
-            in_features = 1
-            print
-            next
-          }
-          /^\[/ && in_features {
-            if (!wrote_hooks) {
-              print "hooks = true"
-              wrote_hooks = 1
-            }
-            in_features = 0
-          }
-          in_features && /^[[:space:]]*hooks[[:space:]]*=/ {
-            print "hooks = true"
-            wrote_hooks = 1
-            next
-          }
-          { print }
-          END {
-            if (in_features && !wrote_hooks) {
-              print "hooks = true"
-            }
-          }
-        ' "$codex_config" > "$codex_config_tmp"
-      else
-        ${pkgs.coreutils}/bin/cp "$codex_config" "$codex_config_tmp"
-        printf '\n[features]\nhooks = true\n' >> "$codex_config_tmp"
-      fi
-    else
-      printf '[features]\nhooks = true\n' > "$codex_config_tmp"
-    fi
-    install -m 0644 -o mariano -g users "$codex_config_tmp" "$codex_config"
-    rm -f "$codex_config_tmp"
-
-    ${pkgs.util-linux}/bin/runuser -u mariano -- env \
-      HOME=/home/mariano \
-      CODEX_HOME=/home/mariano/.codex \
-      ${codeIslandLinux}/bin/codeisland-codex_hook install \
-        --global \
-        --codex-home /home/mariano/.codex \
-        --socket-path "$codeisland_socket" \
-        --python ${pkgs.python3}/bin/python
-
-    install -d -m 0700 -o mariano -g users /home/mariano/.claude
-    ${pkgs.util-linux}/bin/runuser -u mariano -- env \
-      HOME=/home/mariano \
-      CLAUDE_HOME=/home/mariano/.claude \
-      ${codeIslandLinux}/bin/codeisland-claude_hook install \
-        --settings /home/mariano/.claude/settings.json \
-        --socket-path "$codeisland_socket" \
-        --python ${pkgs.python3}/bin/python
-
-    dms_settings=/home/mariano/.config/DankMaterialShell/settings.json
-    dms_settings_tmp="$(mktemp)"
-    if [ -f "$dms_settings" ]; then
-      ${pkgs.jq}/bin/jq \
-        --slurpfile settingsDefaults ${../../dotfiles/dms/settings-defaults.json} \
-        --slurpfile barConfigs ${../../dotfiles/dms/bar-configs.json} \
-        '. + $settingsDefaults[0]
-        | .barConfigs = $barConfigs[0]' \
-        "$dms_settings" > "$dms_settings_tmp"
-    else
-      ${pkgs.jq}/bin/jq -n \
-        --slurpfile settingsDefaults ${../../dotfiles/dms/settings-defaults.json} \
-        --slurpfile barConfigs ${../../dotfiles/dms/bar-configs.json} \
-        '$settingsDefaults[0] + {
-          barConfigs: $barConfigs[0]
-        }' > "$dms_settings_tmp"
-    fi
-    install -m 0644 -o mariano -g users "$dms_settings_tmp" "$dms_settings"
-    rm -f "$dms_settings_tmp"
-
-    install -d -m 0755 -o mariano -g users /home/mariano/.local/state/DankMaterialShell
-    dms_session=/home/mariano/.local/state/DankMaterialShell/session.json
-    dms_session_tmp="$(mktemp)"
-    if [ -f "$dms_session" ]; then
-      ${pkgs.jq}/bin/jq \
-        --slurpfile sessionDefaults ${../../dotfiles/dms/session-defaults.json} \
-        '. + $sessionDefaults[0]' \
-        "$dms_session" > "$dms_session_tmp"
-    else
-      ${pkgs.jq}/bin/jq -n \
-        --slurpfile sessionDefaults ${../../dotfiles/dms/session-defaults.json} \
-        '$sessionDefaults[0]' > "$dms_session_tmp"
-    fi
-    install -m 0644 -o mariano -g users "$dms_session_tmp" "$dms_session"
-    rm -f "$dms_session_tmp"
-  '';
 }

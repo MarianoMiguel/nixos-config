@@ -1,0 +1,36 @@
+[
+    {
+        "input_combination": [
+            {
+                "type": 1,
+                "code": 56,
+                "origin_hash": "0dfecb149757297731327015a1923a4b"
+            },
+            {
+                "type": 1,
+                "code": 105,
+                "origin_hash": "0dfecb149757297731327015a1923a4b"
+            }
+        ],
+        "target_uinput": "keyboard",
+        "output_symbol": "KEY_HOME",
+        "mapping_type": "key_macro"
+    },
+    {
+        "input_combination": [
+            {
+                "type": 1,
+                "code": 56,
+                "origin_hash": "0dfecb149757297731327015a1923a4b"
+            },
+            {
+                "type": 1,
+                "code": 106,
+                "origin_hash": "0dfecb149757297731327015a1923a4b"
+            }
+        ],
+        "target_uinput": "keyboard",
+        "output_symbol": "KEY_END",
+        "mapping_type": "key_macro"
+    }
+]

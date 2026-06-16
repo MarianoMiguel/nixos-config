@@ -2,3 +2,6 @@ result
 result-*
 .direnv
 .envrc
+*.tar.zst
+*.manifest.txt
+payload/

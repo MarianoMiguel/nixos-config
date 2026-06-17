@@ -16,6 +16,7 @@ in
         homeDirectory = home;
         stateVersion = "25.11";
         sessionPath = [
+          "$HOME/.opencode/bin"
           "$HOME/.local/bin"
           "$HOME/.lmstudio/bin"
           "$HOME/.nvm/versions/node/v24.16.0/bin"

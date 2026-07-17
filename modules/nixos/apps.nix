@@ -1,4 +1,4 @@
-{ codex-desktop-linux, lib, pkgs, ... }:
+{ codex-desktop-linux, lib, pkgs, pkgsUnstable, ... }:
 
 let
   system = pkgs.stdenv.hostPlatform.system;
@@ -199,6 +199,7 @@ in
     darktable
     # pencilDev
   ] ++ [
+    pkgsUnstable.davinci-resolve
     codex-desktop-linux.packages.${system}.codex-desktop
   ];
 }

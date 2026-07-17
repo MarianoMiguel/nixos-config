@@ -94,17 +94,6 @@ in
 
         "Code/User/settings.json".source = ../../dotfiles/vscode/User/settings.json;
         "Code/User/keybindings.json".source = ../../dotfiles/vscode/User/keybindings.json;
-        "figma-linux/settings.json".text = builtins.toJSON {
-          host = "127.0.0.1";
-          port = "44950";
-          app.fontDirs = [
-            "/run/current-system/sw/share/X11/fonts"
-            "/run/current-system/sw/share/fonts"
-            "${home}/Fonts"
-            "${home}/.local/share/fonts"
-            "${home}/.fonts"
-          ];
-        };
       } // lib.optionalAttrs (builtins.pathExists ../../dotfiles/vscode/User/prompts) {
         "Code/User/prompts".source = ../../dotfiles/vscode/User/prompts;
       };

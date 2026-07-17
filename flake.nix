@@ -26,13 +26,9 @@
       url = "github:payprays/codeIsland-dms";
       flake = false;
     };
-    figma-linux-font-helper = {
-      url = "github:Figma-Linux/figma-linux-font-helper";
-      flake = false;
-    };
   };
 
-  outputs = inputs@{ self, nixpkgs, nixpkgs-unstable, home-manager, dms, quickshell, codex-desktop-linux, dms-codexbar, cat-dms, codeIsland-dms, figma-linux-font-helper, ... }:
+  outputs = inputs@{ self, nixpkgs, nixpkgs-unstable, home-manager, dms, quickshell, codex-desktop-linux, dms-codexbar, cat-dms, codeIsland-dms, ... }:
     let
       system = "x86_64-linux";
       pkgsUnstable = import nixpkgs-unstable {

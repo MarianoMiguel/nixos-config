@@ -38,11 +38,11 @@
         "nixpkgs": "nixpkgs"
       },
       "locked": {
-        "lastModified": 1781416411,
-        "narHash": "sha256-pPiUX3R+bxd2inB5y/FjTMIpnSGFm/vkghGVBbKs9Ls=",
+        "lastModified": 1783878080,
+        "narHash": "sha256-HDQXm0AuZ2cGlT9CrRHtXIRgdI6p0WpKZDpkA3UylMA=",
         "owner": "ilysenko",
         "repo": "codex-desktop-linux",
-        "rev": "7eb1a9a5265ab40b91b12842ecdecaa0a96f2014",
+        "rev": "f7e7b5c20865ca9669cfb2aa31037f112d10d976",
         "type": "github"
       },
       "original": {
@@ -57,11 +57,11 @@
         "nixpkgs": "nixpkgs_2"
       },
       "locked": {
-        "lastModified": 1781387463,
-        "narHash": "sha256-0pZ5HaDbC+OmELctg3IdC4GDdO+Ea8a2geqUEa2YwEs=",
+        "lastModified": 1783823375,
+        "narHash": "sha256-RrE8PTMFpvk++Sayq8KYG9aDUkBkVe26cLQu2KKpLiE=",
         "owner": "AvengeMedia",
         "repo": "DankMaterialShell",
-        "rev": "9d1a81c93c1a56298c337f24ddd2e3d87e61d09f",
+        "rev": "e2b3a2e3caaf8dd5c0ff698a95d57ee733224b08",
         "type": "github"
       },
       "original": {
@@ -83,22 +83,6 @@
       "original": {
         "owner": "zakstam",
         "repo": "dms-codexbar",
-        "type": "github"
-      }
-    },
-    "figma-linux-font-helper": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1709735258,
-        "narHash": "sha256-0Akdz5Bc15Ph9B/2nvvYwAAq1hjV6+k7eY9+W2n8ODo=",
-        "owner": "Figma-Linux",
-        "repo": "figma-linux-font-helper",
-        "rev": "c10f43b9d8f1e7c1bb16d7dcf6a8caf084e65a65",
-        "type": "github"
-      },
-      "original": {
-        "owner": "Figma-Linux",
-        "repo": "figma-linux-font-helper",
         "type": "github"
       }
     },
@@ -175,11 +159,11 @@
     },
     "nixpkgs_2": {
       "locked": {
-        "lastModified": 1778443072,
-        "narHash": "sha256-zi7/fsqM/kFdNuED//4WOCUtezGtKKqRNORjMvfwjnA=",
+        "lastModified": 1783224372,
+        "narHash": "sha256-8i/87eeoqiGE4yOTjwSA3Eh/ziJRQEmd/unYU+K27sk=",
         "owner": "nixos",
         "repo": "nixpkgs",
-        "rev": "da5ad661ba4e5ef59ba743f0d112cbc30e474f32",
+        "rev": "d407951447dcd00442e97087bf374aad70c04cea",
         "type": "github"
       },
       "original": {
@@ -191,11 +175,11 @@
     },
     "nixpkgs_3": {
       "locked": {
-        "lastModified": 1780952837,
-        "narHash": "sha256-Fwd1+spDtQ0hDyBwme6ufG3n4mY0UrjjFdYHv+G/Hds=",
+        "lastModified": 1782847189,
+        "narHash": "sha256-twXPFqFsrrY5r28Zh7Homgcp2gUMBgQ6WDS98Q/3xFI=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "e820eb4a444b46a19b2e03e8dfd2359439ff30fe",
+        "rev": "b6018f87da91d19d0ab4cf979885689b469cdd41",
         "type": "github"
       },
       "original": {
@@ -212,11 +196,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1781053488,
-        "narHash": "sha256-P4WEBaKgl8flRckHxXGHzT0potPvB3x8ZFIp9gLEAMY=",
+        "lastModified": 1783673918,
+        "narHash": "sha256-cFG5vnmjJcZRVCSUaqQLOdwkX6iqF6bY8IvvmBSGSRs=",
         "owner": "quickshell-mirror",
         "repo": "quickshell",
-        "rev": "d99d87d5e5ec4e696815348692fdaaf0b6be1b2c",
+        "rev": "4df562dfb2475a9057f0f33a8db75808efad8670",
         "type": "github"
       },
       "original": {
@@ -232,7 +216,6 @@
         "codex-desktop-linux": "codex-desktop-linux",
         "dms": "dms",
         "dms-codexbar": "dms-codexbar",
-        "figma-linux-font-helper": "figma-linux-font-helper",
         "home-manager": "home-manager",
         "nixpkgs": "nixpkgs_3",
         "nixpkgs-unstable": [

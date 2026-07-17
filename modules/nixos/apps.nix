@@ -77,6 +77,49 @@ let
         sourceProvenance = with pkgs.lib.sourceTypes; [ binaryNativeCode ];
       };
     };
+  figmaDesktopVersion = "126.5.6";
+  figmaDesktopPname = "figma-desktop";
+  figmaDesktopSrc = pkgs.fetchurl {
+    url = "https://github.com/IliyaBrook/figma-linux/releases/download/${figmaDesktopVersion}/figma-desktop-${figmaDesktopVersion}-amd64.AppImage";
+    hash = "sha256-SLn4y+NVCcBDZrGqIpmpIEQavY7xngt5JMI8yG1g6/0=";
+  };
+  figmaDesktopContents = pkgs.appimageTools.extract {
+    pname = figmaDesktopPname;
+    version = figmaDesktopVersion;
+    src = figmaDesktopSrc;
+    postExtract = ''
+      substituteInPlace $out/AppRun \
+        --replace-fail 'integrate_desktop 2>/dev/null || true' \
+        ': # Desktop integration is managed by NixOS'
+    '';
+  };
+  figmaDesktop = pkgs.appimageTools.wrapAppImage {
+    pname = figmaDesktopPname;
+    version = figmaDesktopVersion;
+    src = figmaDesktopContents;
+
+    extraInstallCommands = ''
+      install -Dm0444 \
+        ${figmaDesktopContents}/io.github.nickvdp.figma-desktop-linux.desktop \
+        $out/share/applications/io.github.nickvdp.figma-desktop-linux.desktop
+      install -Dm0444 \
+        ${figmaDesktopContents}/io.github.nickvdp.figma-desktop-linux.png \
+        $out/share/icons/hicolor/256x256/apps/io.github.nickvdp.figma-desktop-linux.png
+
+      substituteInPlace \
+        $out/share/applications/io.github.nickvdp.figma-desktop-linux.desktop \
+        --replace-fail 'Exec=AppRun %u' 'Exec=${figmaDesktopPname} %u'
+    '';
+
+    meta = {
+      description = "Patched Figma Desktop client for Linux";
+      homepage = "https://github.com/IliyaBrook/figma-linux";
+      license = lib.licenses.unfree;
+      mainProgram = figmaDesktopPname;
+      platforms = [ "x86_64-linux" ];
+      sourceProvenance = with lib.sourceTypes; [ binaryNativeCode ];
+    };
+  };
 #   pencilDev = wrapDesignAppImage {
 #     pname = "pencil-dev";
 #     version = "1.1.57";
@@ -91,7 +134,10 @@ in
 
 {
   programs.firefox.enable = true;
-  programs.appimage.enable = true;
+  programs.appimage = {
+    enable = true;
+    binfmt = true;
+  };
   programs.obs-studio = {
     enable = true;
     enableVirtualCamera = true;
@@ -99,6 +145,7 @@ in
 
   xdg.mime.defaultApplications = browserMimeDefaults // {
     "application/pdf" = "firefox.desktop";
+    "x-scheme-handler/figma" = "io.github.nickvdp.figma-desktop-linux.desktop";
     # "x-scheme-handler/pencil" = "pencil.desktop";
   };
   xdg.mime.addedAssociations = browserMimeAssociations;
@@ -134,6 +181,8 @@ in
     slack
     lmstudio
     obsidian
+    fluent-reader
+    figmaDesktop
     vscode
     gearlever
     font-manager

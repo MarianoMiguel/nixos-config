@@ -10,7 +10,7 @@ in
     useUserPackages = true;
     backupFileExtension = "before-nixos";
 
-    users.mariano = {
+    users.mariano = { config, ... }: {
       home = {
         username = "mariano";
         homeDirectory = home;
@@ -99,6 +99,7 @@ in
       };
 
       home.file = {
+        ".face".source = config.lib.file.mkOutOfStoreSymlink "${home}/Pictures/profile.jpg";
         ".config/nvim" = {
           source = ../../dotfiles/nvim;
           recursive = true;

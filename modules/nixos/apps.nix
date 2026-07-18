@@ -33,6 +33,16 @@ let
       fi
     '';
   };
+  davinciResolve = pkgs.symlinkJoin {
+    name = "davinci-resolve-with-rusticl";
+    paths = [ pkgsUnstable.davinci-resolve ];
+    nativeBuildInputs = [ pkgs.makeWrapper ];
+    postBuild = ''
+      wrapProgram $out/bin/davinci-resolve \
+        --set OCL_ICD_VENDORS ${pkgs.mesa.opencl}/etc/OpenCL/vendors \
+        --set RUSTICL_ENABLE radeonsi
+    '';
+  };
   wrapDesignAppImage =
     {
       pname,
@@ -199,7 +209,7 @@ in
     darktable
     # pencilDev
   ] ++ [
-    pkgsUnstable.davinci-resolve
+    davinciResolve
     codex-desktop-linux.packages.${system}.codex-desktop
   ];
 }

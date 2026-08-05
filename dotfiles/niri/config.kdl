@@ -165,6 +165,8 @@ environment {
   QT_QPA_PLATFORMTHEME "kde"
 }
 spawn-at-startup "systemctl" "--user" "start" "dms.service"
+// LibrePods exposes AirPods battery and Apple-only controls through DMS's tray.
+spawn-at-startup "systemctl" "--user" "start" "librepods.service"
 hotkey-overlay {
     skip-at-startup
 }

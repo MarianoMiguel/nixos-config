@@ -3,7 +3,7 @@
     "id": "default",
     "name": "Main Bar",
     "enabled": true,
-    "position": 0,
+    "position": 1,
     "screenPreferences": [
       "all"
     ],

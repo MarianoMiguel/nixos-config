@@ -1,7 +1,8 @@
-{ cat-dms, codeIsland-dms, dms, dms-codexbar, pkgs, quickshell, ... }:
+{ cat-dms, codeIsland-dms, dms, dms-codexbar, librepods-rust, pkgs, quickshell, ... }:
 
 let
   system = pkgs.stdenv.hostPlatform.system;
+  librepods = librepods-rust.packages.${system}.default;
   codexbar = pkgs.stdenvNoCC.mkDerivation {
     pname = "codexbar";
     version = "0.28.0";
@@ -91,18 +92,37 @@ in
 
   environment.systemPackages = with pkgs; [
     brightnessctl
+    librepods
     libnotify
     playerctl
     swayidle
     swaylock
     wl-kbptr
+    wl-mirror
     wtype
     xwayland-satellite
     codexbar
     codeIslandLinux
   ];
 
+  systemd.user.tmpfiles.rules = [
+    "d %h/.config/librepods 0700 - -"
+    "d %h/.local/share/librepods 0700 - -"
+    "f %h/.local/share/librepods/devices.json 0600 - - {}"
+  ];
+
   systemd.user.services = {
+    librepods = {
+      description = "LibrePods AirPods integration";
+      partOf = [ "graphical-session.target" ];
+      unitConfig.ConditionEnvironment = "XDG_CURRENT_DESKTOP=niri";
+      serviceConfig = {
+        ExecStart = "${librepods}/bin/librepods --start-minimized";
+        Restart = "on-failure";
+        RestartSec = 3;
+      };
+    };
+
     codeislandd = {
       description = "CodeIsland daemon";
       wantedBy = [ "graphical-session.target" ];

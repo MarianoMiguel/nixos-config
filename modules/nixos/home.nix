@@ -10,7 +10,13 @@ in
     useUserPackages = true;
     backupFileExtension = "before-nixos";
 
-    users.mariano = { config, ... }: {
+    users.mariano = { config, ... }:
+      let
+        mutableDotfile = path:
+          config.lib.file.mkOutOfStoreSymlink
+            "${home}/Development/personal/nixos-config/dotfiles/${path}";
+      in
+    {
       home = {
         username = "mariano";
         homeDirectory = home;
@@ -67,22 +73,28 @@ in
         "alacritty/alacritty.toml".source = ../../dotfiles/alacritty/alacritty.toml;
 
         "niri/config.kdl".source = ../../dotfiles/niri/config.kdl;
-        "niri/dms/alttab.kdl".source = ../../dotfiles/niri/dms/alttab.kdl;
-        "niri/dms/binds.kdl".source = ../../dotfiles/niri/dms/binds.kdl;
-        "niri/dms/colors.kdl".source = ../../dotfiles/niri/dms/colors.kdl;
-        "niri/dms/cursor.kdl".source = ../../dotfiles/niri/dms/cursor.kdl;
-        "niri/dms/layout.kdl".source = ../../dotfiles/niri/dms/layout.kdl;
-        "niri/dms/outputs.kdl".source = ../../dotfiles/niri/dms/outputs.kdl;
-        "niri/dms/windowrules.kdl".source = ../../dotfiles/niri/dms/windowrules.kdl;
-        "niri/dms/wpblur.kdl".source = ../../dotfiles/niri/dms/wpblur.kdl;
+        "niri/dms/alttab.kdl".source = mutableDotfile "niri/dms/alttab.kdl";
+        "niri/dms/binds.kdl".source = mutableDotfile "niri/dms/binds.kdl";
+        "niri/dms/colors.kdl".source = mutableDotfile "niri/dms/colors.kdl";
+        "niri/dms/cursor.kdl".source = mutableDotfile "niri/dms/cursor.kdl";
+        "niri/dms/layout.kdl".source = mutableDotfile "niri/dms/layout.kdl";
+        "niri/dms/outputs.kdl".source = mutableDotfile "niri/dms/outputs.kdl";
+        "niri/dms/windowrules.kdl".source = mutableDotfile "niri/dms/windowrules.kdl";
+        "niri/dms/wpblur.kdl".source = mutableDotfile "niri/dms/wpblur.kdl";
 
         "matugen/config.toml".source = ../../dotfiles/matugen/config.toml;
         "matugen/templates/neovim-dankcolors.lua".source = ../../dotfiles/matugen/templates/neovim-dankcolors.lua;
 
-        "DankMaterialShell/theme.json".source = ../../dotfiles/dms/theme.json;
-        "DankMaterialShell/themes/dms-ayu/theme.json".source = ../../dotfiles/dms/themes/dms-ayu/theme.json;
-        "DankMaterialShell/settings.json".source = ../../dotfiles/dms/settings.json;
-        "DankMaterialShell/plugin_settings.json".source = ../../dotfiles/dms/plugin-settings.json;
+        "DankMaterialShell/theme.json".source = mutableDotfile "dms/theme.json";
+        "DankMaterialShell/themes/dms-ayu/theme.json".source = mutableDotfile "dms/themes/dms-ayu/theme.json";
+        "DankMaterialShell/settings.json".source = mutableDotfile "dms/settings.json";
+        "DankMaterialShell/plugin_settings.json".source = mutableDotfile "dms/plugin-settings.json";
+
+        # AirPods need WirePlumber's AVRCP player so their stem gestures can
+        # control MPRIS-aware players. Do not also enable mpris-proxy; upstream
+        # warns that the two implementations conflict.
+        "wireplumber/wireplumber.conf.d/51-bluez-avrcp.conf".source =
+          ../../dotfiles/wireplumber/51-bluez-avrcp.conf;
 
         "input-remapper-2/config.json".source = ../../dotfiles/input-remapper-2/config.json;
         "input-remapper-2/presets/AT Translated Set 2 keyboard/new preset.json".source =
@@ -104,7 +116,7 @@ in
           source = ../../dotfiles/nvim;
           recursive = true;
         };
-        ".local/state/DankMaterialShell/session.json".source = ../../dotfiles/dms/session.json;
+        ".local/state/DankMaterialShell/session.json".source = mutableDotfile "dms/session.json";
         "Fonts/.keep".text = "";
         ".local/share/fonts/.keep".text = "";
         "Pictures/Wallpapers" = {

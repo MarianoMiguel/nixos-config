@@ -5,32 +5,35 @@ binds {
     Mod+Shift+Slash { show-hotkey-overlay; }
 
     // === Application Launchers ===
-    Super+Return hotkey-overlay-title="Open Terminal" { spawn "ghostty"; }
-    Mod+T hotkey-overlay-title="Open Terminal" { spawn "ghostty"; }
-    Super+B hotkey-overlay-title="Open Browser" { spawn "google-chrome-stable"; }
-    Super+E hotkey-overlay-title="Open Files" { spawn "dolphin"; }
-    Mod+Space hotkey-overlay-title="Application Launcher" {
+    Super+Return repeat=false hotkey-overlay-title="Open Terminal" { spawn "ghostty"; }
+    Mod+T repeat=false hotkey-overlay-title="Open Terminal" { spawn "ghostty"; }
+    Super+B repeat=false hotkey-overlay-title="Open Browser" { spawn "google-chrome-stable"; }
+    Super+E repeat=false hotkey-overlay-title="Open Files" { spawn "dolphin"; }
+    Mod+Space repeat=false hotkey-overlay-title="Application Launcher" {
         spawn "dms" "ipc" "call" "spotlight" "toggle";
     }
-    Alt+Space hotkey-overlay-title="Keyboard Pointer" {
+    Super+Period repeat=false hotkey-overlay-title="Application Launcher" {
+        spawn "dms" "ipc" "call" "spotlight" "toggle";
+    }
+    Alt+Space repeat=false hotkey-overlay-title="Keyboard Pointer" {
         spawn "wl-kbptr" "-o" "modes=floating,click" "-o" "mode_floating.source=detect" "-o" "mode_floating.label_font_size=18 50% 100";
     }
-    Mod+V hotkey-overlay-title="Clipboard Manager" {
+    Mod+V repeat=false hotkey-overlay-title="Clipboard Manager" {
         spawn "dms" "ipc" "call" "clipboard" "toggle";
     }
-    Mod+M hotkey-overlay-title="Task Manager" {
+    Mod+M repeat=false hotkey-overlay-title="Task Manager" {
         spawn "dms" "ipc" "call" "processlist" "focusOrToggle";
     }
 
-    Super+X hotkey-overlay-title="Power Menu: Toggle" { spawn "dms" "ipc" "call" "powermenu" "toggle"; }
-    Mod+Comma hotkey-overlay-title="Settings" {
+    Super+X repeat=false hotkey-overlay-title="Power Menu: Toggle" { spawn "dms" "ipc" "call" "powermenu" "toggle"; }
+    Mod+Comma repeat=false hotkey-overlay-title="Settings" {
         spawn "dms" "ipc" "call" "settings" "focusOrToggle";
     }
-    Mod+Y hotkey-overlay-title="Browse Wallpapers" {
+    Mod+Y repeat=false hotkey-overlay-title="Browse Wallpapers" {
         spawn "dms" "ipc" "call" "dankdash" "wallpaper";
     }
-    Mod+N hotkey-overlay-title="Notification Center" { spawn "dms" "ipc" "call" "notifications" "toggle"; }
-    Mod+Shift+N hotkey-overlay-title="Notepad" { spawn "dms" "ipc" "call" "notepad" "toggle"; }
+    Mod+N repeat=false hotkey-overlay-title="Notification Center" { spawn "dms" "ipc" "call" "notifications" "toggle"; }
+    Mod+Shift+N repeat=false hotkey-overlay-title="Notepad" { spawn "dms" "ipc" "call" "notepad" "toggle"; }
 
     // === Security ===
     Mod+Alt+L hotkey-overlay-title="Lock Screen" {
@@ -69,10 +72,9 @@ binds {
         Ctrl+XF86AudioRaiseVolume allow-when-locked=true {
             spawn "dms" "ipc" "call" "mpris" "increment" "3";
         }
-        Ctrl+XF86AudioLowerVolume allow-when-locked=true {
-            spawn "dms" "ipc" "call" "mpris" "decrement" "3";
-        }
-
+		Ctrl+XF86AudioLowerVolume allow-when-locked=true {
+		    spawn "dms" "ipc" "call" "mpris" "decrement" "3";
+		}
     // === Brightness Controls ===
     XF86MonBrightnessUp allow-when-locked=true {
        spawn "dms" "ipc" "call" "brightness" "increment" "5" "";
@@ -122,8 +124,8 @@ binds {
     Ctrl+Up    { focus-monitor-up; }
     Ctrl+Right { focus-monitor-right; }
     Mod+Ctrl+Left  { focus-monitor-left; }
-    //Mod+Ctrl+Down  { focus-monitor-down; }
-    //Mod+Ctrl+Up    { focus-monitor-up; }
+    Mod+Ctrl+Down  { focus-monitor-down; }
+    Mod+Ctrl+Up    { focus-monitor-up; }
     Mod+Ctrl+Right { focus-monitor-right; }
     Mod+Ctrl+H     { focus-monitor-left; }
     Mod+Ctrl+J     { focus-monitor-down; }
@@ -149,8 +151,6 @@ binds {
     Mod+Page_Up        { focus-workspace-up; }
     Mod+U              { focus-workspace-down; }
     Mod+I              { focus-workspace-up; }
-    Mod+Ctrl+Down { move-column-to-workspace-down; }
-    Mod+Ctrl+Up   { move-column-to-workspace-up; }
     Mod+Ctrl+U         { move-column-to-workspace-down; }
     Mod+Ctrl+I         { move-column-to-workspace-up; }
 
@@ -206,7 +206,7 @@ binds {
     // === Column Management ===
     Mod+BracketLeft  { consume-or-expel-window-left; }
     Mod+BracketRight { consume-or-expel-window-right; }
-    Mod+Period { expel-window-from-column; }
+    Mod+Shift+Period { expel-window-from-column; }
 
     // === Sizing & Layout ===
     Mod+R { switch-preset-column-width; }
@@ -231,5 +231,9 @@ binds {
     Alt+Print { screenshot-window; }
     // === System Controls ===
     Mod+Escape allow-inhibiting=false { toggle-keyboard-shortcuts-inhibit; }
+    // Mirror the laptop display to the GLKVM capture output. Press again to stop.
+    Mod+P repeat=false {
+        spawn-sh "if pgrep -u \"$USER\" -x wl-mirror >/dev/null; then pkill -u \"$USER\" -x wl-mirror; else exec wl-mirror --fullscreen-output HDMI-A-1 eDP-1; fi";
+    }
     Mod+Shift+P { power-off-monitors; }
 }

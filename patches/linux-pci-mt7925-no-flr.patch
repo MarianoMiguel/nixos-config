@@ -1,0 +1,32 @@
+From 9f22b92259bb5ac43e2b9007103787d4418fec56 Mon Sep 17 00:00:00 2001
+From: Jose Ignacio Tornos Martinez <jtornosm@redhat.com>
+Date: Fri, 22 May 2026 09:06:46 +0200
+Subject: [PATCH] PCI: Avoid FLR for MediaTek MT7925 WiFi
+
+The MediaTek MT7925 advertises FLR capability, but firmware communication
+can remain broken after FLR until the device is physically power-cycled.
+Disable FLR so the PCI core falls back to a working reset method such as a
+secondary bus reset.
+
+Upstream: 9f22b92259bb5ac43e2b9007103787d4418fec56
+
+diff --git a/drivers/pci/quirks.c b/drivers/pci/quirks.c
+index caaed1a01dc026..e49136ac5dbfb9 100644
+--- a/drivers/pci/quirks.c
++++ b/drivers/pci/quirks.c
+@@ -5605,6 +5605,7 @@ DECLARE_PCI_FIXUP_EARLY(PCI_VENDOR_ID_INTEL, 0x443, quirk_intel_qat_vf_cap);
+  * Intel 82579LM Gigabit Ethernet Controller 0x1502
+  * Intel 82579V Gigabit Ethernet Controller 0x1503
+  * Mediatek MT7922 802.11ax PCI Express Wireless Network Adapter
++ * Mediatek MT7925 802.11be PCI Express Wireless Network Adapter
+  */
+ static void quirk_no_flr(struct pci_dev *dev)
+ {
+@@ -5619,6 +5620,7 @@ DECLARE_PCI_FIXUP_EARLY(PCI_VENDOR_ID_AMD, 0x17f0, quirk_no_flr);
+ DECLARE_PCI_FIXUP_EARLY(PCI_VENDOR_ID_INTEL, 0x1502, quirk_no_flr);
+ DECLARE_PCI_FIXUP_EARLY(PCI_VENDOR_ID_INTEL, 0x1503, quirk_no_flr);
+ DECLARE_PCI_FIXUP_EARLY(PCI_VENDOR_ID_MEDIATEK, 0x0616, quirk_no_flr);
++DECLARE_PCI_FIXUP_EARLY(PCI_VENDOR_ID_MEDIATEK, 0x7925, quirk_no_flr);
+ 
+ /* FLR may cause the SolidRun SNET DPU (rev 0x1) to hang */
+ static void quirk_no_flr_snet(struct pci_dev *dev)

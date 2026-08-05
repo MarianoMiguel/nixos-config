@@ -24,7 +24,7 @@
     vim
 
     nodejs_24
-    nodePackages.npm
+    pnpm
     python3
     python3Packages.pip
     uv

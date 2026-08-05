@@ -2,9 +2,9 @@
   description = "Mariano's NixOS configuration";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
     home-manager = {
-      url = "github:nix-community/home-manager/release-25.11";
+      url = "github:nix-community/home-manager/release-26.05";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     dms.url = "github:AvengeMedia/DankMaterialShell";
@@ -25,6 +25,10 @@
     codeIsland-dms = {
       url = "github:payprays/codeIsland-dms";
       flake = false;
+    };
+    librepods-rust = {
+      url = "github:librepods-org/librepods?ref=linux/rust";
+      inputs.nixpkgs.follows = "nixpkgs";
     };
   };
 
@@ -78,7 +82,11 @@
         ];
       };
 
-      packages.${system}.installerIso =
-        self.nixosConfigurations.installer.config.system.build.isoImage;
+      nixosModules."local-web-hosting" = import ./modules/nixos/local-web-hosting.nix;
+
+      packages.${system} = {
+        librepods = inputs.librepods-rust.packages.${system}.default;
+        installerIso = self.nixosConfigurations.installer.config.system.build.isoImage;
+      };
     };
 }

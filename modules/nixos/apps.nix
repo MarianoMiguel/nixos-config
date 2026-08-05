@@ -43,6 +43,29 @@ let
         --set RUSTICL_ENABLE radeonsi
     '';
   };
+  herdrVersion = "0.7.5";
+  herdr = pkgs.stdenvNoCC.mkDerivation {
+    pname = "herdr";
+    version = herdrVersion;
+    src = pkgs.fetchurl {
+      url = "https://github.com/ogulcancelik/herdr/releases/download/v${herdrVersion}/herdr-linux-x86_64";
+      hash = "sha256-PcgyiAc+TC08Z5ow576XvMqRQcb9F9u7khkULpXFklM=";
+    };
+    dontUnpack = true;
+    installPhase = ''
+      runHook preInstall
+      install -Dm755 "$src" "$out/bin/herdr"
+      runHook postInstall
+    '';
+    meta = {
+      description = "Terminal workspace manager for AI coding agents";
+      homepage = "https://herdr.dev/";
+      license = lib.licenses.asl20;
+      mainProgram = "herdr";
+      platforms = [ "x86_64-linux" ];
+      sourceProvenance = with lib.sourceTypes; [ binaryNativeCode ];
+    };
+  };
   wrapDesignAppImage =
     {
       pname,
@@ -211,5 +234,6 @@ in
   ] ++ [
     davinciResolve
     codex-desktop-linux.packages.${system}.codex-desktop
+    herdr
   ];
 }

@@ -4,19 +4,63 @@
   imports = [
     ../nixos-dev/hardware-configuration.nix
     ../../profiles/workstation.nix
+    ../../modules/nixos/local-web-hosting.nix
+    ../../modules/nixos/intervals.nix
+    ../../modules/nixos/tv-remotes.nix
   ] ++ lib.optional (builtins.pathExists ./local.nix) ./local.nix;
 
   networking.hostName = "bonhart";
+
+  services.localWebHosting = {
+    enable = true;
+    hostName = "bonhart.local";
+    title = "Bonhart Local";
+    tls.enable = true;
+
+    # T3 Code binds only to the Tailscale address. nginx owns the same port on
+    # the Wi-Fi address and preserves its root-relative assets and WebSockets.
+    portApplications.t3-code = {
+      title = "T3 Code";
+      description = "Local access to the T3 Code instance running on this machine.";
+      port = 3773;
+      listenAddresses = [ "192.168.68.58" ];
+      upstream = "http://100.87.18.64:3773";
+      tls = true;
+      webSockets = true;
+      extraConfig = "proxy_buffering off;";
+    };
+  };
 
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
   boot.kernelPackages = pkgs.linuxPackages_latest;
   boot.kernelPatches = [
     {
-      name = "btmtk-accept-short-wmt-func-ctrl-events";
-      patch = ../../patches/linux-btmtk-func-ctrl-short-event.patch;
+      # MT7925 advertises function-level reset, but FLR leaves its firmware
+      # unusable after an unclean/watchdog reset until a physical power cycle.
+      name = "pci-disable-flr-for-mt7925";
+      patch = ../../patches/linux-pci-mt7925-no-flr.patch;
     }
   ];
+  # The Radeon 890M display microcontroller can wedge in the DCN 3.5 idle
+  # power / panel self-refresh workers, including during s2idle resume.  The
+  # resulting amdgpu soft lockup freezes the display and remote access.
+  #
+  # 0x800 = DC_DISABLE_IPS, 0x10 = DC_DISABLE_PSR.
+  boot.kernelParams = [ "amdgpu.dcdebugmask=0x810" ];
+
+  # This machine is also used unattended as a remote agent host. Keep it awake
+  # when plugged in with the lid closed, while retaining normal battery suspend.
+  services.logind.settings.Login.HandleLidSwitchExternalPower = lib.mkForce "ignore";
+
+  # Recover automatically if a remaining kernel lockup makes the host
+  # unreachable. The SP5100 hardware watchdog is present on this machine.
+  systemd.settings.Manager.RuntimeWatchdogSec = "60s";
+  boot.kernel.sysctl = {
+    "kernel.softlockup_panic" = 1;
+    "kernel.hardlockup_panic" = 1;
+    "kernel.panic" = 30;
+  };
 
   time.timeZone = "America/Argentina/Buenos_Aires";
 

@@ -1,4 +1,4 @@
-{ codex-desktop-linux, lib, pkgs, pkgsUnstable, ... }:
+{ codex-desktop-linux, granola-linux, lib, pkgs, pkgsUnstable, ... }:
 
 let
   system = pkgs.stdenv.hostPlatform.system;
@@ -66,6 +66,7 @@ let
       sourceProvenance = with lib.sourceTypes; [ binaryNativeCode ];
     };
   };
+  obsbotCameraControl = pkgs.callPackage ../../packages/obsbot-camera-control.nix { };
   wrapDesignAppImage =
     {
       pname,
@@ -179,6 +180,8 @@ in
   xdg.mime.defaultApplications = browserMimeDefaults // {
     "application/pdf" = "firefox.desktop";
     "x-scheme-handler/figma" = "io.github.nickvdp.figma-desktop-linux.desktop";
+    "x-scheme-handler/granola" = "granola.desktop";
+    "x-scheme-handler/granola-dev" = "granola.desktop";
     # "x-scheme-handler/pencil" = "pencil.desktop";
   };
   xdg.mime.addedAssociations = browserMimeAssociations;
@@ -199,6 +202,14 @@ in
     TerminalService=com.mitchellh.ghostty.desktop
   '';
 
+  # Chrome's local GenAI model is currently a 4 GiB component and can stall
+  # browser startup while it is loaded. This browser-level policy prevents the
+  # model from being downloaded and makes Chrome remove an existing copy.
+  environment.etc."opt/chrome/policies/managed/disable-local-genai-model.json".text =
+    builtins.toJSON {
+      GenAILocalFoundationalModelSettings = 1;
+    };
+
   environment.sessionVariables = {
     BROWSER = "google-chrome-stable";
     DEFAULT_BROWSER = defaultBrowserDesktop;
@@ -215,6 +226,7 @@ in
     lmstudio
     obsidian
     fluent-reader
+    obsbotCameraControl
     figmaDesktop
     vscode
     gearlever
@@ -236,6 +248,7 @@ in
   ] ++ [
     davinciResolve
     codex-desktop-linux.packages.${system}.codex-desktop
+    granola-linux.packages.${system}.default
     herdr
   ];
 }

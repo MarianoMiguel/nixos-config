@@ -1,5 +1,16 @@
 { lib, pkgs, ... }:
 
+let
+  setPowerProfileForPowerSource = pkgs.writeShellScript "set-power-profile-for-power-source" ''
+    profile=balanced
+    if [ -r /sys/class/power_supply/AC/online ] \
+      && [ "$(${pkgs.coreutils}/bin/cat /sys/class/power_supply/AC/online)" = 1 ]; then
+      profile=performance
+    fi
+
+    exec ${pkgs.power-profiles-daemon}/bin/powerprofilesctl set "$profile"
+  '';
+in
 {
   imports = [
     ../nixos-dev/hardware-configuration.nix
@@ -33,6 +44,9 @@
 
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
+  # Keep the multi-boot menu available without adding the default five-second
+  # pause to every normal startup.
+  boot.loader.timeout = 2;
   boot.kernelPackages = pkgs.linuxPackages_latest;
   boot.kernelPatches = [
     {
@@ -52,6 +66,23 @@
   # This machine is also used unattended as a remote agent host. Keep it awake
   # when plugged in with the lid closed, while retaining normal battery suspend.
   services.logind.settings.Login.HandleLidSwitchExternalPower = lib.mkForce "ignore";
+
+  # This workstation spends most of its time docked as a remote development
+  # host. Use the full CPU profile on AC and a still-responsive balanced profile
+  # on battery; plugging or unplugging the adapter reapplies the policy.
+  systemd.services.power-profile-auto = {
+    description = "Select a responsive power profile for the current power source";
+    wantedBy = [ "graphical.target" ];
+    wants = [ "power-profiles-daemon.service" ];
+    after = [ "power-profiles-daemon.service" ];
+    serviceConfig = {
+      Type = "oneshot";
+      ExecStart = setPowerProfileForPowerSource;
+    };
+  };
+  services.udev.extraRules = ''
+    SUBSYSTEM=="power_supply", KERNEL=="AC", ACTION=="change", TAG+="systemd", ENV{SYSTEMD_WANTS}+="power-profile-auto.service"
+  '';
 
   # Recover automatically if a remaining kernel lockup makes the host
   # unreachable. The SP5100 hardware watchdog is present on this machine.

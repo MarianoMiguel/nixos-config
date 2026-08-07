@@ -113,8 +113,10 @@ in
       home.file = {
         ".face".source = config.lib.file.mkOutOfStoreSymlink "${home}/Pictures/profile.jpg";
         ".config/nvim" = {
-          source = ../../dotfiles/nvim;
-          recursive = true;
+          source = mutableDotfile "nvim";
+          # The previous generation managed this as a recursive directory of
+          # store symlinks. Replace that tree once with the writable repo link.
+          force = true;
         };
         ".local/state/DankMaterialShell/session.json".source = mutableDotfile "dms/session.json";
         "Fonts/.keep".text = "";

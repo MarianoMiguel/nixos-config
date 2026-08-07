@@ -3,6 +3,17 @@
 let
   system = pkgs.stdenv.hostPlatform.system;
   librepods = librepods-rust.packages.${system}.default;
+  waitForStatusNotifierWatcher = pkgs.writeShellScript "wait-for-status-notifier-watcher" ''
+    for _ in $(${pkgs.coreutils}/bin/seq 1 300); do
+      if ${pkgs.systemd}/bin/busctl --user status org.kde.StatusNotifierWatcher >/dev/null 2>&1; then
+        exit 0
+      fi
+      ${pkgs.coreutils}/bin/sleep 0.1
+    done
+
+    echo "Timed out waiting for org.kde.StatusNotifierWatcher" >&2
+    exit 1
+  '';
   codexbar = pkgs.stdenvNoCC.mkDerivation {
     pname = "codexbar";
     version = "0.28.0";
@@ -56,6 +67,10 @@ in
 {
   programs.niri.enable = true;
 
+  # Keep the compositor and shell responsive when builds or AI agents saturate
+  # the CPU. CPUWeight only changes scheduling under contention.
+  systemd.user.services.niri.serviceConfig.CPUWeight = 250;
+
   programs.dank-material-shell = {
     enable = true;
     package = dms.packages.${system}.dms-shell;
@@ -108,15 +123,27 @@ in
   systemd.user.tmpfiles.rules = [
     "d %h/.config/librepods 0700 - -"
     "d %h/.local/share/librepods 0700 - -"
-    "f %h/.local/share/librepods/devices.json 0600 - - {}"
+    "f %h/.local/share/librepods/devices.json 0600 - - - {}"
   ];
 
   systemd.user.services = {
+    dms = {
+      overrideStrategy = "asDropin";
+      # Defining a NixOS-managed drop-in gives the service a restricted PATH.
+      # DMS launches Quickshell and helper tools by executable name, so retain
+      # the active system path that was available before this override.
+      path = [ "/run/current-system/sw" ];
+      serviceConfig.CPUWeight = 150;
+    };
+
     librepods = {
       description = "LibrePods AirPods integration";
       partOf = [ "graphical-session.target" ];
+      wants = [ "dms.service" ];
+      after = [ "dms.service" ];
       unitConfig.ConditionEnvironment = "XDG_CURRENT_DESKTOP=niri";
       serviceConfig = {
+        ExecStartPre = waitForStatusNotifierWatcher;
         ExecStart = "${librepods}/bin/librepods --start-minimized";
         Restart = "on-failure";
         RestartSec = 3;

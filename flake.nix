@@ -14,6 +14,10 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     codex-desktop-linux.url = "github:ilysenko/codex-desktop-linux";
+    granola-linux = {
+      url = "path:/home/mariano/Development/personal/granola-linux";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     dms-codexbar = {
       url = "github:zakstam/dms-codexbar";
       flake = false;

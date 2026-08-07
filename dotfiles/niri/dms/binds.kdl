@@ -137,10 +137,10 @@ binds {
     Ctrl+Shift+Down  { move-window-to-monitor-down; }
     Ctrl+Shift+Up    { move-window-to-monitor-up; }
     Ctrl+Shift+Right { move-window-to-monitor-right; }
-    Mod+Shift+Ctrl+Left  { move-column-to-monitor-left; }
-    Mod+Shift+Ctrl+Down  { move-column-to-monitor-down; }
-    Mod+Shift+Ctrl+Up    { move-column-to-monitor-up; }
-    Mod+Shift+Ctrl+Right { move-column-to-monitor-right; }
+    Mod+Ctrl+Shift+Left  repeat=false { move-window-to-monitor-left; }
+    Mod+Ctrl+Shift+Down  repeat=false { move-window-to-monitor-down; }
+    Mod+Ctrl+Shift+Up    repeat=false { move-window-to-monitor-up; }
+    Mod+Ctrl+Shift+Right repeat=false { move-window-to-monitor-right; }
     Mod+Shift+Ctrl+H     { move-column-to-monitor-left; }
     Mod+Shift+Ctrl+J     { move-column-to-monitor-down; }
     Mod+Shift+Ctrl+K     { move-column-to-monitor-up; }
@@ -221,6 +221,12 @@ binds {
     Mod+Equal { set-column-width "+10%"; }
     Mod+Shift+Minus { set-window-height "-10%"; }
     Mod+Shift+Equal { set-window-height "+10%"; }
+
+    // === Screencasting ===
+    // Controls the special "niri Dynamic Cast Target" selected in share dialogs.
+    Ctrl+Alt+W repeat=false hotkey-overlay-title="Share Focused Window" { set-dynamic-cast-window; }
+    Ctrl+Alt+M repeat=false hotkey-overlay-title="Share Focused Monitor" { set-dynamic-cast-monitor; }
+    Ctrl+Alt+C repeat=false hotkey-overlay-title="Clear Dynamic Share Target" { clear-dynamic-cast-target; }
 
     // === Screenshots ===
     XF86Launch1 { screenshot; }

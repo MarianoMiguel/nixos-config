@@ -7,8 +7,8 @@ in
   systemd.services.tv-remotes = {
     description = "Local Samsung and Android TV remote control";
     wantedBy = [ "multi-user.target" ];
-    wants = [ "network-online.target" ];
-    after = [ "network-online.target" ];
+    # The server binds only to localhost and can start before Wi-Fi is online.
+    after = [ "network.target" ];
     unitConfig.ConditionPathExists = "${appRoot}/src/server.js";
 
     environment = {

@@ -230,6 +230,8 @@ in
     inkscape
     gimp
     darktable
+    freecad
+    orca-slicer
     # pencilDev
   ] ++ [
     davinciResolve

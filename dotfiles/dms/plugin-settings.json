@@ -1,1 +1,8 @@
-{}
+{
+  "codexBar": {
+    "enabled": true
+  },
+  "catWidget": {
+    "enabled": true
+  }
+}

@@ -14,8 +14,8 @@ let
     echo "Timed out waiting for org.kde.StatusNotifierWatcher" >&2
     exit 1
   '';
-  codexbar = pkgs.stdenvNoCC.mkDerivation {
-    pname = "codexbar";
+  codexbarUnwrapped = pkgs.stdenvNoCC.mkDerivation {
+    pname = "codexbar-unwrapped";
     version = "0.28.0";
 
     src = pkgs.fetchzip {
@@ -36,6 +36,26 @@ let
       install -Dm0755 codexbar "$out/bin/codexbar"
       install -Dm0755 CodexBarCLI "$out/bin/CodexBarCLI"
       runHook postInstall
+    '';
+  };
+
+  # codexbar reports the provider CLI versions by shelling out to `which codex`,
+  # and aborts on an illegal instruction rather than reporting an error when
+  # that lookup comes back empty. Both provider CLIs install themselves into
+  # ~/.local/bin, which is outside the system profile that the DMS service is
+  # limited to, so the bar plugin crashed on every refresh while the same
+  # command succeeded from an interactive shell. Put that directory back on the
+  # path for every caller of this binary.
+  codexbar = pkgs.symlinkJoin {
+    name = "codexbar-${codexbarUnwrapped.version}";
+    paths = [ codexbarUnwrapped ];
+    nativeBuildInputs = [ pkgs.makeWrapper ];
+    postBuild = ''
+      for binary in codexbar CodexBarCLI; do
+        rm "$out/bin/$binary"
+        makeWrapper "${codexbarUnwrapped}/bin/$binary" "$out/bin/$binary" \
+          --run 'export PATH="$HOME/.local/bin:$PATH"'
+      done
     '';
   };
 

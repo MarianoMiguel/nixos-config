@@ -3,6 +3,25 @@
 let
   system = pkgs.stdenv.hostPlatform.system;
   librepods = librepods-rust.packages.${system}.default;
+  # The Rust package currently installs only its binary even though upstream
+  # ships a desktop entry and icon. Provide the missing launcher so LibrePods
+  # appears in GNOME's application grid as well as Niri's launchers.
+  librepodsDesktopItem = pkgs.makeDesktopItem {
+    name = "me.kavishdevar.librepods";
+    desktopName = "LibrePods";
+    genericName = "AirPods Controls";
+    comment = "Control AirPods features from Linux";
+    exec = "${librepods}/bin/librepods";
+    icon = "${librepods-rust}/linux-rust/assets/icon.png";
+    categories = [ "Utility" ];
+    keywords = [
+      "AirPods"
+      "Bluetooth"
+      "Headphones"
+    ];
+    startupNotify = true;
+    startupWMClass = "librepods";
+  };
   waitForStatusNotifierWatcher = pkgs.writeShellScript "wait-for-status-notifier-watcher" ''
     for _ in $(${pkgs.coreutils}/bin/seq 1 300); do
       if ${pkgs.systemd}/bin/busctl --user status org.kde.StatusNotifierWatcher >/dev/null 2>&1; then
@@ -125,9 +144,19 @@ in
 
   services.iio-niri.enable = false;
 
+  # LibrePods exposes its background controls through StatusNotifier. DMS
+  # provides that interface in Niri; GNOME needs its AppIndicator extension.
+  home-manager.users.mariano.programs.gnome-shell = {
+    enable = true;
+    extensions = [
+      { package = pkgs.gnomeExtensions.appindicator; }
+    ];
+  };
+
   environment.systemPackages = with pkgs; [
     brightnessctl
     librepods
+    librepodsDesktopItem
     libnotify
     playerctl
     swayidle

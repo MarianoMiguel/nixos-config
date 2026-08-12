@@ -1,0 +1,48 @@
+{
+  "$schema": "https://raw.githubusercontent.com/vicinaehq/vicinae/refs/heads/main/extra/schemas/extension.json",
+  "name": "gnome-window-management",
+  "title": "GNOME Window Management",
+  "description": "Raycast-style window management commands for GNOME",
+  "categories": [
+    "Productivity",
+    "System"
+  ],
+  "license": "MIT",
+  "author": "mariano",
+  "icon": "window.svg",
+  "commands": [
+    { "name": "window-management", "title": "Window Management", "description": "Browse every available window layout and action", "mode": "view" },
+    { "name": "hide-others", "title": "Hide Other Applications", "description": "Minimize every app except the focused app", "mode": "no-view" },
+    { "name": "show-all", "title": "Show Hidden Applications", "description": "Restore applications hidden by Hide Other Applications", "mode": "no-view" },
+    { "name": "center", "title": "Center", "description": "Center the focused window while preserving its size", "mode": "no-view" },
+    { "name": "reasonable-size", "title": "Reasonable Size", "description": "Resize and center the focused window to a comfortable size", "mode": "no-view" },
+    { "name": "almost-maximize", "title": "Almost Maximize", "description": "Fill ninety percent of the usable display and center the window", "mode": "no-view" },
+    { "name": "maximize", "title": "Maximize", "description": "Maximize the focused window", "mode": "no-view" },
+    { "name": "maximize-height", "title": "Maximize Height", "description": "Fill the usable display height", "mode": "no-view" },
+    { "name": "maximize-width", "title": "Maximize Width", "description": "Fill the usable display width", "mode": "no-view" },
+    { "name": "restore", "title": "Restore", "description": "Return the focused window to its previous geometry", "mode": "no-view" },
+    { "name": "left-half", "title": "Left Half", "description": "Place the focused window in the left half", "mode": "no-view" },
+    { "name": "right-half", "title": "Right Half", "description": "Place the focused window in the right half", "mode": "no-view" },
+    { "name": "top-half", "title": "Top Half", "description": "Place the focused window in the top half", "mode": "no-view" },
+    { "name": "bottom-half", "title": "Bottom Half", "description": "Place the focused window in the bottom half", "mode": "no-view" },
+    { "name": "center-half", "title": "Center Half", "description": "Place the focused window in the center half", "mode": "no-view" },
+    { "name": "top-left-quarter", "title": "Top Left Quarter", "description": "Place the focused window in the top-left quarter", "mode": "no-view" },
+    { "name": "top-right-quarter", "title": "Top Right Quarter", "description": "Place the focused window in the top-right quarter", "mode": "no-view" },
+    { "name": "bottom-left-quarter", "title": "Bottom Left Quarter", "description": "Place the focused window in the bottom-left quarter", "mode": "no-view" },
+    { "name": "bottom-right-quarter", "title": "Bottom Right Quarter", "description": "Place the focused window in the bottom-right quarter", "mode": "no-view" },
+    { "name": "previous-display", "title": "Move to Previous Display", "description": "Move the focused window to the previous display", "mode": "no-view" },
+    { "name": "next-display", "title": "Move to Next Display", "description": "Move the focused window to the next display", "mode": "no-view" }
+  ],
+  "scripts": {
+    "build": "vici build",
+    "lint": "vici lint"
+  },
+  "dependencies": {
+    "@vicinae/api": "0.23.2"
+  },
+  "devDependencies": {
+    "@types/node": "24.3.0",
+    "@types/react": "19.1.17",
+    "typescript": "5.9.2"
+  }
+}

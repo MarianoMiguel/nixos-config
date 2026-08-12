@@ -238,6 +238,7 @@ in
     onlyoffice-desktopeditors
     kdePackages.discover
     kdePackages.kdenlive
+    handbrake
     krita
     inkscape
     gimp

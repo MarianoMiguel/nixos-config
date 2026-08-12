@@ -1,0 +1,15 @@
+{
+  "description": "Raycast-style window layouts for the Vicinae launcher on GNOME.",
+  "name": "Vicinae Window Management",
+  "shell-version": [
+    "46",
+    "47",
+    "48",
+    "49",
+    "50"
+  ],
+  "url": "https://github.com/marianomike/nixos-config",
+  "uuid": "vicinae-window-management@mariano",
+  "version": 1,
+  "version-name": "1.0.0"
+}

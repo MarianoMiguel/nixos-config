@@ -1,12 +1,57 @@
 { lib, pkgs, ... }:
 
+let
+  # DMS greeter launches the desktop entry's Exec command, but it does not
+  # export DesktopNames as XDG_CURRENT_DESKTOP. GNOME Control Center rejects
+  # the resulting session even though GNOME Shell is running, so give the
+  # GNOME session an explicit environment-importing launcher.
+  gnomeSessionLauncher = pkgs.writeShellScript "gnome-session-with-desktop-env" ''
+    export XDG_CURRENT_DESKTOP=GNOME
+    export XDG_SESSION_DESKTOP=gnome
+    export DESKTOP_SESSION=gnome
+    export GDMSESSION=gnome
+
+    ${pkgs.systemd}/bin/systemctl --user import-environment \
+      XDG_CURRENT_DESKTOP XDG_SESSION_DESKTOP DESKTOP_SESSION GDMSESSION
+    ${pkgs.dbus}/bin/dbus-update-activation-environment \
+      XDG_CURRENT_DESKTOP XDG_SESSION_DESKTOP DESKTOP_SESSION GDMSESSION
+
+    ${pkgs.gnome-session}/bin/gnome-session "$@"
+    sessionStatus=$?
+
+    ${pkgs.systemd}/bin/systemctl --user unset-environment \
+      XDG_CURRENT_DESKTOP XDG_SESSION_DESKTOP DESKTOP_SESSION GDMSESSION
+    exit "$sessionStatus"
+  '';
+
+  gnomeSessionsWithDesktopEnv = pkgs.runCommand "gnome-session-with-desktop-env" {
+    passthru.providedSessions = [ "gnome" ];
+  } ''
+    mkdir -p "$out/share/wayland-sessions"
+    substitute \
+      ${pkgs.gnome-session.sessions}/share/wayland-sessions/gnome.desktop \
+      "$out/share/wayland-sessions/gnome.desktop" \
+      --replace-fail \
+        'Exec=${pkgs.gnome-session}/bin/gnome-session' \
+        'Exec=${gnomeSessionLauncher}'
+  '';
+in
 {
   services.xserver.enable = true;
 
   services.displayManager.sddm.enable = false;
   services.displayManager.defaultSession = "niri";
   services.desktopManager.plasma6.enable = true;
-  services.displayManager.sessionPackages = lib.mkForce [ pkgs.niri ];
+  services.desktopManager.gnome.enable = true;
+  # Keep Plasma's supporting components installed without exposing a Plasma
+  # session. GNOME is the stock fallback; Niri remains the default.
+  services.displayManager.sessionPackages = lib.mkForce [
+    pkgs.niri
+    gnomeSessionsWithDesktopEnv
+  ];
+  # Plasma and GNOME each provide a default SSH askpass implementation. Keep
+  # the prompt already used by the default Niri session to resolve that tie.
+  programs.ssh.askPassword = lib.mkForce "${pkgs.kdePackages.ksshaskpass}/bin/ksshaskpass";
 
   users.groups.greeter = { };
   users.users.greeter = {

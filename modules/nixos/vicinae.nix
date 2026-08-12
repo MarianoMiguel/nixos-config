@@ -52,6 +52,11 @@ in
     dconf.settings = {
       "org/gnome/desktop/wm/keybindings" = {
         activate-window-menu = lib.hm.gvariant.mkEmptyArray lib.hm.gvariant.type.string;
+        close = [
+          "<Alt>F4"
+          "<Alt>q"
+          "<Alt>w"
+        ];
       };
 
       "org/gnome/settings-daemon/plugins/media-keys" = {

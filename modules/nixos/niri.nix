@@ -37,11 +37,11 @@ let
   '';
   codexbarUnwrapped = pkgs.stdenvNoCC.mkDerivation {
     pname = "codexbar-unwrapped";
-    version = "0.28.0";
+    version = "0.29.0";
 
     src = pkgs.fetchzip {
-      url = "https://github.com/steipete/CodexBar/releases/download/v0.28.0/CodexBarCLI-v0.28.0-linux-x86_64.tar.gz";
-      sha256 = "1mh17kkv11piif7yir4fkn5ggmp681ify5fp22447n4lg7q4jn1i";
+      url = "https://github.com/steipete/CodexBar/releases/download/v0.29.0/CodexBarCLI-v0.29.0-linux-x86_64.tar.gz";
+      sha256 = "0n372hpdiqy52fx7jm4gvv257l1vvfkq2k53lfirsb85c26cx5s2";
       stripRoot = false;
     };
 
@@ -78,6 +78,117 @@ let
           --run 'export PATH="$HOME/.local/bin:$PATH"'
       done
     '';
+  };
+
+  # CodexBar's GNOME extension uses this helper to import the authenticated
+  # Codex session from Chromium-family browsers. Package it in the system
+  # profile instead of installing it into an unmanaged global Python prefix.
+  codexbarCookieImporter = pkgs.python3Packages.buildPythonApplication rec {
+    pname = "codexbar-cookie-importer";
+    version = "1.2";
+    pyproject = true;
+
+    src = pkgs.fetchPypi {
+      pname = "codexbar_cookie_importer";
+      inherit version;
+      hash = "sha256-Zmep9SCWcA7T7muvV29zzAtLvhEXarBcKi7zwWfYk7g=";
+    };
+
+    build-system = [ pkgs.python3Packages.setuptools ];
+    dependencies = with pkgs.python3Packages; [
+      cryptography
+      secretstorage
+    ];
+    pythonImportsCheck = [ "codexbar_cookie_importer" ];
+
+    meta = {
+      description = "Import Chromium session cookies for CodexBar";
+      homepage = "https://github.com/InledGroup/codexbar-gnome";
+      license = pkgs.lib.licenses.mit;
+      mainProgram = "codexbar-cookie-importer";
+    };
+  };
+
+  # This helper is useful only for Antigravity's local HTTPS service. Keep the
+  # upstream command available, but do not run it during activation: it expects
+  # a mutable Debian/Fedora trust store, while NixOS trust must be declarative.
+  codexbarSslHelper = pkgs.python3Packages.buildPythonApplication rec {
+    pname = "codexbar-ssl-helper";
+    version = "0.1.1";
+    pyproject = true;
+
+    src = pkgs.fetchPypi {
+      pname = "codexbar_ssl_helper";
+      inherit version;
+      hash = "sha256-NXNbqwPlQQUK9Eu/XfCWvogOR755Q/zHjvDHt3coDI8=";
+    };
+
+    build-system = [ pkgs.python3Packages.setuptools ];
+    pythonImportsCheck = [ "codexbar_ssl_helper" ];
+
+    nativeBuildInputs = [ pkgs.makeWrapper ];
+    postFixup = ''
+      wrapProgram "$out/bin/codexbar-ssl-helper" \
+        --prefix PATH : ${pkgs.lib.makeBinPath [ pkgs.iproute2 pkgs.polkit ]}
+    '';
+
+    meta = {
+      description = "Discover Antigravity's local TLS certificate for CodexBar";
+      homepage = "https://github.com/InledGroup/codexbar-gnome";
+      license = pkgs.lib.licenses.mit;
+      mainProgram = "codexbar-ssl-helper";
+    };
+  };
+
+  # Pin the current GNOME Extensions release. The nixpkgs revision used by this
+  # host still carries CodexBar v4, which does not match the installed v22.
+  codexbarGnomeExtension = pkgs.stdenvNoCC.mkDerivation {
+    pname = "gnome-shell-extension-codexbar";
+    version = "22";
+
+    src = pkgs.fetchzip {
+      url = "https://extensions.gnome.org/extension-data/codexbarinled.es.v22.shell-extension.zip";
+      hash = "sha256-gkxwGst3wW8QyKkYKpPEF/rmPlFmt+GuAVmeKEPFz80=";
+      stripRoot = false;
+    };
+
+    nativeBuildInputs = [ pkgs.glib ];
+    postPatch = ''
+      # Version 22 defaults to Homebrew's path when no hard-coded candidate
+      # exists, even when codexbar is available through PATH. Resolve PATH
+      # first and retain the stable NixOS system-profile path as the fallback.
+      substituteInPlace adapters/CliSubprocessFetcher.js \
+        --replace-fail \
+          'let executable = "/home/linuxbrew/.linuxbrew/bin/codexbar";' \
+          'let executable = GLib.find_program_in_path("codexbar") || "/run/current-system/sw/bin/codexbar";'
+
+      # The Linux CLI probe currently traps inside Swift Foundation while
+      # parsing Claude's reset date. OAuth is supported on Linux and succeeds
+      # against the same signed-in Claude account, so make it the safe default.
+      substituteInPlace prefs.js \
+        --replace-fail \
+          'defaultCommand: "codexbar --provider claude --source cli --format json",' \
+          'defaultCommand: "codexbar --provider claude --source oauth --format json",'
+    '';
+    buildPhase = ''
+      runHook preBuild
+      glib-compile-schemas --strict schemas
+      runHook postBuild
+    '';
+    installPhase = ''
+      runHook preInstall
+      install -d "$out/share/gnome-shell/extensions/codexbar@inled.es"
+      cp -R . "$out/share/gnome-shell/extensions/codexbar@inled.es/"
+      runHook postInstall
+    '';
+
+    passthru.extensionUuid = "codexbar@inled.es";
+    meta = {
+      description = "Show AI provider usage metrics in the GNOME panel";
+      homepage = "https://github.com/InledGroup/codexbar-gnome";
+      license = pkgs.lib.licenses.gpl2Plus;
+      platforms = pkgs.lib.platforms.linux;
+    };
   };
 
   codeIslandLinux = pkgs.stdenvNoCC.mkDerivation {
@@ -148,10 +259,12 @@ in
 
   # LibrePods exposes its background controls through StatusNotifier. DMS
   # provides that interface in Niri; GNOME needs its AppIndicator extension.
+  # CodexBar is pinned here as well; Dash to Dock is enabled by vicinae.nix.
   home-manager.users.mariano.programs.gnome-shell = {
     enable = true;
     extensions = [
       { package = pkgs.gnomeExtensions.appindicator; }
+      { package = codexbarGnomeExtension; }
     ];
   };
 
@@ -168,6 +281,8 @@ in
     wtype
     xwayland-satellite
     codexbar
+    codexbarCookieImporter
+    codexbarSslHelper
     codeIslandLinux
   ];
 

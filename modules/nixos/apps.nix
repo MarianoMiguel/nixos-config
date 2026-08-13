@@ -177,6 +177,7 @@ in
     enable = true;
     enableVirtualCamera = true;
   };
+  programs.steam.enable = true;
 
   xdg.mime.defaultApplications = browserMimeDefaults // {
     "application/pdf" = "firefox.desktop";

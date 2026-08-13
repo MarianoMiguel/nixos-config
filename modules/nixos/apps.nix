@@ -142,7 +142,8 @@ let
 
       substituteInPlace \
         $out/share/applications/io.github.nickvdp.figma-desktop-linux.desktop \
-        --replace-fail 'Exec=AppRun %u' 'Exec=${figmaDesktopPname} %u'
+        --replace-fail 'Exec=AppRun %u' 'Exec=${figmaDesktopPname} %u' \
+        --replace-fail 'StartupWMClass=Figma' 'StartupWMClass=${figmaDesktopPname}'
     '';
 
     meta = {

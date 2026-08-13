@@ -7,7 +7,9 @@ let
   # ships a desktop entry and icon. Provide the missing launcher so LibrePods
   # appears in GNOME's application grid as well as Niri's launchers.
   librepodsDesktopItem = pkgs.makeDesktopItem {
-    name = "me.kavishdevar.librepods";
+    # iced publishes this exact value as the Wayland application ID. GNOME
+    # matches Wayland windows to the desktop-file basename for dock icons.
+    name = "librepods";
     desktopName = "LibrePods";
     genericName = "AirPods Controls";
     comment = "Control AirPods features from Linux";

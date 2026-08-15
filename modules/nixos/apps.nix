@@ -248,6 +248,7 @@ in
     inkscape
     gimp
     darktable
+    rapidraw
     freecad
     orca-slicer
     # pencilDev

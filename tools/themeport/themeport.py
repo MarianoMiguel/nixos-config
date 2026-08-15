@@ -641,8 +641,32 @@ def _run_quiet(cmd: list[str]) -> bool:
         return False
 
 
-def _is_running(name: str) -> bool:
-    return _run_quiet(["pgrep", "-x", name]) or _run_quiet(["pgrep", "-f", name])
+def _dms_ipc(*args: str, timeout: int = 10) -> str | None:
+    """Call `dms ipc call ...`; stdout (stripped) on success, None on failure."""
+    if not shutil.which("dms"):
+        return None
+    try:
+        proc = subprocess.run(
+            ["dms", "ipc", "call", *args], capture_output=True, text=True, timeout=timeout
+        )
+    except Exception:  # noqa: BLE001
+        return None
+    return proc.stdout.strip() if proc.returncode == 0 else None
+
+
+def _dms_get(key: str) -> object | None:
+    out = _dms_ipc("settings", "get", key)
+    if out is None:
+        return None
+    try:
+        return json.loads(out)
+    except json.JSONDecodeError:
+        return out
+
+
+def _dms_set(key: str, value: object) -> bool:
+    out = _dms_ipc("settings", "set", key, str(value))
+    return out is not None and "SUCCESS" in out
 
 
 def _edit_json(path: Path, updates: dict) -> bool:
@@ -658,36 +682,94 @@ def _edit_json(path: Path, updates: dict) -> bool:
     return True
 
 
-def apply_dms(state: Path, meta: dict, repo: Path, restart: bool = True) -> None:
-    settings = repo / "dotfiles/dms/settings.json"
+# matugen cascade output we can observe to confirm DMS actually re-themed
+NIRI_COLORS = Path.home() / ".config/niri/dms/colors.kdl"
+
+
+def _mtime(path: Path) -> float:
+    try:
+        return path.stat().st_mtime
+    except OSError:
+        return 0.0
+
+
+def _wait_newer(path: Path, baseline: float, timeout: float) -> bool:
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if _mtime(path) > baseline:
+            return True
+        time.sleep(0.3)
+    return False
+
+
+def apply_dms(state: Path, meta: dict, repo: Path, restart_ok: bool = True) -> bool:
+    """Apply the theme to DMS, live when possible. Returns True if a running
+    shell took it (so later steps may rely on the IPC socket being up).
+
+    A restart is the exception, not the rule: DMS watches the custom theme
+    file and reloads it — including the matugen cascade that re-themes niri,
+    nvim, ghostty & co. Restarting right after writing the file used to kill
+    the (100ms-debounced) cascade before it ran, and on startup the cascade
+    loses a race against DMS's async matugen check, so custom themes came up
+    with stale niri/nvim colors.
+    """
     theme_path = Path.home() / ".config/DankMaterialShell/themes/themeport/theme.json"
-    updates = {
+    desired = {
         "currentThemeCategory": "custom",
         "currentThemeName": "custom",
         "customThemeFile": str(theme_path),
     }
+    icons = {}
     if meta.get("icons"):
-        updates["iconThemeDark"] = meta["icons"]
-        updates["iconThemeLight"] = meta["icons"]
-    if _edit_json(settings, updates):
-        print(f"  dms: settings updated -> {meta['name']}")
+        icons = {"iconThemeDark": meta["icons"], "iconThemeLight": meta["icons"]}
 
-    # DMS renders from its live theme state file, not (only) from the theme
-    # registered in settings — write the palette there too so the shell can't
-    # keep showing the previous theme.
-    live_state = repo / "dotfiles/dms/theme.json"
-    theme_doc = json.loads((state / "dms/theme.json").read_text())
-    live_doc = {"name": theme_doc["name"], "dark": theme_doc["dark"], "light": theme_doc["light"]}
-    live_state.write_text(json.dumps(live_doc, indent=2) + "\n")
-    print("  dms: live theme state written")
+    if _dms_get("currentThemeName") is None:
+        # shell not reachable: stage everything on disk for its next start
+        if _edit_json(repo / "dotfiles/dms/settings.json", {**desired, **icons}):
+            print("  dms: not running — settings staged for next start")
+        theme_doc = json.loads((state / "dms/theme.json").read_text())
+        live_doc = {"name": theme_doc["name"], "dark": theme_doc["dark"], "light": theme_doc["light"]}
+        (repo / "dotfiles/dms/theme.json").write_text(json.dumps(live_doc, indent=2) + "\n")
+        return False
 
-    if restart and shutil.which("systemctl"):
-        if _run_quiet(["systemctl", "--user", "restart", "dms.service"]):
-            print("  dms: shell restarted")
-        else:
-            print("  ! dms: restart failed — run: systemctl --user restart dms.service")
-    elif restart:
-        print("  dms: restart the shell to apply: systemctl --user restart dms.service")
+    # `settings set` both applies live and persists via DMS itself, so we never
+    # race the shell's own settings writes.
+    needs_repoint = any(_dms_get(k) != v for k, v in desired.items())
+    for key, value in {**desired, **icons}.items():
+        if _dms_get(key) != value and not _dms_set(key, value):
+            print(f"  ! dms: couldn't set {key}")
+
+    if needs_repoint:
+        # Theme.qml doesn't react to customThemeFile changing under it and IPC
+        # can't invoke switchTheme, so adopting the themeport slot from another
+        # theme needs one restart. The cascade re-trigger below papers over the
+        # startup race.
+        if not (restart_ok and shutil.which("systemctl")
+                and _run_quiet(["systemctl", "--user", "restart", "dms.service"])):
+            print("  ! dms: theme repoint pending — run: systemctl --user restart dms.service")
+            return False
+        deadline = time.monotonic() + 15
+        while time.monotonic() < deadline and _dms_get("currentThemeName") is None:
+            time.sleep(0.5)
+        print("  dms: restarted to adopt the themeport theme slot")
+
+    # match the shell's light/dark mode to the theme before it renders
+    _dms_ipc("theme", meta["mode"])
+
+    # (Re)write the watched theme file now that settings are in place; the
+    # FileView watcher reloads it and kicks off the matugen cascade. Verify by
+    # watching the cascade's niri output; one rewrite retry covers a missed
+    # watch event.
+    theme_json = (state / "dms/theme.json").read_text()
+    baseline = _mtime(NIRI_COLORS)
+    for _attempt in range(2):
+        theme_path.write_text(theme_json)
+        if not NIRI_COLORS.exists() or _wait_newer(NIRI_COLORS, baseline, timeout=6.0):
+            break
+    else:
+        print("  ! dms: matugen cascade didn't regenerate niri colors — check: journalctl --user -u dms")
+    print(f"  dms: theme applied live -> {meta['name']}")
+    return True
 
 
 def apply_mode(meta: dict) -> None:
@@ -716,7 +798,7 @@ def apply_icons(meta: dict) -> None:
     print(f"  icons: {name}")
 
 
-def apply_wallpapers(theme: Theme, meta: dict) -> None:
+def apply_wallpapers(theme: Theme, meta: dict, repo: Path) -> None:
     if not theme.backgrounds:
         return
     dest = Path.home() / "Pictures/Wallpapers/themeport" / theme.name
@@ -724,10 +806,89 @@ def apply_wallpapers(theme: Theme, meta: dict) -> None:
     for bg in theme.backgrounds:
         shutil.copy2(theme.src / "backgrounds" / bg, dest / bg)
     first = dest / theme.backgrounds[0]
-    if shutil.which("dms") and _run_quiet(["dms", "ipc", "call", "wallpaper", "set", str(first)]):
+    if _dms_ipc("wallpaper", "set", str(first), timeout=15) is not None:
         print(f"  wallpaper: {first.name} ({len(theme.backgrounds)} copied)")
+    elif _edit_json(repo / "dotfiles/dms/session.json", {"wallpaperPath": str(first)}):
+        # shell not reachable: stage it in session state for the next start
+        print(f"  wallpaper: staged {first.name} for next DMS start ({len(theme.backgrounds)} copied)")
     else:
         print(f"  wallpaper: {len(theme.backgrounds)} copied to {dest} (set one via the DMS settings UI)")
+
+
+def _edit_jsonc_string_key(path: Path, key: str, value: str) -> bool:
+    """Set one top-level string key in a JSONC file. VS Code settings allow
+    comments and trailing commas, so json.loads chokes on them (which used to
+    silently skip the theme switch); edit the text in place instead."""
+    text = path.read_text() if path.is_file() else "{}\n"
+    encoded = json.dumps(value)
+    pattern = re.compile(r'("' + re.escape(key) + r'"\s*:\s*)"(?:[^"\\]|\\.)*"')
+    if pattern.search(text):
+        new_text = pattern.sub(lambda m: m.group(1) + encoded, text, count=1)
+    else:
+        brace = text.rfind("}")
+        if brace == -1:
+            print(f"  ! {path}: no top-level object — skipped {key}")
+            return False
+        head = text[:brace].rstrip()
+        sep = "" if head.endswith(("{", ",")) else ","
+        new_text = f'{head}{sep}\n  "{key}": {encoded}\n{text[brace:]}'
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(new_text)
+    return True
+
+
+def _build_local_vsix(state: Path, meta: dict, out: Path) -> None:
+    """Pack the generated color theme as a minimal .vsix. Modern VS Code only
+    loads extensions listed in its registry, so a folder dropped into
+    ~/.vscode/extensions is ignored — `code --install-extension x.vsix` is the
+    supported route."""
+    import zipfile
+
+    package = {
+        "name": "themeport-theme",
+        "displayName": "Themeport",
+        "publisher": "themeport",
+        "version": "1.0.0",
+        "engines": {"vscode": "^1.60.0"},
+        "categories": ["Themes"],
+        "contributes": {"themes": [{
+            "label": "Themeport",
+            "uiTheme": "vs-dark" if meta["mode"] == "dark" else "vs",
+            "path": "./themes/themeport-color-theme.json",
+        }]},
+    }
+    manifest = """<?xml version="1.0" encoding="utf-8"?>
+<PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011">
+  <Metadata>
+    <Identity Language="en-US" Id="themeport-theme" Version="1.0.0" Publisher="themeport"/>
+    <DisplayName>Themeport</DisplayName>
+    <Description>Color theme generated by themeport</Description>
+    <Categories>Themes</Categories>
+  </Metadata>
+  <Installation>
+    <InstallationTarget Id="Microsoft.VisualStudio.Code"/>
+  </Installation>
+  <Dependencies/>
+  <Assets>
+    <Asset Type="Microsoft.VisualStudio.Code.Manifest" Path="extension/package.json" Addressable="true"/>
+  </Assets>
+</PackageManifest>
+"""
+    content_types = """<?xml version="1.0" encoding="utf-8"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="json" ContentType="application/json"/>
+  <Default Extension="vsixmanifest" ContentType="text/xml"/>
+</Types>
+"""
+    out.parent.mkdir(parents=True, exist_ok=True)
+    with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z:
+        z.writestr("[Content_Types].xml", content_types)
+        z.writestr("extension.vsixmanifest", manifest)
+        z.writestr("extension/package.json", json.dumps(package, indent=2) + "\n")
+        z.writestr(
+            "extension/themes/themeport-color-theme.json",
+            (state / "vscode/themeport-color-theme.json").read_text(),
+        )
 
 
 def apply_vscode(state: Path, meta: dict, repo: Path) -> None:
@@ -742,34 +903,37 @@ def apply_vscode(state: Path, meta: dict, repo: Path) -> None:
         else:
             print(f"  ! vscode: could not install {ext} — theme may not apply until you install it")
     if not (ext and label):
-        # no upstream descriptor: register the generated theme as a local extension
-        ext_dir = Path.home() / ".vscode/extensions/themeport.themeport-theme-1.0.0"
-        (ext_dir / "themes").mkdir(parents=True, exist_ok=True)
-        shutil.copy2(state / "vscode/themeport-color-theme.json", ext_dir / "themes/themeport-color-theme.json")
-        (ext_dir / "package.json").write_text(json.dumps({
-            "name": "themeport-theme",
-            "displayName": "Themeport",
-            "publisher": "themeport",
-            "version": "1.0.0",
-            "engines": {"vscode": "^1.60.0"},
-            "contributes": {"themes": [{
-                "label": "Themeport",
-                "uiTheme": "vs-dark" if meta["mode"] == "dark" else "vs",
-                "path": "./themes/themeport-color-theme.json",
-            }]},
-        }, indent=2) + "\n")
         label = "Themeport"
-        print("  vscode: generated local theme extension")
-    if _edit_json(settings, {"workbench.colorTheme": label}):
-        print(f"  vscode: colorTheme -> {label}")
+        if editor:
+            vsix = _catalog_cache().parent / "themeport.vsix"
+            _build_local_vsix(state, meta, vsix)
+            # --force: the version is always 1.0.0 but the palette changes
+            if _run_quiet([editor, "--install-extension", str(vsix), "--force"]):
+                print("  vscode: installed generated theme (.vsix)")
+            else:
+                print("  ! vscode: could not install the generated theme .vsix")
+        else:
+            print("  ! vscode: no code/codium CLI — can't install the generated theme")
+    if _edit_jsonc_string_key(settings, "workbench.colorTheme", label):
+        print(f"  vscode: colorTheme -> {label} (open windows need a reload to notice)")
+
+
+# exe -> process comm name. NixOS wrappers exec the real binary, so neither
+# comm nor cmdline contains the wrapper name (chrome's comm is just "chrome");
+# pgrep on the exe name can never match.
+BROWSERS = {"google-chrome-stable": "chrome", "brave": "brave"}
 
 
 def apply_browsers(meta: dict) -> None:
-    for exe in ("google-chrome-stable", "brave"):
-        if shutil.which(exe) and _is_running(exe):
-            if _run_quiet([exe, "--refresh-platform-policy", "--no-startup-window"]):
-                print(f"  {exe}: policy refreshed live")
-        # not running: the policy file applies on next launch
+    for exe, comm in BROWSERS.items():
+        if not shutil.which(exe):
+            continue
+        if not _run_quiet(["pgrep", "-x", comm]):
+            continue  # not running: the policy file applies on next launch
+        if _run_quiet([exe, "--refresh-platform-policy", "--no-startup-window"]):
+            print(f"  {exe}: policy refreshed live")
+        else:
+            print(f"  ! {exe}: policy refresh failed — restart the browser to apply")
 
 
 def apply_terminals(repo: Path) -> None:
@@ -821,10 +985,10 @@ def cmd_set(args: argparse.Namespace) -> int:
     meta = json.loads(files["meta.json"])
     print(f"applying '{theme.name}' ({theme.mode}){f' + {other.name}' if other else ''}:")
 
-    apply_dms(state, meta, repo, restart=not getattr(args, "no_restart", False))
     apply_mode(meta)
     apply_icons(meta)
-    apply_wallpapers(theme, meta)
+    apply_dms(state, meta, repo, restart_ok=not getattr(args, "no_restart", False))
+    apply_wallpapers(theme, meta, repo)
     apply_vscode(state, meta, repo)
     apply_browsers(meta)
     apply_terminals(repo)
@@ -1309,7 +1473,8 @@ def main(argv: list[str] | None = None) -> int:
     p_set.add_argument("name", help="installed theme name (or a path to a theme dir)")
     p_set.add_argument("--pair", help="opposite-mode theme for the other DMS light/dark slot")
     p_set.add_argument("--no-restart", dest="no_restart", action="store_true",
-                       help="don't restart dms.service after applying")
+                       help="never restart dms.service (normal switches don't; only "
+                            "adopting the themeport slot from another DMS theme does)")
     p_set.set_defaults(func=cmd_set)
 
     p_browse = sub.add_parser("browse", help="pick from the online catalog (official Omarchy themes + community) and install")

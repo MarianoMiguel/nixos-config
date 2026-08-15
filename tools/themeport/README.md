@@ -56,7 +56,7 @@ QML can actually run; the fzf pickers are the dependable baseline.
 
 | Target | Mechanism | Live reload |
 |---|---|---|
-| DMS (bar, lock, notifications, launcher) | generated DMS theme JSON + settings edit | DMS watches its files; fallback `systemctl --user restart dms.service` |
+| DMS (bar, lock, notifications, launcher) | generated DMS theme JSON + `dms ipc call settings set` | DMS watches the custom theme file and re-runs the matugen cascade; restart only when adopting the themeport slot from another DMS theme |
 | Niri (borders, focus ring) | DMS matugen cascade (`niri/dms/colors.kdl`) | niri auto-reload |
 | Ghostty | theme file `ghostty/themes/themeport` (Omarchy tpl) | new windows; existing: `ctrl+shift+,` |
 | Alacritty | `alacritty/themeport.toml` import (Omarchy tpl) | native live reload |
@@ -96,6 +96,10 @@ dark+light pairing, and a legacy alacritty-only theme) and rebuild.
 ## Verification status
 
 - Rendering, install, list, set: tested end-to-end (sandboxed) on macOS.
-- Pending first live run on bonhart: DMS settings-watch pickup (else restart
-  fallback), `dms ipc call wallpaper set`, Chromium policy refresh, and the
-  exact DMS custom-theme registration path.
+- Live-verified on bonhart (2026-08-15): DMS file-watch pickup + matugen
+  cascade (no restart — restarting used to kill the 100ms-debounced cascade,
+  and on startup the cascade loses a race against DMS's async matugen check),
+  `dms ipc call wallpaper set` (only reliable when not restarting), Chrome
+  `--refresh-platform-policy` (process detection must match comm `chrome`;
+  the NixOS wrapper name never appears in cmdline), VS Code settings edits
+  (JSONC — must not go through json.loads) and .vsix fallback install.

@@ -1,11 +1,19 @@
 {
-  "name": "rose-pine-bonhart",
+  "name": "koyanagi",
   "mode": "dark",
-  "icons": null,
-  "vscode": null,
-  "has_theme_neovim": false,
-  "backgrounds": [],
+  "icons": "Yaru-sage",
+  "vscode": {
+    "name": "Monokai Pro (Filter Spectrum)",
+    "extension": "monokai.theme-monokai-pro-vscode"
+  },
+  "has_theme_neovim": true,
+  "backgrounds": [
+    "background_1.jpeg",
+    "background_2.jpg",
+    "background_3.jpg",
+    "background_4.jpg"
+  ],
   "paired_with": null,
-  "accent": "#ebbcba",
-  "background": "#14131e"
+  "accent": "#7A7A7A",
+  "background": "#1C1C1E"
 }

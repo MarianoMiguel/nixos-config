@@ -1,7 +1,7 @@
 {
   "currentThemeName": "custom",
   "currentThemeCategory": "custom",
-  "customThemeFile": "/home/mariano/.config/DankMaterialShell/themes/dms-ayu/theme.json",
+  "customThemeFile": "/home/mariano/.config/DankMaterialShell/themes/themeport/theme.json",
   "registryThemeVariants": {},
   "matugenScheme": "scheme-monochrome",
   "matugenContrast": 0,
@@ -298,8 +298,8 @@
     }
   ],
   "networkPreference": "auto",
-  "iconThemeDark": "System Default",
-  "iconThemeLight": "System Default",
+  "iconThemeDark": "Yaru-sage",
+  "iconThemeLight": "Yaru-sage",
   "iconThemePerMode": false,
   "lastAppliedIconTheme": "",
   "cursorSettings": {

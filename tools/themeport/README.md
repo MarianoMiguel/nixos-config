@@ -10,7 +10,18 @@ themeport set tokyo-night --pair catppuccin-latte   # dark + light slots
 themeport list
 themeport pick          # fzf theme picker with color swatches
 themeport wallpapers    # fzf wallpaper picker for the current theme (--all for every theme)
+themeport browse        # online catalog: all 22 official Omarchy themes + community themes by stars
 ```
+
+`browse` lists every theme shipped with Omarchy (fetched live from
+basecamp/omarchy, cached 24h — `--refresh` to bust) plus GitHub community
+themes sorted by stars, marks what's already installed, and installs + applies
+your selection. It's also reachable from the bottom of `themeport pick`, so
+Mod+Ctrl+T covers both installed and not-yet-downloaded themes. Pin extra
+repos in `~/.config/themeport/sources.json` (`{"repos": ["owner/repo"]}`) —
+useful for themes whose repo name doesn't match the `omarchy-<x>-theme`
+pattern the search filter expects. A `GITHUB_TOKEN` or `gh` login raises the
+API rate limits but isn't required.
 
 **Keybindings** (`dotfiles/niri/themeport.kdl`, included from config.kdl):
 `Mod+Ctrl+T` opens the theme picker, `Mod+Ctrl+W` the wallpaper picker — each

@@ -25,6 +25,7 @@ import shutil
 import subprocess
 import sys
 import tarfile
+import time
 import tomllib
 import urllib.request
 from pathlib import Path
@@ -657,7 +658,7 @@ def _edit_json(path: Path, updates: dict) -> bool:
     return True
 
 
-def apply_dms(state: Path, meta: dict, repo: Path) -> None:
+def apply_dms(state: Path, meta: dict, repo: Path, restart: bool = True) -> None:
     settings = repo / "dotfiles/dms/settings.json"
     theme_path = Path.home() / ".config/DankMaterialShell/themes/themeport/theme.json"
     updates = {
@@ -670,9 +671,23 @@ def apply_dms(state: Path, meta: dict, repo: Path) -> None:
         updates["iconThemeLight"] = meta["icons"]
     if _edit_json(settings, updates):
         print(f"  dms: settings updated -> {meta['name']}")
-    # DMS watches its settings/theme files; if the running shell doesn't pick
-    # it up, a shell restart is the reliable fallback.
-    print("  dms: if the shell doesn't react, run: systemctl --user restart dms.service")
+
+    # DMS renders from its live theme state file, not (only) from the theme
+    # registered in settings — write the palette there too so the shell can't
+    # keep showing the previous theme.
+    live_state = repo / "dotfiles/dms/theme.json"
+    theme_doc = json.loads((state / "dms/theme.json").read_text())
+    live_doc = {"name": theme_doc["name"], "dark": theme_doc["dark"], "light": theme_doc["light"]}
+    live_state.write_text(json.dumps(live_doc, indent=2) + "\n")
+    print("  dms: live theme state written")
+
+    if restart and shutil.which("systemctl"):
+        if _run_quiet(["systemctl", "--user", "restart", "dms.service"]):
+            print("  dms: shell restarted")
+        else:
+            print("  ! dms: restart failed — run: systemctl --user restart dms.service")
+    elif restart:
+        print("  dms: restart the shell to apply: systemctl --user restart dms.service")
 
 
 def apply_mode(meta: dict) -> None:
@@ -806,7 +821,7 @@ def cmd_set(args: argparse.Namespace) -> int:
     meta = json.loads(files["meta.json"])
     print(f"applying '{theme.name}' ({theme.mode}){f' + {other.name}' if other else ''}:")
 
-    apply_dms(state, meta, repo)
+    apply_dms(state, meta, repo, restart=not getattr(args, "no_restart", False))
     apply_mode(meta)
     apply_icons(meta)
     apply_wallpapers(theme, meta)
@@ -816,6 +831,133 @@ def cmd_set(args: argparse.Namespace) -> int:
     apply_btop()
     print("done. rendered state lives in dotfiles/themeport/ — review with: git diff")
     return 0
+
+
+# ------------------------------------------------------------ online catalog
+
+CATALOG_TTL = 24 * 3600
+OMARCHY_REPO = "basecamp/omarchy"
+OMARCHY_REF = "quattro"
+
+
+def _gh_token() -> str | None:
+    if token := os.environ.get("GITHUB_TOKEN"):
+        return token
+    if shutil.which("gh"):
+        try:
+            out = subprocess.run(["gh", "auth", "token"], capture_output=True, text=True, timeout=10)
+            return out.stdout.strip() or None
+        except Exception:  # noqa: BLE001
+            return None
+    return None
+
+
+def _github_json(url: str) -> object:
+    req = urllib.request.Request(  # noqa: S310
+        url, headers={"Accept": "application/vnd.github+json", "User-Agent": "themeport"}
+    )
+    if token := _gh_token():
+        req.add_header("Authorization", f"Bearer {token}")
+    with urllib.request.urlopen(req, timeout=30) as resp:  # noqa: S310
+        return json.loads(resp.read())
+
+
+def _catalog_cache() -> Path:
+    return Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) / "themeport/catalog.json"
+
+
+def _user_sources() -> list[str]:
+    """Extra repos pinned by the user: ~/.config/themeport/sources.json
+    with {"repos": ["owner/repo", ...]}."""
+    path = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "themeport/sources.json"
+    if not path.is_file():
+        return []
+    try:
+        return list(json.loads(path.read_text()).get("repos", []))
+    except (json.JSONDecodeError, AttributeError):
+        print(f"  ! ignoring malformed {path}")
+        return []
+
+
+def load_catalog(refresh: bool = False) -> dict:
+    cache = _catalog_cache()
+    if not refresh and cache.is_file() and time.time() - cache.stat().st_mtime < CATALOG_TTL:
+        try:
+            return json.loads(cache.read_text())
+        except json.JSONDecodeError:
+            pass
+
+    official = sorted(
+        entry["name"]
+        for entry in _github_json(
+            f"https://api.github.com/repos/{OMARCHY_REPO}/contents/themes?ref={OMARCHY_REF}"
+        )
+        if entry["type"] == "dir"
+    )
+    community: list[dict] = []
+    try:
+        result = _github_json(
+            "https://api.github.com/search/repositories?q=omarchy+theme+in:name&sort=stars&per_page=50"
+        )
+        theme_repo = re.compile(r"^omarchy[-_](.+[-_])?themes?$")
+        for item in result.get("items", []):
+            name = item["name"].lower()
+            # only theme-shaped names (omarchy-<x>-theme); tooling repos like
+            # omarchy-theme-hook don't fit. Oddly-named themes can still be
+            # installed by owner/repo or pinned in sources.json.
+            if theme_repo.match(name) and not item.get("archived"):
+                community.append({
+                    "repo": item["full_name"],
+                    "name": normalize_theme_name(item["name"]),
+                    "stars": item["stargazers_count"],
+                    "desc": (item.get("description") or "").strip()[:70],
+                })
+    except Exception as exc:  # noqa: BLE001
+        print(f"  ! community search unavailable ({exc}) — official catalog still works")
+
+    catalog = {"official": official, "community": community}
+    cache.parent.mkdir(parents=True, exist_ok=True)
+    cache.write_text(json.dumps(catalog))
+    return catalog
+
+
+_SKIP_OFFICIAL_FILES = re.compile(r"(^|/)(preview[^/]*\.(png|jpe?g)|unlock\.png)$", re.I)
+
+
+def install_official(name: str, dest_root: Path) -> Path:
+    """Install one of basecamp/omarchy's shipped themes (subdirectory of the
+    monorepo, so the tarball route doesn't apply)."""
+    tree = _github_json(
+        f"https://api.github.com/repos/{OMARCHY_REPO}/git/trees/{OMARCHY_REF}?recursive=1"
+    )
+    prefix = f"themes/{name}/"
+    blobs = [e for e in tree["tree"] if e["path"].startswith(prefix) and e["type"] == "blob"]
+    if not blobs:
+        raise SystemExit(f"official theme '{name}' not found in {OMARCHY_REPO}")
+
+    staging = dest_root / f".staging-{name}"
+    if staging.exists():
+        shutil.rmtree(staging)
+    staging.mkdir(parents=True)
+    print(f"fetching official theme '{name}' ...")
+    for blob in blobs:
+        rel = blob["path"][len(prefix):]
+        if _SKIP_OFFICIAL_FILES.search(rel):
+            continue
+        target = staging / rel
+        target.parent.mkdir(parents=True, exist_ok=True)
+        url = f"https://raw.githubusercontent.com/{OMARCHY_REPO}/{OMARCHY_REF}/{blob['path']}"
+        with urllib.request.urlopen(url, timeout=60) as resp:  # noqa: S310
+            target.write_bytes(resp.read())
+
+    load_theme(staging)  # validate before committing to the store
+
+    dest = dest_root / name
+    if dest.exists():
+        shutil.rmtree(dest)
+    shutil.move(str(staging), str(dest))
+    (dest / ".themeport-source").write_text(f"{OMARCHY_REPO}#themes/{name}\n")
+    return dest
 
 
 # -------------------------------------------------------------------- pickers
@@ -879,11 +1021,14 @@ def cmd_pick(args: argparse.Namespace) -> int:
         f"{t.name}\t{_swatch(t.colors)}  {t.name} ({t.mode}, {len(t.backgrounds)} wallpapers)"
         for t in themes
     ]
+    rows.append("@browse\t↓ browse online catalog (official + community) …")
     if args.list:
         for t in themes:
             print(f"{t.name}\t{t.mode}\t{len(t.backgrounds)}")
         return 0
     choice = _fzf(rows, "theme> ")
+    if choice == "@browse":
+        return cmd_browse(argparse.Namespace(list=False, refresh=False, hold=getattr(args, "hold", False)))
     if choice is None:
         print("fzf unavailable or nothing chosen — themes:")
         for t in themes:
@@ -891,6 +1036,60 @@ def cmd_pick(args: argparse.Namespace) -> int:
         _hold_open(args)
         return 1
     rc = cmd_set(argparse.Namespace(name=choice, pair=None))
+    _hold_open(args)
+    return rc
+
+
+def cmd_browse(args: argparse.Namespace) -> int:
+    try:
+        catalog = load_catalog(refresh=getattr(args, "refresh", False))
+    except Exception as exc:  # noqa: BLE001
+        print(f"couldn't load the online catalog ({exc}) — check network/rate limits")
+        _hold_open(args)
+        return 1
+    installed = {t.name for t in _installed_themes()}
+
+    rows: list[str] = []
+    for name in catalog.get("official", []):
+        mark = " [installed]" if name in installed else ""
+        rows.append(f"official:{name}\t[official]  {name}{mark}")
+    for repo in _user_sources():
+        rows.append(f"repo:{repo}\t[pinned]    {repo}")
+    for item in catalog.get("community", []):
+        mark = " [installed]" if item["name"] in installed else ""
+        rows.append(
+            f"repo:{item['repo']}\t[community] {item['name']:22} ★{item['stars']:<4} {item['desc']}{mark}"
+        )
+
+    if args.list:
+        for row in rows:
+            print(row.split("\t", 1)[1])
+        return 0
+    choice = _fzf(rows, "install> ")
+    if choice is None:
+        print("nothing chosen")
+        _hold_open(args)
+        return 1
+
+    kind, _, ref = choice.partition(":")
+    root = themes_home()
+    root.mkdir(parents=True, exist_ok=True)
+    try:
+        dest = install_official(ref, root) if kind == "official" else install_from_github(ref, root)
+    except Exception as exc:  # noqa: BLE001
+        print(f"install failed: {exc}")
+        _hold_open(args)
+        return 1
+    theme = load_theme(dest)
+    print(f"installed '{theme.name}' ({theme.mode}, {len(theme.backgrounds)} wallpapers)")
+
+    try:
+        answer = input(f"apply '{theme.name}' now? [Y/n] ").strip().lower()
+    except EOFError:
+        answer = "n"
+    rc = 0
+    if answer in ("", "y", "yes"):
+        rc = cmd_set(argparse.Namespace(name=theme.name, pair=None))
     _hold_open(args)
     return rc
 
@@ -998,7 +1197,15 @@ def main(argv: list[str] | None = None) -> int:
     p_set = sub.add_parser("set", help="render a theme into the config repo and apply it live")
     p_set.add_argument("name", help="installed theme name (or a path to a theme dir)")
     p_set.add_argument("--pair", help="opposite-mode theme for the other DMS light/dark slot")
+    p_set.add_argument("--no-restart", dest="no_restart", action="store_true",
+                       help="don't restart dms.service after applying")
     p_set.set_defaults(func=cmd_set)
+
+    p_browse = sub.add_parser("browse", help="pick from the online catalog (official Omarchy themes + community) and install")
+    p_browse.add_argument("--list", action="store_true", help="print the catalog and exit")
+    p_browse.add_argument("--refresh", action="store_true", help="bypass the 24h catalog cache")
+    p_browse.add_argument("--hold", action="store_true", help="wait for Enter before exiting (for floating terminals)")
+    p_browse.set_defaults(func=cmd_browse)
 
     p_pick = sub.add_parser("pick", help="fuzzy-pick an installed theme and apply it (fzf)")
     p_pick.add_argument("--list", action="store_true", help="print installed themes and exit")

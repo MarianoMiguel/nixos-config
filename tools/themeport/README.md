@@ -8,7 +8,17 @@ themeport install sc0ttman/omarchy-one-dark-pro-theme
 themeport set one-dark-pro
 themeport set tokyo-night --pair catppuccin-latte   # dark + light slots
 themeport list
+themeport pick          # fzf theme picker with color swatches
+themeport wallpapers    # fzf wallpaper picker for the current theme (--all for every theme)
 ```
+
+**Keybindings** (`dotfiles/niri/themeport.kdl`, included from config.kdl):
+`Mod+Ctrl+T` opens the theme picker, `Mod+Ctrl+W` the wallpaper picker — each
+in a floating Ghostty window (`themeport.picker` app-id rule). The binds live
+in their own include because DMS regenerates `dms/binds.kdl` and would drop
+custom entries. A native DMS/Quickshell plugin picker (like dms-codexbar)
+would be a nicer follow-up, but needs to be developed on the Linux box where
+QML can actually run; the fzf pickers are the dependable baseline.
 
 ## How it works
 

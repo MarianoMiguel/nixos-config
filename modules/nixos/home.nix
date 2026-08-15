@@ -73,6 +73,7 @@ in
         "alacritty/alacritty.toml".source = ../../dotfiles/alacritty/alacritty.toml;
 
         "niri/config.kdl".source = ../../dotfiles/niri/config.kdl;
+        "niri/themeport.kdl".source = ../../dotfiles/niri/themeport.kdl;
         "niri/dms/alttab.kdl".source = mutableDotfile "niri/dms/alttab.kdl";
         "niri/dms/binds.kdl".source = mutableDotfile "niri/dms/binds.kdl";
         "niri/dms/colors.kdl".source = mutableDotfile "niri/dms/colors.kdl";

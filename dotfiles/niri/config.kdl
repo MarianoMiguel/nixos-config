@@ -276,6 +276,9 @@ recent-windows {
     }
 }
 
+// themeport theme/wallpaper pickers (Mod+Ctrl+T / Mod+Ctrl+W)
+include "themeport.kdl"
+
 // Include dms files
 include "dms/colors.kdl"
 include "dms/layout.kdl"

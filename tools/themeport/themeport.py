@@ -818,6 +818,133 @@ def cmd_set(args: argparse.Namespace) -> int:
     return 0
 
 
+# -------------------------------------------------------------------- pickers
+
+
+def _swatch(colors: dict[str, str], keys: tuple[str, ...] = ("background", "accent", "red", "yellow", "green", "cyan", "blue", "magenta")) -> str:
+    blocks = []
+    for key in keys:
+        value = colors.get(key, "")
+        if HEX_RE.match(value):
+            r, g, b = _rgb(value)
+            blocks.append(f"\x1b[48;2;{r};{g};{b}m  \x1b[0m")
+    return "".join(blocks)
+
+
+def _installed_themes() -> list[Theme]:
+    root = themes_home()
+    themes = []
+    if root.is_dir():
+        for d in sorted(root.iterdir()):
+            if d.is_dir() and not d.name.startswith("."):
+                try:
+                    themes.append(load_theme(d))
+                except SystemExit:
+                    continue
+    return themes
+
+
+def _fzf(rows: list[str], prompt: str) -> str | None:
+    """Run fzf over tab-delimited rows (field 1 = key); return the chosen key."""
+    if not shutil.which("fzf"):
+        return None
+    try:
+        proc = subprocess.run(
+            ["fzf", "--ansi", "--prompt", prompt, "--delimiter", "\t",
+             "--with-nth", "2..", "--height", "100%", "--reverse"],
+            input="\n".join(rows), capture_output=True, text=True,
+        )
+    except Exception:  # noqa: BLE001
+        return None
+    if proc.returncode != 0 or not proc.stdout.strip():
+        return None
+    return proc.stdout.split("\t", 1)[0].strip()
+
+
+def _hold_open(args: argparse.Namespace) -> None:
+    if getattr(args, "hold", False):
+        try:
+            input("\npress Enter to close...")
+        except EOFError:
+            pass
+
+
+def cmd_pick(args: argparse.Namespace) -> int:
+    themes = _installed_themes()
+    if not themes:
+        print("no themes installed — try: themeport install owner/repo")
+        _hold_open(args)
+        return 1
+    rows = [
+        f"{t.name}\t{_swatch(t.colors)}  {t.name} ({t.mode}, {len(t.backgrounds)} wallpapers)"
+        for t in themes
+    ]
+    if args.list:
+        for t in themes:
+            print(f"{t.name}\t{t.mode}\t{len(t.backgrounds)}")
+        return 0
+    choice = _fzf(rows, "theme> ")
+    if choice is None:
+        print("fzf unavailable or nothing chosen — themes:")
+        for t in themes:
+            print(f"  {t.name} ({t.mode})")
+        _hold_open(args)
+        return 1
+    rc = cmd_set(argparse.Namespace(name=choice, pair=None))
+    _hold_open(args)
+    return rc
+
+
+def _wallpaper_candidates(all_themes: bool) -> list[Path]:
+    base = Path.home() / "Pictures/Wallpapers"
+    dirs: list[Path] = []
+    state_meta = repo_root() / "dotfiles/themeport/meta.json"
+    current = None
+    if state_meta.is_file():
+        try:
+            current = json.loads(state_meta.read_text()).get("name")
+        except json.JSONDecodeError:
+            current = None
+    if not all_themes and current and (base / "themeport" / current).is_dir():
+        dirs = [base / "themeport" / current]
+    elif (base / "themeport").is_dir():
+        dirs = [d for d in sorted((base / "themeport").iterdir()) if d.is_dir()]
+    if not dirs and base.is_dir():
+        dirs = [base]
+    images: list[Path] = []
+    for d in dirs:
+        images += sorted(
+            p for p in d.rglob("*")
+            if p.is_file() and p.suffix.lower() in (".jpg", ".jpeg", ".png", ".webp")
+        )
+    return images
+
+
+def cmd_wallpapers(args: argparse.Namespace) -> int:
+    images = _wallpaper_candidates(args.all)
+    if not images:
+        print("no wallpapers found — `themeport set` copies a theme's backgrounds into ~/Pictures/Wallpapers/themeport/")
+        _hold_open(args)
+        return 1
+    if args.list:
+        for p in images:
+            print(p)
+        return 0
+    home = str(Path.home())
+    rows = [f"{p}\t{str(p).replace(home, '~')}" for p in images]
+    choice = _fzf(rows, "wallpaper> ")
+    if choice is None:
+        print("fzf unavailable or nothing chosen")
+        _hold_open(args)
+        return 1
+    if shutil.which("dms") and _run_quiet(["dms", "ipc", "call", "wallpaper", "set", choice]):
+        print(f"wallpaper set: {choice}")
+    else:
+        print(f"couldn't reach DMS — set it manually: {choice}")
+    _hold_open(args)
+    return 0
+
+
 def cmd_install(args: argparse.Namespace) -> int:
     root = themes_home()
     root.mkdir(parents=True, exist_ok=True)
@@ -872,6 +999,17 @@ def main(argv: list[str] | None = None) -> int:
     p_set.add_argument("name", help="installed theme name (or a path to a theme dir)")
     p_set.add_argument("--pair", help="opposite-mode theme for the other DMS light/dark slot")
     p_set.set_defaults(func=cmd_set)
+
+    p_pick = sub.add_parser("pick", help="fuzzy-pick an installed theme and apply it (fzf)")
+    p_pick.add_argument("--list", action="store_true", help="print installed themes and exit")
+    p_pick.add_argument("--hold", action="store_true", help="wait for Enter before exiting (for floating terminals)")
+    p_pick.set_defaults(func=cmd_pick)
+
+    p_wp = sub.add_parser("wallpapers", help="fuzzy-pick a wallpaper for the current theme (fzf)")
+    p_wp.add_argument("--all", action="store_true", help="browse every downloaded theme's wallpapers")
+    p_wp.add_argument("--list", action="store_true", help="print wallpaper paths and exit")
+    p_wp.add_argument("--hold", action="store_true", help="wait for Enter before exiting (for floating terminals)")
+    p_wp.set_defaults(func=cmd_wallpapers)
 
     args = parser.parse_args(argv)
     return args.func(args)

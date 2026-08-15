@@ -1,0 +1,18 @@
+// themeport pickers: theme switcher and wallpaper chooser in a floating
+// terminal. Lives in its own include (not dms/binds.kdl, which DMS
+// regenerates and would drop custom binds).
+binds {
+    Mod+Ctrl+T hotkey-overlay-title="Pick a theme (themeport)" {
+        spawn "ghostty" "--class=themeport.picker" "-e" "themeport" "pick" "--hold";
+    }
+    Mod+Ctrl+W hotkey-overlay-title="Pick a wallpaper (themeport)" {
+        spawn "ghostty" "--class=themeport.picker" "-e" "themeport" "wallpapers" "--hold";
+    }
+}
+
+window-rule {
+    match app-id=r#"^themeport\.picker$"#
+    open-floating true
+    default-column-width { proportion 0.45; }
+    default-window-height { proportion 0.6; }
+}

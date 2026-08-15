@@ -87,6 +87,7 @@ in
 
         "DankMaterialShell/theme.json".source = mutableDotfile "dms/theme.json";
         "DankMaterialShell/themes/dms-ayu/theme.json".source = mutableDotfile "dms/themes/dms-ayu/theme.json";
+        "DankMaterialShell/themes/themeport/theme.json".source = mutableDotfile "themeport/dms/theme.json";
         "DankMaterialShell/settings.json".source = mutableDotfile "dms/settings.json";
         "DankMaterialShell/plugin_settings.json".source = mutableDotfile "dms/plugin-settings.json";
 
@@ -104,8 +105,16 @@ in
         "input-remapper-2/presets/vicinae-snippet-virtual-keyboard/new preset.json".source =
           dotfiles + "/input-remapper-2/presets/vicinae-snippet-virtual-keyboard/new preset.json";
 
-        "Code/User/settings.json".source = ../../dotfiles/vscode/User/settings.json;
+        # settings.json is writable so themeport (and VS Code itself) can edit
+        # workbench.colorTheme; edits land in the repo like the DMS state files.
+        "Code/User/settings.json".source = mutableDotfile "vscode/User/settings.json";
         "Code/User/keybindings.json".source = ../../dotfiles/vscode/User/keybindings.json;
+
+        # themeport: rendered theme state (writable tier, swapped by `themeport set`)
+        "ghostty/themes/themeport".source = mutableDotfile "themeport/ghostty/themes/themeport";
+        "alacritty/themeport.toml".source = mutableDotfile "themeport/alacritty/themeport.toml";
+        "btop/themes/themeport.theme".source = mutableDotfile "themeport/btop/themes/themeport.theme";
+        "tmux/themeport.conf".source = mutableDotfile "themeport/tmux/themeport.conf";
       } // lib.optionalAttrs (builtins.pathExists ../../dotfiles/vscode/User/prompts) {
         "Code/User/prompts".source = ../../dotfiles/vscode/User/prompts;
       };

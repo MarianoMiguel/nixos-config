@@ -28,6 +28,9 @@
       bind -T copy-mode-vi MouseDragEnd1Pane send -X copy-pipe-and-cancel "wl-copy"
 
       bind r source-file /etc/tmux.conf \; display-message "Reloaded tmux config"
+
+      # themeport colors (writable tier; -q tolerates a missing file)
+      source-file -q ~/.config/tmux/themeport.conf
     '';
   };
 }

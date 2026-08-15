@@ -10,6 +10,7 @@
     ../modules/nixos/niri.nix
     ../modules/nixos/nix.nix
     ../modules/nixos/power.nix
+    ../modules/nixos/themeport.nix
     ../modules/nixos/tmux.nix
     ../modules/nixos/users.nix
     ../modules/nixos/virtualisation.nix

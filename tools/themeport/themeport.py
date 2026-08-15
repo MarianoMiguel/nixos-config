@@ -921,7 +921,8 @@ def load_catalog(refresh: bool = False) -> dict:
     return catalog
 
 
-_SKIP_OFFICIAL_FILES = re.compile(r"(^|/)(preview[^/]*\.(png|jpe?g)|unlock\.png)$", re.I)
+# keep preview.png — it powers the gallery pickers; skip only lock-screen art
+_SKIP_OFFICIAL_FILES = re.compile(r"(^|/)(preview-unlock\.(png|jpe?g)|unlock\.png)$", re.I)
 
 
 def install_official(name: str, dest_root: Path) -> Path:
@@ -986,16 +987,21 @@ def _installed_themes() -> list[Theme]:
     return themes
 
 
-def _fzf(rows: list[str], prompt: str) -> str | None:
+def _self_cmd() -> str:
+    import shlex
+    return f"{shlex.quote(sys.executable)} {shlex.quote(str(Path(__file__).resolve()))}"
+
+
+def _fzf(rows: list[str], prompt: str, preview: str | None = None) -> str | None:
     """Run fzf over tab-delimited rows (field 1 = key); return the chosen key."""
     if not shutil.which("fzf"):
         return None
+    cmd = ["fzf", "--ansi", "--prompt", prompt, "--delimiter", "\t",
+           "--with-nth", "2..", "--height", "100%", "--reverse"]
+    if preview:
+        cmd += ["--preview", preview, "--preview-window", "right,55%,border-left"]
     try:
-        proc = subprocess.run(
-            ["fzf", "--ansi", "--prompt", prompt, "--delimiter", "\t",
-             "--with-nth", "2..", "--height", "100%", "--reverse"],
-            input="\n".join(rows), capture_output=True, text=True,
-        )
+        proc = subprocess.run(cmd, input="\n".join(rows), capture_output=True, text=True)
     except Exception:  # noqa: BLE001
         return None
     if proc.returncode != 0 or not proc.stdout.strip():
@@ -1009,6 +1015,111 @@ def _hold_open(args: argparse.Namespace) -> None:
             input("\npress Enter to close...")
         except EOFError:
             pass
+
+
+def _preview_image_path(theme_dir: Path) -> Path | None:
+    for name in ("preview.png", "preview.jpg", "preview.jpeg", "preview2.png"):
+        if (theme_dir / name).is_file():
+            return theme_dir / name
+    if (theme_dir / "backgrounds").is_dir():
+        bgs = sorted(
+            p for p in (theme_dir / "backgrounds").iterdir()
+            if p.suffix.lower() in (".jpg", ".jpeg", ".png", ".webp")
+        )
+        if bgs:
+            return bgs[0]
+    return None
+
+
+def _chafa(image: Path) -> bool:
+    if not shutil.which("chafa"):
+        return False
+    cols = os.environ.get("FZF_PREVIEW_COLUMNS", "60")
+    lines = os.environ.get("FZF_PREVIEW_LINES", "24")
+    # cap image height to leave room for the swatch strip below it
+    img_lines = max(int(lines) - 5, 5)
+    try:
+        subprocess.run(["chafa", "-s", f"{cols}x{img_lines}", str(image)], check=True, timeout=20)
+        return True
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def _swatch_strip(colors: dict[str, str]) -> str:
+    wide = []
+    for key in ("background", "accent", "red", "yellow", "green", "cyan", "blue", "magenta"):
+        value = colors.get(key, "")
+        if HEX_RE.match(value):
+            r, g, b = _rgb(value)
+            wide.append(f"\x1b[48;2;{r};{g};{b}m    \x1b[0m")
+    return "".join(wide)
+
+
+def _cached_online_preview(key: str) -> Path | None:
+    """Lazily fetch a preview image for a not-yet-installed theme."""
+    cache_dir = _catalog_cache().parent / "previews"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    safe = re.sub(r"[^A-Za-z0-9._-]", "_", key)
+    cached = cache_dir / f"{safe}.png"
+    if cached.is_file():
+        return cached if cached.stat().st_size > 0 else None
+    urls: list[str] = []
+    if key.startswith("official:"):
+        name = key.split(":", 1)[1]
+        urls = [f"https://raw.githubusercontent.com/{OMARCHY_REPO}/{OMARCHY_REF}/themes/{name}/preview.png"]
+    elif key.startswith("repo:"):
+        repo = key.split(":", 1)[1]
+        urls = [
+            f"https://raw.githubusercontent.com/{repo}/HEAD/{n}"
+            for n in ("preview.png", "preview.jpg", "screenshot.png", "screenshot.jpg")
+        ]
+    for url in urls:
+        try:
+            with urllib.request.urlopen(url, timeout=15) as resp:  # noqa: S310
+                cached.write_bytes(resp.read())
+            return cached
+        except Exception:  # noqa: BLE001
+            continue
+    cached.write_bytes(b"")  # negative cache: don't retry on every keystroke
+    return None
+
+
+def cmd_preview(args: argparse.Namespace) -> int:
+    """Preview pane renderer for the fzf pickers (image + palette swatches)."""
+    target = args.target
+    if target == "@browse":
+        print("browse the online catalog: every official Omarchy theme + community themes")
+        return 0
+
+    if os.sep in target and Path(target).is_file():  # wallpaper path
+        if not _chafa(Path(target)):
+            print(Path(target).name)
+        return 0
+
+    if target.startswith(("official:", "repo:")):
+        image = _cached_online_preview(target)
+        if image is None:
+            print("(no preview image available)")
+        elif not _chafa(image):
+            print("(image preview needs chafa)")
+        print(f"\n{target.split(':', 1)[1]}  — not installed; Enter installs it")
+        return 0
+
+    theme_dir = Path(target) if os.sep in target else themes_home() / target
+    try:
+        theme = load_theme(theme_dir)
+    except SystemExit:
+        print(target)
+        return 0
+    image = _preview_image_path(theme_dir)
+    if image:
+        _chafa(image)
+    print(f"\n{theme.name}  ({theme.mode}, {len(theme.backgrounds)} wallpapers)")
+    print(_swatch_strip(theme.colors))
+    print(_swatch_strip({k: theme.colors.get(k, "") for k in
+                         ("lighter_background", "selection", "muted", "foreground",
+                          "bright_foreground", "orange", "brown", "dark_background")}))
+    return 0
 
 
 def cmd_pick(args: argparse.Namespace) -> int:
@@ -1026,7 +1137,7 @@ def cmd_pick(args: argparse.Namespace) -> int:
         for t in themes:
             print(f"{t.name}\t{t.mode}\t{len(t.backgrounds)}")
         return 0
-    choice = _fzf(rows, "theme> ")
+    choice = _fzf(rows, "theme> ", preview=f"{_self_cmd()} preview {{1}}")
     if choice == "@browse":
         return cmd_browse(argparse.Namespace(list=False, refresh=False, hold=getattr(args, "hold", False)))
     if choice is None:
@@ -1065,7 +1176,7 @@ def cmd_browse(args: argparse.Namespace) -> int:
         for row in rows:
             print(row.split("\t", 1)[1])
         return 0
-    choice = _fzf(rows, "install> ")
+    choice = _fzf(rows, "install> ", preview=f"{_self_cmd()} preview {{1}}")
     if choice is None:
         print("nothing chosen")
         _hold_open(args)
@@ -1131,7 +1242,7 @@ def cmd_wallpapers(args: argparse.Namespace) -> int:
         return 0
     home = str(Path.home())
     rows = [f"{p}\t{str(p).replace(home, '~')}" for p in images]
-    choice = _fzf(rows, "wallpaper> ")
+    choice = _fzf(rows, "wallpaper> ", preview=f"{_self_cmd()} preview {{1}}")
     if choice is None:
         print("fzf unavailable or nothing chosen")
         _hold_open(args)
@@ -1206,6 +1317,10 @@ def main(argv: list[str] | None = None) -> int:
     p_browse.add_argument("--refresh", action="store_true", help="bypass the 24h catalog cache")
     p_browse.add_argument("--hold", action="store_true", help="wait for Enter before exiting (for floating terminals)")
     p_browse.set_defaults(func=cmd_browse)
+
+    p_preview = sub.add_parser("preview", help="render a picker preview pane (used internally by fzf)")
+    p_preview.add_argument("target", help="theme name, official:<name>, repo:<owner/repo>, or an image path")
+    p_preview.set_defaults(func=cmd_preview)
 
     p_pick = sub.add_parser("pick", help="fuzzy-pick an installed theme and apply it (fzf)")
     p_pick.add_argument("--list", action="store_true", help="print installed themes and exit")

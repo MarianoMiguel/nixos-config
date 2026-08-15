@@ -23,6 +23,12 @@ useful for themes whose repo name doesn't match the `omarchy-<x>-theme`
 pattern the search filter expects. A `GITHUB_TOKEN` or `gh` login raises the
 API rate limits but isn't required.
 
+**Gallery previews:** all three pickers render a preview pane on the right —
+the theme's `preview.png` (or first wallpaper) drawn in the terminal via
+chafa, plus palette swatch strips. Not-yet-installed catalog entries fetch
+their preview image lazily into `~/.cache/themeport/previews/`. Wallpaper
+rows preview the image itself.
+
 **Keybindings** (`dotfiles/niri/themeport.kdl`, included from config.kdl):
 `Mod+Ctrl+T` opens the theme picker, `Mod+Ctrl+W` the wallpaper picker — each
 in a floating Ghostty window (`themeport.picker` app-id rule). The binds live

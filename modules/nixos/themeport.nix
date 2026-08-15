@@ -25,6 +25,8 @@ in
     # `themeport set` can apply icons.theme without a per-theme rebuild.
     pkgs.yaru-theme
     pkgs.adwaita-icon-theme
+    # renders theme preview images inside the fzf picker panes
+    pkgs.chafa
   ];
 
   # Browser accent theming, Omarchy-style: a two-key managed policy that both

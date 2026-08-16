@@ -6,7 +6,8 @@ Personal NixOS workstation and installer configuration.
 
 - `#standard`: portable workstation install for new machines.
 - `#bonhart`: same workstation profile with Bonhart-specific kernel tweaks.
-- `#installer`: graphical NixOS installer ISO that carries this repo.
+- `#balerion`: gaming PC profile for the Intel 13900KF and RTX 3080 Ti.
+- `#installer`: graphical Balerion installer ISO carrying the current repo snapshot.
 
 The standard install is intentionally plain UEFI + ext4. It does not configure
 LUKS, YubiKey unlock, or host-specific hardware imports.
@@ -14,17 +15,18 @@ LUKS, YubiKey unlock, or host-specific hardware imports.
 ## Build The Installer
 
 ```sh
-nix build .#installerIso
+./scripts/build-installer-iso.sh
 ```
 
-The ISO will be available under `result/iso/` when using a normal Nix
-installation. With nix-portable, resolve the store path with
-`nix path-info .#installerIso`.
+The script validates Balerion, builds from the literal current workspace
+(including new files not committed yet), and leaves the ISO under
+`result-installer/iso/`. Set `SKIP_VALIDATION=1` only when a faster ISO-only
+rebuild is intentional.
 
 To write the ISO to a USB drive and use the remaining space for payload files:
 
 ```sh
-sudo ./scripts/write-installer-usb.sh /dev/disk/by-id/<usb-disk> result/iso/mariano-nixos-installer.iso /path/to/mariano-personal-payload.tar.zst
+sudo ./scripts/write-installer-usb.sh /dev/disk/by-id/<usb-disk> result-installer/iso/mariano-nixos-balerion-installer.iso /path/to/mariano-personal-payload.tar.zst
 ```
 
 ## Install A Machine
@@ -32,11 +34,14 @@ sudo ./scripts/write-installer-usb.sh /dev/disk/by-id/<usb-disk> result/iso/mari
 Boot the custom installer and run:
 
 ```sh
-sudo /etc/nixos-config/scripts/install-standard-system.sh /dev/disk/by-id/<target-disk> <hostname>
+sudo install-balerion /dev/disk/by-id/<target-disk>
 ```
 
 Use `/dev/disk/by-id/...` for the target disk when possible. The installer
-script erases the target disk after an explicit confirmation prompt.
+script erases the target disk after an explicit confirmation prompt. Connect
+the live installer to Ethernet or Wi-Fi before installing; the ISO carries the
+configuration snapshot, while Nix downloads any target packages absent from
+the live environment.
 
 ## Personal Payload
 

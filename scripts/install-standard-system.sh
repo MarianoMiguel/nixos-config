@@ -5,6 +5,7 @@ usage() {
   cat >&2 <<'USAGE'
 Usage:
   install-standard-system.sh TARGET_DISK [hostname]
+  install-balerion TARGET_DISK
 
 Example:
   install-standard-system.sh /dev/disk/by-id/nvme-Samsung_... mariano-laptop
@@ -14,6 +15,12 @@ This erases TARGET_DISK and installs the #standard NixOS config with:
   - FAT32 /boot labeled BOOT
   - ext4 / labeled NIXOS
   - no LUKS and no YubiKey requirement
+
+Set NIXOS_CONFIGURATION=balerion to install the hardware-specific #balerion
+configuration with the same BOOT and NIXOS filesystem labels.
+
+The custom installer ISO provides `install-balerion` as the preferred shortcut
+for the gaming PC.
 USAGE
 }
 
@@ -25,6 +32,7 @@ fi
 disk=${1:?$(usage)}
 hostname=${2:-nixos-dev}
 repo=${NIXOS_CONFIG:-/etc/nixos-config}
+configuration=${NIXOS_CONFIGURATION:-standard}
 
 if [[ $EUID -ne 0 ]]; then
   echo "Run as root from the NixOS installer." >&2
@@ -41,8 +49,18 @@ if [[ ! "$hostname" =~ ^[A-Za-z0-9][A-Za-z0-9-]{0,62}$ ]]; then
   exit 1
 fi
 
+if [[ ! "$configuration" =~ ^[A-Za-z0-9][A-Za-z0-9_-]{0,62}$ ]]; then
+  echo "Invalid NixOS configuration: $configuration" >&2
+  exit 1
+fi
+
 if [[ ! -f "$repo/flake.nix" ]]; then
   echo "NixOS config repo not found at $repo. Set NIXOS_CONFIG=/path/to/repo." >&2
+  exit 1
+fi
+
+if ! nix eval --raw "path:$repo#nixosConfigurations.$configuration.config.networking.hostName" >/dev/null; then
+  echo "NixOS configuration not found or invalid: $configuration" >&2
   exit 1
 fi
 
@@ -95,14 +113,16 @@ mount "$boot_part" /mnt/boot
 
 rsync -a --delete "$repo/" /mnt/etc/nixos/
 
-cat > /mnt/etc/nixos/hosts/standard/local.nix <<EOF
+if [[ "$configuration" == standard ]]; then
+  cat > /mnt/etc/nixos/hosts/standard/local.nix <<EOF
 { ... }:
 
 {
   networking.hostName = "$hostname";
 }
 EOF
+fi
 
-nixos-install --flake /mnt/etc/nixos#standard --no-root-passwd
+nixos-install --flake "path:/mnt/etc/nixos#$configuration" --no-root-passwd
 
 echo "Install finished. Set Mariano's password with passwd mariano after reboot if needed."

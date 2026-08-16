@@ -7,7 +7,7 @@ Usage:
   write-installer-usb.sh USB_DISK ISO [PAYLOAD.tar.zst ...]
 
 Example:
-  sudo ./scripts/write-installer-usb.sh /dev/disk/by-id/usb-General_USB_Disk_FC0301A76E537-0:0 result/iso/mariano-nixos-installer.iso payload/*.tar.zst
+  sudo ./scripts/write-installer-usb.sh /dev/disk/by-id/usb-General_USB_Disk_FC0301A76E537-0:0 result-installer/iso/mariano-nixos-balerion-installer.iso payload/*.tar.zst
 
 This erases USB_DISK, writes the bootable NixOS ISO, then creates an exFAT
 partition labeled MARIANOUSB in the remaining space for payload files.

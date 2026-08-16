@@ -297,9 +297,9 @@
       "enabled": true
     }
   ],
-  "networkPreference": "auto",
-  "iconThemeDark": "Yaru-sage",
-  "iconThemeLight": "Yaru-sage",
+  "networkPreference": "wifi",
+  "iconThemeDark": "Yaru-magenta",
+  "iconThemeLight": "Yaru-magenta",
   "iconThemePerMode": false,
   "lastAppliedIconTheme": "",
   "cursorSettings": {

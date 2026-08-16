@@ -1,19 +1,23 @@
 {
-  "name": "koyanagi",
+  "name": "tokyo-night",
   "mode": "dark",
-  "icons": "Yaru-sage",
+  "icons": "Yaru-magenta",
   "vscode": {
-    "name": "Monokai Pro (Filter Spectrum)",
-    "extension": "monokai.theme-monokai-pro-vscode"
+    "name": "Tokyo Night",
+    "extension": "enkia.tokyo-night"
   },
   "has_theme_neovim": true,
   "backgrounds": [
-    "background_1.jpeg",
-    "background_2.jpg",
-    "background_3.jpg",
-    "background_4.jpg"
+    "0-winding-road.jpg",
+    "1-quattro.jpg",
+    "2-swirl-buck.jpg",
+    "3-sunset-lake.png",
+    "4-omakub.jpg",
+    "5-oma-cityscape.jpg",
+    "6-oma.jpg",
+    "omarchy.png"
   ],
   "paired_with": null,
-  "accent": "#7A7A7A",
-  "background": "#1C1C1E"
+  "accent": "#7aa2f7",
+  "background": "#1a1b26"
 }

@@ -148,6 +148,15 @@ layer-rule {
     match namespace="^quickshell$"
     place-within-backdrop true
 }
+// Quality settings for niri's native blur (dual kawase). Blur only renders
+// where a window/layer rule (or the ext-background-effect protocol) asks
+// for it — see the catch-all background-effect window rule below.
+blur {
+    passes 3
+    offset 3.0
+    noise 0.02
+    saturation 1.2
+}
 overview {
     workspace-shadow {
         off
@@ -261,6 +270,14 @@ window-rule {
     match app-id=r#"org.quickshell$"#
     match app-id=r#"com.danklinux.dms$"#
     open-floating true
+}
+// Blur behind every window: invisible on opaque windows, gives transparent
+// ones (ghostty at 0.9 etc.) a frosted backdrop. Uses the default xray mode,
+// which blurs the wallpaper once instead of the windows beneath — cheap.
+window-rule {
+    background-effect {
+        blur true
+    }
 }
 debug {
     honor-xdg-activation-with-invalid-serial

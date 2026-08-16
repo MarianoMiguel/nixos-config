@@ -112,5 +112,6 @@
   "chat.useAgentSkills": true,
   "workbench.preferredDarkColorTheme": "Vesper",
   "chat.mcp.gallery.enabled": true,
-  "workbench.colorTheme": "Monokai Pro (Filter Spectrum)",
+  "workbench.colorTheme": "Tokyo Night",
+  "workbench.startupEditor": "none",
 }

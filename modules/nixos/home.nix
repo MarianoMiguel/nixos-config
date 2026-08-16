@@ -74,6 +74,9 @@ in
               $DRY_RUN_CMD ${pkgs.coreutils}/bin/mkdir -p "$(${pkgs.coreutils}/bin/dirname "$target")"
               $DRY_RUN_CMD ${pkgs.coreutils}/bin/cp -a "$source" "$target"
             fi
+            # Nix store sources are read-only. Repair both freshly seeded and
+            # previously seeded state so applications can update it in place.
+            $DRY_RUN_CMD ${pkgs.coreutils}/bin/chmod -R u+rwX "$target"
           }
 
           ${lib.concatMapStringsSep "\n" (path: ''

@@ -627,10 +627,22 @@ def cmd_render(args: argparse.Namespace) -> int:
 # ----------------------------------------------------------------- apply/set
 
 
-def repo_root() -> Path:
-    if env := os.environ.get("THEMEPORT_REPO"):
+def xdg_state_home() -> Path:
+    if env := os.environ.get("XDG_STATE_HOME"):
         return Path(env)
-    return Path.home() / "Development/personal/nixos-config"
+    return Path.home() / ".local/state"
+
+
+def xdg_config_home() -> Path:
+    if env := os.environ.get("XDG_CONFIG_HOME"):
+        return Path(env)
+    return Path.home() / ".config"
+
+
+def state_root() -> Path:
+    if env := os.environ.get("THEMEPORT_STATE"):
+        return Path(env)
+    return xdg_state_home() / "nixos-config/dotfiles/themeport"
 
 
 def _run_quiet(cmd: list[str]) -> bool:
@@ -702,7 +714,7 @@ def _wait_newer(path: Path, baseline: float, timeout: float) -> bool:
     return False
 
 
-def apply_dms(state: Path, meta: dict, repo: Path, restart_ok: bool = True) -> bool:
+def apply_dms(state: Path, meta: dict, restart_ok: bool = True) -> bool:
     """Apply the theme to DMS, live when possible. Returns True if a running
     shell took it (so later steps may rely on the IPC socket being up).
 
@@ -713,7 +725,8 @@ def apply_dms(state: Path, meta: dict, repo: Path, restart_ok: bool = True) -> b
     loses a race against DMS's async matugen check, so custom themes came up
     with stale niri/nvim colors.
     """
-    theme_path = Path.home() / ".config/DankMaterialShell/themes/themeport/theme.json"
+    dms_config = xdg_config_home() / "DankMaterialShell"
+    theme_path = dms_config / "themes/themeport/theme.json"
     desired = {
         "currentThemeCategory": "custom",
         "currentThemeName": "custom",
@@ -725,11 +738,11 @@ def apply_dms(state: Path, meta: dict, repo: Path, restart_ok: bool = True) -> b
 
     if _dms_get("currentThemeName") is None:
         # shell not reachable: stage everything on disk for its next start
-        if _edit_json(repo / "dotfiles/dms/settings.json", {**desired, **icons}):
+        if _edit_json(dms_config / "settings.json", {**desired, **icons}):
             print("  dms: not running — settings staged for next start")
         theme_doc = json.loads((state / "dms/theme.json").read_text())
         live_doc = {"name": theme_doc["name"], "dark": theme_doc["dark"], "light": theme_doc["light"]}
-        (repo / "dotfiles/dms/theme.json").write_text(json.dumps(live_doc, indent=2) + "\n")
+        (dms_config / "theme.json").write_text(json.dumps(live_doc, indent=2) + "\n")
         return False
 
     # `settings set` both applies live and persists via DMS itself, so we never
@@ -798,7 +811,7 @@ def apply_icons(meta: dict) -> None:
     print(f"  icons: {name}")
 
 
-def apply_wallpapers(theme: Theme, meta: dict, repo: Path) -> None:
+def apply_wallpapers(theme: Theme, meta: dict) -> None:
     if not theme.backgrounds:
         return
     dest = Path.home() / "Pictures/Wallpapers/themeport" / theme.name
@@ -808,7 +821,10 @@ def apply_wallpapers(theme: Theme, meta: dict, repo: Path) -> None:
     first = dest / theme.backgrounds[0]
     if _dms_ipc("wallpaper", "set", str(first), timeout=15) is not None:
         print(f"  wallpaper: {first.name} ({len(theme.backgrounds)} copied)")
-    elif _edit_json(repo / "dotfiles/dms/session.json", {"wallpaperPath": str(first)}):
+    elif _edit_json(
+        xdg_state_home() / "DankMaterialShell/session.json",
+        {"wallpaperPath": str(first)},
+    ):
         # shell not reachable: stage it in session state for the next start
         print(f"  wallpaper: staged {first.name} for next DMS start ({len(theme.backgrounds)} copied)")
     else:
@@ -891,8 +907,8 @@ def _build_local_vsix(state: Path, meta: dict, out: Path) -> None:
         )
 
 
-def apply_vscode(state: Path, meta: dict, repo: Path) -> None:
-    settings = repo / "dotfiles/vscode/User/settings.json"
+def apply_vscode(state: Path, meta: dict) -> None:
+    settings = xdg_config_home() / "Code/User/settings.json"
     vscode = meta.get("vscode") or {}
     ext, label = vscode.get("extension"), vscode.get("name")
     editor = shutil.which("code") or shutil.which("codium")
@@ -936,7 +952,7 @@ def apply_browsers(meta: dict) -> None:
             print(f"  ! {exe}: policy refresh failed — restart the browser to apply")
 
 
-def apply_terminals(repo: Path) -> None:
+def apply_terminals() -> None:
     if shutil.which("tmux") and _run_quiet(["tmux", "has-session"]):
         conf = Path.home() / ".config/tmux/themeport.conf"
         if _run_quiet(["tmux", "source-file", str(conf)]):
@@ -972,10 +988,8 @@ def cmd_set(args: argparse.Namespace) -> int:
         pair_dir = Path(args.pair) if os.sep in args.pair else store / args.pair
         other = load_theme(pair_dir)
 
-    repo = repo_root()
-    state = repo / "dotfiles/themeport"
-    if not (repo / "flake.nix").is_file():
-        raise SystemExit(f"{repo} doesn't look like the nixos-config repo (set THEMEPORT_REPO)")
+    state = state_root()
+    state.mkdir(parents=True, exist_ok=True)
 
     files = render_all(theme, other)
     for rel, content in files.items():
@@ -987,13 +1001,13 @@ def cmd_set(args: argparse.Namespace) -> int:
 
     apply_mode(meta)
     apply_icons(meta)
-    apply_dms(state, meta, repo, restart_ok=not getattr(args, "no_restart", False))
-    apply_wallpapers(theme, meta, repo)
-    apply_vscode(state, meta, repo)
+    apply_dms(state, meta, restart_ok=not getattr(args, "no_restart", False))
+    apply_wallpapers(theme, meta)
+    apply_vscode(state, meta)
     apply_browsers(meta)
-    apply_terminals(repo)
+    apply_terminals()
     apply_btop()
-    print("done. rendered state lives in dotfiles/themeport/ — review with: git diff")
+    print(f"done. rendered state lives in {state}")
     return 0
 
 
@@ -1372,7 +1386,7 @@ def cmd_browse(args: argparse.Namespace) -> int:
 def _wallpaper_candidates(all_themes: bool) -> list[Path]:
     base = Path.home() / "Pictures/Wallpapers"
     dirs: list[Path] = []
-    state_meta = repo_root() / "dotfiles/themeport/meta.json"
+    state_meta = state_root() / "meta.json"
     current = None
     if state_meta.is_file():
         try:

@@ -1,7 +1,7 @@
 { pkgs, ... }:
 
 let
-  repo = "/home/mariano/Development/personal/nixos-config";
+  themeportState = "/home/mariano/.local/state/nixos-config/dotfiles/themeport";
 
   themeport = pkgs.stdenv.mkDerivation {
     pname = "themeport";
@@ -31,10 +31,10 @@ in
 
   # Browser accent theming, Omarchy-style: a two-key managed policy that both
   # Chromium-family browsers re-read live via --refresh-platform-policy. The
-  # policy file lives in the repo's writable tier so `themeport set` can swap
-  # it without a rebuild; /etc only holds a stable symlink to it.
+  # The policy file lives in Themeport's writable per-user state so a theme
+  # switch applies live without depending on the config checkout location.
   environment.etc."opt/chrome/policies/managed/themeport-color.json".source =
-    "${repo}/dotfiles/themeport/chrome/color.json";
+    "${themeportState}/chrome/color.json";
   environment.etc."brave/policies/managed/themeport-color.json".source =
-    "${repo}/dotfiles/themeport/chrome/color.json";
+    "${themeportState}/chrome/color.json";
 }

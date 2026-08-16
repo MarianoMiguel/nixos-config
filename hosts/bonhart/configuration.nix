@@ -18,8 +18,10 @@ in
     ../../modules/nixos/displaylink.nix
     ../../modules/nixos/local-web-hosting.nix
     ../../modules/nixos/intervals.nix
+    ../../modules/nixos/power.nix
     ../../modules/nixos/tv-remotes.nix
-  ] ++ lib.optional (builtins.pathExists ./local.nix) ./local.nix;
+  ]
+  ++ lib.optional (builtins.pathExists ./local.nix) ./local.nix;
 
   networking.hostName = "bonhart";
 

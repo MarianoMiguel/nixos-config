@@ -167,23 +167,6 @@
         "type": "github"
       }
     },
-    "granola-linux": {
-      "inputs": {
-        "nixpkgs": [
-          "nixpkgs"
-        ]
-      },
-      "locked": {
-        "lastModified": 1786065061,
-        "narHash": "sha256-ue1B9CxmE/aJEuv5l+VYQTwRwYdvXIeaX1567hFg1y0=",
-        "path": "/home/mariano/Development/personal/granola-linux",
-        "type": "path"
-      },
-      "original": {
-        "path": "/home/mariano/Development/personal/granola-linux",
-        "type": "path"
-      }
-    },
     "home-manager": {
       "inputs": {
         "nixpkgs": [
@@ -337,7 +320,6 @@
         "codex-desktop-linux": "codex-desktop-linux",
         "dms": "dms",
         "dms-codexbar": "dms-codexbar",
-        "granola-linux": "granola-linux",
         "home-manager": "home-manager",
         "librepods-rust": "librepods-rust",
         "nixpkgs": "nixpkgs_4",

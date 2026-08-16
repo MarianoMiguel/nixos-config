@@ -1,4 +1,11 @@
-{ codex-desktop-linux, granola-linux, lib, pkgs, pkgsUnstable, ... }:
+{
+  codex-desktop-linux,
+  config,
+  lib,
+  pkgs,
+  pkgsUnstable,
+  ...
+}:
 
 let
   system = pkgs.stdenv.hostPlatform.system;
@@ -33,7 +40,7 @@ let
       fi
     '';
   };
-  davinciResolve = pkgs.symlinkJoin {
+  davinciResolveAmd = pkgs.symlinkJoin {
     name = "davinci-resolve-with-rusticl";
     paths = [ pkgsUnstable.davinci-resolve ];
     nativeBuildInputs = [ pkgs.makeWrapper ];
@@ -43,6 +50,11 @@ let
         --set RUSTICL_ENABLE radeonsi
     '';
   };
+  davinciResolve =
+    if lib.elem "nvidia" config.services.xserver.videoDrivers then
+      pkgsUnstable.davinci-resolve
+    else
+      davinciResolveAmd;
   herdrVersion = "0.7.5";
   herdr = pkgs.stdenvNoCC.mkDerivation {
     pname = "herdr";
@@ -67,6 +79,7 @@ let
     };
   };
   beeperDesktop = pkgs.callPackage ../../packages/beeper.nix { };
+  granola = pkgs.callPackage ../../packages/granola-linux { };
   obsbotCameraControl = pkgs.callPackage ../../packages/obsbot-camera-control.nix { };
   wrapDesignAppImage =
     {
@@ -156,16 +169,16 @@ let
       sourceProvenance = with lib.sourceTypes; [ binaryNativeCode ];
     };
   };
-#   pencilDev = wrapDesignAppImage {
-#     pname = "pencil-dev";
-#     version = "1.1.57";
-#     url = "https://www.pencil.dev/download/Pencil-linux-x86_64.AppImage";
-#     hash = "sha256-nuf4jVPU5wsR1MwFXr0llAOGxQ4vwiQNEoiBwPwbAXQ=";
-#     desktopFile = "pencil.desktop";
-#     iconFile = "pencil.png";
-#     description = "Vector design canvas that lives alongside code";
-#     homepage = "https://www.pencil.dev/";
-#   };
+  #   pencilDev = wrapDesignAppImage {
+  #     pname = "pencil-dev";
+  #     version = "1.1.57";
+  #     url = "https://www.pencil.dev/download/Pencil-linux-x86_64.AppImage";
+  #     hash = "sha256-nuf4jVPU5wsR1MwFXr0llAOGxQ4vwiQNEoiBwPwbAXQ=";
+  #     desktopFile = "pencil.desktop";
+  #     iconFile = "pencil.png";
+  #     description = "Vector design canvas that lives alongside code";
+  #     homepage = "https://www.pencil.dev/";
+  #   };
 in
 
 {
@@ -210,9 +223,10 @@ in
   # browser startup while it is loaded. This browser-level policy prevents the
   # model from being downloaded and makes Chrome remove an existing copy.
   environment.etc."opt/chrome/policies/managed/disable-local-genai-model.json".text =
-    builtins.toJSON {
-      GenAILocalFoundationalModelSettings = 1;
-    };
+    builtins.toJSON
+      {
+        GenAILocalFoundationalModelSettings = 1;
+      };
 
   environment.sessionVariables = {
     BROWSER = "google-chrome-stable";
@@ -222,39 +236,42 @@ in
   services.flatpak.enable = true;
   services.packagekit.enable = true;
 
-  environment.systemPackages = with pkgs; [
-    brave
-    google-chrome
-    spotify
-    slack
-    beeperDesktop
-    lmstudio
-    obsidian
-    fluent-reader
-    obsbotCameraControl
-    figmaDesktop
-    vscode
-    gearlever
-    font-manager
-    zedEditorWithCli
-    localsend
-    mpv
-    qbittorrent
-    onlyoffice-desktopeditors
-    kdePackages.discover
-    kdePackages.kdenlive
-    handbrake
-    krita
-    inkscape
-    gimp
-    darktable
-    freecad
-    orca-slicer
-    # pencilDev
-  ] ++ [
-    davinciResolve
-    codex-desktop-linux.packages.${system}.codex-desktop
-    granola-linux.packages.${system}.default
-    herdr
-  ];
+  environment.systemPackages =
+    with pkgs;
+    [
+      brave
+      google-chrome
+      spotify
+      slack
+      beeperDesktop
+      lmstudio
+      obsidian
+      fluent-reader
+      obsbotCameraControl
+      figmaDesktop
+      vscode
+      gearlever
+      font-manager
+      zedEditorWithCli
+      localsend
+      mpv
+      qbittorrent
+      onlyoffice-desktopeditors
+      kdePackages.discover
+      kdePackages.kdenlive
+      handbrake
+      krita
+      inkscape
+      gimp
+      darktable
+      freecad
+      orca-slicer
+      # pencilDev
+    ]
+    ++ [
+      davinciResolve
+      codex-desktop-linux.packages.${system}.codex-desktop
+      granola
+      herdr
+    ];
 }

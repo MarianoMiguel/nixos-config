@@ -14,10 +14,6 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     codex-desktop-linux.url = "github:ilysenko/codex-desktop-linux";
-    granola-linux = {
-      url = "path:/home/mariano/Development/personal/granola-linux";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
     dms-codexbar = {
       url = "github:zakstam/dms-codexbar";
       flake = false;
@@ -36,7 +32,20 @@
     };
   };
 
-  outputs = inputs@{ self, nixpkgs, nixpkgs-unstable, home-manager, dms, quickshell, codex-desktop-linux, dms-codexbar, cat-dms, codeIsland-dms, ... }:
+  outputs =
+    inputs@{
+      self,
+      nixpkgs,
+      nixpkgs-unstable,
+      home-manager,
+      dms,
+      quickshell,
+      codex-desktop-linux,
+      dms-codexbar,
+      cat-dms,
+      codeIsland-dms,
+      ...
+    }:
     let
       system = "x86_64-linux";
       pkgsUnstable = import nixpkgs-unstable {
@@ -51,10 +60,12 @@
         dms.nixosModules.dank-material-shell
         dms.nixosModules.greeter
       ];
-      mkSystem = modules: nixpkgs.lib.nixosSystem {
-        inherit system specialArgs;
-        modules = sharedModules ++ modules;
-      };
+      mkSystem =
+        modules:
+        nixpkgs.lib.nixosSystem {
+          inherit system specialArgs;
+          modules = sharedModules ++ modules;
+        };
       standardSystem = mkSystem [
         ./hosts/standard/configuration.nix
       ];
@@ -66,6 +77,10 @@
       nixosConfigurations = {
         bonhart = mkSystem [
           ./hosts/bonhart/configuration.nix
+        ];
+
+        balerion = mkSystem [
+          ./hosts/balerion/configuration.nix
         ];
 
         standard = standardSystem;
@@ -89,6 +104,7 @@
       nixosModules."local-web-hosting" = import ./modules/nixos/local-web-hosting.nix;
 
       packages.${system} = {
+        granola = self.nixosConfigurations.bonhart.pkgs.callPackage ./packages/granola-linux { };
         librepods = inputs.librepods-rust.packages.${system}.default;
         installerIso = self.nixosConfigurations.installer.config.system.build.isoImage;
       };

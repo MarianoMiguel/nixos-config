@@ -45,8 +45,10 @@ QML can actually run; the fzf pickers are the dependable baseline.
    line-for-line port, so any theme Omarchy accepts, we accept.
 2. **Render** — the palette runs through Omarchy's vendored templates
    (`templates/omarchy/*.tpl`, pinned rev in `UPSTREAM_REV`) plus our own
-   targets. Outputs land in `dotfiles/themeport/` — the repo's writable tier —
-   so a theme switch is a `git diff`, and rollback is `git checkout`.
+   targets. Outputs land in
+   `~/.local/state/nixos-config/dotfiles/themeport/`, independent of where the
+   NixOS repository was cloned. Home Manager seeds this state from the checked-in
+   defaults the first time a host is activated and preserves later live changes.
 3. **Apply** — DMS is pointed at the generated theme
    (`~/.config/DankMaterialShell/themes/themeport/theme.json` via settings),
    and DMS's own matugen cascade re-themes Niri, VS Code, Zed, Firefox, GTK

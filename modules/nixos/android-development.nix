@@ -92,11 +92,13 @@ let
       export ANDROID_HOME=${lib.escapeShellArg androidHome}
       export ANDROID_SDK_ROOT="$ANDROID_HOME"
       export JAVA_HOME=${lib.escapeShellArg jdk.home}
+      export ANDROID_USER_HOME="''${HOME:?HOME is not set}/.android"
+      export ANDROID_AVD_HOME="$ANDROID_USER_HOME/avd"
 
       avd_name="''${1:-${defaultAvdName}}"
       api="''${2:-${defaultAvdApi}}"
       device="''${3:-${defaultAvdDevice}}"
-      avd_home="''${ANDROID_AVD_HOME:-''${HOME:?HOME is not set}/.android/avd}"
+      avd_home="$ANDROID_AVD_HOME"
 
       case "$api" in
         35|36)
@@ -154,13 +156,15 @@ let
       export ANDROID_HOME=${lib.escapeShellArg androidHome}
       export ANDROID_SDK_ROOT="$ANDROID_HOME"
       export JAVA_HOME=${lib.escapeShellArg jdk.home}
+      export ANDROID_USER_HOME="''${HOME:?HOME is not set}/.android"
+      export ANDROID_AVD_HOME="$ANDROID_USER_HOME/avd"
 
       avd_name="''${1:-${defaultAvdName}}"
       if [ "$#" -gt 0 ]; then
         shift
       fi
 
-      avd_home="''${ANDROID_AVD_HOME:-''${HOME:?HOME is not set}/.android/avd}"
+      avd_home="$ANDROID_AVD_HOME"
       if [ ! -d "$avd_home/$avd_name.avd" ]; then
         android-avd-create "$avd_name" ${lib.escapeShellArg defaultAvdApi} ${lib.escapeShellArg defaultAvdDevice}
       fi
@@ -182,6 +186,8 @@ let
       export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/${defaultNdkVersion}"
       export ANDROID_NDK_ROOT="$ANDROID_NDK_HOME"
       export JAVA_HOME=${lib.escapeShellArg jdk.home}
+      export ANDROID_USER_HOME="''${HOME:?HOME is not set}/.android"
+      export ANDROID_AVD_HOME="$ANDROID_USER_HOME/avd"
 
       status=0
 

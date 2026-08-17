@@ -296,6 +296,9 @@ recent-windows {
 // themeport theme/wallpaper pickers (Mod+Ctrl+T / Mod+Ctrl+W)
 include "themeport.kdl"
 
+// personal manifesto (Mod+Ctrl+M)
+include "manifesto.kdl"
+
 // Include dms files
 include "dms/colors.kdl"
 include "dms/layout.kdl"

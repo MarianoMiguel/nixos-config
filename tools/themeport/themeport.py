@@ -17,7 +17,9 @@ Stdlib only; Python >= 3.11 (tomllib). `render` is pure and runs anywhere;
 from __future__ import annotations
 
 import argparse
+import hashlib
 import io
+import ipaddress
 import json
 import os
 import re
@@ -27,6 +29,7 @@ import sys
 import tarfile
 import time
 import tomllib
+import urllib.parse
 import urllib.request
 from pathlib import Path
 
@@ -34,6 +37,7 @@ HERE = Path(__file__).resolve().parent
 TEMPLATES_DIR = HERE / "templates" / "omarchy"
 
 HEX_RE = re.compile(r"^#[0-9a-fA-F]{6}$")
+SAFE_THEME_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$")
 
 # ---------------------------------------------------------------- color utils
 
@@ -303,6 +307,15 @@ def load_theme(theme_dir: Path) -> Theme:
             f"{theme_dir}: neither colors.toml (Omarchy >= 4) nor alacritty.toml "
             "(legacy theme) found — not an Omarchy theme?"
         )
+    # Web protocol imports can carry a mode= override that takes precedence
+    # over the downloaded colors.toml. Keep that transport-level decision in
+    # sidecar metadata instead of rewriting the publisher's palette.
+    mode_override = theme_dir / ".themeport-mode"
+    if mode_override.is_file():
+        mode = mode_override.read_text().strip()
+        if mode not in ("dark", "light"):
+            raise SystemExit(f"{mode_override}: expected 'dark' or 'light'")
+        raw["mode"] = mode
     colors = resolve_colors(raw, theme_dir)
     missing = [k for k in ("background", "foreground", "red", "green", "blue") if not HEX_RE.match(colors.get(k, ""))]
     if missing:
@@ -606,6 +619,202 @@ def install_from_github(ref: str, dest_root: Path) -> Path:
     shutil.rmtree(staging, ignore_errors=True)
     (dest / ".themeport-source").write_text(f"{owner}/{repo}\n")
     return dest
+
+
+# --------------------------------------------------------- Aether web adapter
+
+
+def validate_theme_name(name: str) -> str:
+    if not SAFE_THEME_NAME_RE.fullmatch(name):
+        raise SystemExit(
+            f"invalid theme name {name!r}: expected 1-64 letters, numbers, dots, dashes or underscores"
+        )
+    return name
+
+
+def _validated_https_url(value: str, label: str) -> str:
+    """Accept only public-looking HTTPS URLs for browser-triggered imports."""
+    if any(char in value for char in "\r\n\t"):
+        raise SystemExit(f"{label} URL contains control characters")
+    value = value.replace(" ", "%20")
+    try:
+        parsed = urllib.parse.urlsplit(value)
+        port = parsed.port
+    except ValueError as exc:
+        raise SystemExit(f"invalid {label} URL: {exc}") from exc
+    if parsed.scheme.lower() != "https" or not parsed.hostname:
+        raise SystemExit(f"{label} must be an https:// URL")
+    if parsed.username is not None or parsed.password is not None:
+        raise SystemExit(f"{label} URL must not contain credentials")
+    host = parsed.hostname.rstrip(".").lower()
+    if host == "localhost" or host.endswith(".localhost"):
+        raise SystemExit(f"{label} URL must not target localhost")
+    try:
+        address = ipaddress.ip_address(host)
+    except ValueError:
+        address = None
+    if address is not None and not address.is_global:
+        raise SystemExit(f"{label} URL must not target a private or local address")
+    if port is not None and not (1 <= port <= 65535):
+        raise SystemExit(f"invalid {label} URL port")
+    return urllib.parse.urlunsplit(parsed)
+
+
+def _download_https(url: str, max_bytes: int) -> tuple[bytes, str, str]:
+    """Download one bounded HTTPS resource and re-check any redirect target."""
+    url = _validated_https_url(url, "download")
+    req = urllib.request.Request(url, headers={"User-Agent": "themeport/0.2"})  # noqa: S310
+    with urllib.request.urlopen(req, timeout=60) as resp:  # noqa: S310
+        final_url = _validated_https_url(resp.geturl(), "redirect target")
+        length = resp.headers.get("Content-Length")
+        if length and int(length) > max_bytes:
+            raise SystemExit(f"download is too large ({int(length)} bytes; limit {max_bytes})")
+        data = resp.read(max_bytes + 1)
+        if len(data) > max_bytes:
+            raise SystemExit(f"download exceeded the {max_bytes}-byte limit")
+        content_type = resp.headers.get_content_type().lower()
+    return data, content_type, final_url
+
+
+def _image_extension(data: bytes, content_type: str) -> str:
+    if data.startswith(b"\xff\xd8\xff"):
+        return ".jpg"
+    if data.startswith(b"\x89PNG\r\n\x1a\n"):
+        return ".png"
+    if data.startswith(b"RIFF") and data[8:12] == b"WEBP":
+        return ".webp"
+    raise SystemExit(
+        f"wallpaper is not a supported JPEG, PNG or WebP image (content-type {content_type!r})"
+    )
+
+
+def install_from_aether_urls(
+    name: str,
+    colors_url: str,
+    wallpaper_url: str | None,
+    dest_root: Path,
+    *,
+    mode: str | None = None,
+    source_label: str | None = None,
+    downloader=None,
+) -> Path:
+    """Turn the transport-neutral part of an aether:// link into an Omarchy
+    theme directory that the existing ThemePort renderer can consume."""
+    name = validate_theme_name(name)
+    colors_url = _validated_https_url(colors_url, "colors")
+    if wallpaper_url:
+        wallpaper_url = _validated_https_url(wallpaper_url, "wallpaper")
+    if mode not in (None, "dark", "light"):
+        raise SystemExit("mode must be 'dark' or 'light'")
+
+    fetch = downloader or _download_https
+    dest = dest_root / name
+    staging = dest_root / f".staging-{name}"
+    if staging.exists():
+        shutil.rmtree(staging)
+    staging.mkdir(parents=True)
+
+    try:
+        colors_data, _colors_type, final_colors_url = fetch(colors_url, 256 * 1024)
+        try:
+            colors_text = colors_data.decode("utf-8-sig")
+            tomllib.loads(colors_text)
+        except (UnicodeDecodeError, tomllib.TOMLDecodeError) as exc:
+            raise SystemExit(f"downloaded colors file is not valid UTF-8 TOML: {exc}") from exc
+        (staging / "colors.toml").write_text(colors_text)
+
+        final_wallpaper_url = None
+        if wallpaper_url:
+            wallpaper_data, wallpaper_type, final_wallpaper_url = fetch(
+                wallpaper_url, 64 * 1024 * 1024
+            )
+            suffix = _image_extension(wallpaper_data, wallpaper_type)
+            raw_name = Path(urllib.parse.unquote(urllib.parse.urlsplit(wallpaper_url).path)).stem
+            base_name = re.sub(r"[^A-Za-z0-9._-]+", "-", raw_name).strip(".-")[:96]
+            filename = f"{base_name or 'wallpaper'}{suffix}"
+            backgrounds = staging / "backgrounds"
+            backgrounds.mkdir()
+            (backgrounds / filename).write_bytes(wallpaper_data)
+
+        if mode:
+            (staging / ".themeport-mode").write_text(f"{mode}\n")
+        metadata = {
+            "protocol": "aether://apply",
+            "colors": final_colors_url,
+            "wallpaper": final_wallpaper_url,
+            "mode": mode,
+        }
+        (staging / ".themeport-import.json").write_text(json.dumps(metadata, indent=2) + "\n")
+        (staging / ".themeport-source").write_text(
+            f"{source_label or 'aether:' + urllib.parse.urlsplit(colors_url).hostname}\n"
+        )
+
+        load_theme(staging)  # validate the complete bundle before replacing anything
+        if dest.exists():
+            shutil.rmtree(dest)
+        shutil.move(str(staging), str(dest))
+        return dest
+    finally:
+        shutil.rmtree(staging, ignore_errors=True)
+
+
+def parse_aether_apply_url(raw_url: str) -> dict[str, object]:
+    """Parse the supported, safe subset of Aether's published web contract."""
+    if len(raw_url) > 16 * 1024:
+        raise SystemExit("aether URL is too long")
+    parsed = urllib.parse.urlsplit(raw_url)
+    if parsed.scheme.lower() != "aether" or parsed.netloc.lower() != "apply" or parsed.path not in ("", "/"):
+        raise SystemExit("expected an aether://apply?... URL")
+
+    params = urllib.parse.parse_qs(parsed.query, keep_blank_values=True)
+    supported = {
+        "external_theme", "colors", "wallpaper", "mode", "silent", "edit", "as_omarchy_theme"
+    }
+    unknown = sorted(set(params) - supported)
+    if unknown:
+        raise SystemExit(f"unsupported aether parameter(s): {', '.join(unknown)}")
+    duplicates = sorted(key for key, values in params.items() if len(values) != 1)
+    if duplicates:
+        raise SystemExit(f"duplicate aether parameter(s): {', '.join(duplicates)}")
+
+    def one(key: str) -> str | None:
+        values = params.get(key)
+        return values[0] if values else None
+
+    if one("external_theme"):
+        raise SystemExit("Aether blueprint JSON is not supported; use a colors.toml link")
+    edit = one("edit")
+    silent = one("silent")
+    for key, value in (("edit", edit), ("silent", silent)):
+        if value not in (None, "true", "false"):
+            raise SystemExit(f"{key} must be 'true' or 'false'")
+    if edit == "true":
+        raise SystemExit("ThemePort has no palette editor; choose the gallery's Apply action instead")
+
+    colors = one("colors")
+    if not colors:
+        raise SystemExit("this adapter requires a colors=https://... parameter")
+    colors = _validated_https_url(colors, "colors")
+    wallpaper = one("wallpaper")
+    if wallpaper:
+        wallpaper = _validated_https_url(wallpaper, "wallpaper")
+
+    mode = one("mode")
+    if mode not in (None, "dark", "light"):
+        raise SystemExit("mode must be 'dark' or 'light'")
+    name = one("as_omarchy_theme")
+    if not name:
+        parent = Path(urllib.parse.unquote(urllib.parse.urlsplit(colors).path)).parent.name
+        name = normalize_theme_name(parent or "web-theme")
+    name = validate_theme_name(name)
+    return {
+        "name": name,
+        "colors": colors,
+        "wallpaper": wallpaper,
+        "mode": mode,
+        # Deliberately informational: browser-dispatched imports always prompt.
+        "requested_silent": silent == "true" or one("as_omarchy_theme") is not None,
+    }
 
 
 # ------------------------------------------------------------------------ CLI
@@ -1016,6 +1225,18 @@ def cmd_set(args: argparse.Namespace) -> int:
 CATALOG_TTL = 24 * 3600
 OMARCHY_REPO = "basecamp/omarchy"
 OMARCHY_REF = "quattro"
+AETHER_GALLERY_INDEX = "https://bjarneo.github.io/omarchy-themes/wallpapers.js"
+AETHER_VARIANT_ORDER = ("palette", "gruvbox", "nord", "material", "aether")
+AETHER_VARIANT_LABELS = {
+    "palette": "Palette",
+    "gruvbox": "Warm",
+    "nord": "Cool",
+    "material": "Material",
+    "aether": "Aether",
+}
+AETHER_SWATCH_KEYS = (
+    "background", "accent", "red", "yellow", "green", "cyan", "blue", "magenta"
+)
 
 
 def _gh_token() -> str | None:
@@ -1042,6 +1263,124 @@ def _github_json(url: str) -> object:
 
 def _catalog_cache() -> Path:
     return Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) / "themeport/catalog.json"
+
+
+def _aether_catalog_cache() -> Path:
+    return _catalog_cache().parent / "aether-gallery.json"
+
+
+def _parse_aether_gallery_script(data: bytes) -> tuple[str, dict]:
+    try:
+        script = data.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise SystemExit(f"Omarchy Themes index is not UTF-8: {exc}") from exc
+    base_match = re.search(r"window\.WALLPAPERS_BASE_URL\s*=\s*(\"(?:[^\"\\]|\\.)*\")\s*;", script)
+    marker = "window.WALLPAPERS ="
+    start = script.find(marker)
+    if not base_match or start == -1:
+        raise SystemExit("Omarchy Themes index format changed (missing WALLPAPERS metadata)")
+    base_url = json.loads(base_match.group(1))
+    payload = script[start + len(marker):].strip()
+    if payload.endswith(";"):
+        payload = payload[:-1].rstrip()
+    try:
+        manifest = json.loads(payload)
+    except json.JSONDecodeError as exc:
+        raise SystemExit(f"Omarchy Themes index format changed: {exc}") from exc
+    if not isinstance(manifest, dict):
+        raise SystemExit("Omarchy Themes index is not an object")
+    return _validated_https_url(base_url, "gallery media base"), manifest
+
+
+def flatten_aether_catalog(manifest: dict, base_url: str) -> list[dict]:
+    """Normalize the website's wallpaper-first manifest into theme variants."""
+    base = _validated_https_url(base_url, "gallery media base").rstrip("/") + "/"
+    items: list[dict] = []
+    for wallpaper_path, raw_meta in manifest.items():
+        if not isinstance(wallpaper_path, str) or not isinstance(raw_meta, dict):
+            continue
+        raw_themes = raw_meta.get("themes")
+        if not isinstance(raw_themes, dict):
+            continue
+        schemes = list(AETHER_VARIANT_ORDER) + sorted(set(raw_themes) - set(AETHER_VARIANT_ORDER))
+        for scheme in schemes:
+            raw_theme = raw_themes.get(scheme)
+            if not isinstance(raw_theme, dict):
+                continue
+            colors_path = raw_theme.get("colors_toml")
+            name = raw_theme.get("name")
+            if not isinstance(colors_path, str) or not isinstance(name, str):
+                continue
+            try:
+                validate_theme_name(name)
+            except SystemExit:
+                continue
+            colors_url = urllib.parse.urljoin(base, colors_path.lstrip("/"))
+            wallpaper_url = urllib.parse.urljoin(base, wallpaper_path.lstrip("/"))
+            preview_path = raw_meta.get("thumb_path") or raw_meta.get("medium_path") or wallpaper_path
+            preview_url = urllib.parse.urljoin(base, str(preview_path).lstrip("/"))
+            item_id = hashlib.sha256(
+                f"{colors_url}\0{wallpaper_url}".encode()
+            ).hexdigest()[:20]
+            raw_colors = raw_theme.get("colors")
+            swatches = {
+                key: value
+                for key in AETHER_SWATCH_KEYS
+                if isinstance(raw_colors, dict)
+                and isinstance((value := raw_colors.get(key)), str)
+                and HEX_RE.match(value)
+            }
+            items.append({
+                "id": item_id,
+                "name": name,
+                "title": str(raw_meta.get("title") or Path(wallpaper_path).stem),
+                "variant": AETHER_VARIANT_LABELS.get(scheme, scheme.title()),
+                "scheme": scheme,
+                "tone": str(raw_meta.get("tone") or ""),
+                "color": str(raw_meta.get("color") or ""),
+                "dimensions": str(raw_meta.get("dimensions") or ""),
+                "colors": swatches,
+                "colors_url": colors_url,
+                "wallpaper_url": wallpaper_url,
+                "preview_url": preview_url,
+            })
+    return items
+
+
+def load_aether_catalog(refresh: bool = False) -> dict:
+    """Fetch the large gallery lazily and cache only its flattened adapter view."""
+    cache = _aether_catalog_cache()
+    if not refresh and cache.is_file() and time.time() - cache.stat().st_mtime < CATALOG_TTL:
+        try:
+            return json.loads(cache.read_text())
+        except json.JSONDecodeError:
+            pass
+
+    try:
+        data, _content_type, _final_url = _download_https(AETHER_GALLERY_INDEX, 64 * 1024 * 1024)
+        base_url, manifest = _parse_aether_gallery_script(data)
+        catalog = {
+            "source": AETHER_GALLERY_INDEX,
+            "base_url": base_url,
+            "items": flatten_aether_catalog(manifest, base_url),
+        }
+        cache.parent.mkdir(parents=True, exist_ok=True)
+        cache.write_text(json.dumps(catalog, separators=(",", ":")) + "\n")
+        return catalog
+    except (Exception, SystemExit):
+        # A stale cache is still more useful than dropping the whole source
+        # during a temporary network failure.
+        if cache.is_file():
+            try:
+                print("  ! Omarchy Themes refresh failed — using the stale cached catalog")
+                return json.loads(cache.read_text())
+            except json.JSONDecodeError:
+                pass
+        raise
+
+
+def _aether_item(catalog: dict, item_id: str) -> dict | None:
+    return next((item for item in catalog.get("items", []) if item.get("id") == item_id), None)
 
 
 def _user_sources() -> list[str]:
@@ -1251,12 +1590,17 @@ def _cached_online_preview(key: str) -> Path | None:
             f"https://raw.githubusercontent.com/{repo}/HEAD/{n}"
             for n in ("preview.png", "preview.jpg", "screenshot.png", "screenshot.jpg")
         ]
+    elif key.startswith("aether:"):
+        item = _aether_item(load_aether_catalog(), key.split(":", 1)[1])
+        if item and item.get("preview_url"):
+            urls = [item["preview_url"]]
     for url in urls:
         try:
-            with urllib.request.urlopen(url, timeout=15) as resp:  # noqa: S310
-                cached.write_bytes(resp.read())
+            data, content_type, _final_url = _download_https(url, 12 * 1024 * 1024)
+            _image_extension(data, content_type)
+            cached.write_bytes(data)
             return cached
-        except Exception:  # noqa: BLE001
+        except (Exception, SystemExit):  # noqa: BLE001
             continue
     cached.write_bytes(b"")  # negative cache: don't retry on every keystroke
     return None
@@ -1266,7 +1610,13 @@ def cmd_preview(args: argparse.Namespace) -> int:
     """Preview pane renderer for the fzf pickers (image + palette swatches)."""
     target = args.target
     if target == "@browse":
-        print("browse the online catalog: every official Omarchy theme + community themes")
+        print("browse online sources: official Omarchy, community repos, and Omarchy Themes")
+        return 0
+    if target == "@aether":
+        print(
+            "browse Omarchy Themes: 3,000+ wallpapers with Palette, Warm, Cool, "
+            "Material and Aether variants\n\nThe large index loads only after you choose this source."
+        )
         return 0
 
     if os.sep in target and Path(target).is_file():  # wallpaper path
@@ -1274,13 +1624,25 @@ def cmd_preview(args: argparse.Namespace) -> int:
             print(Path(target).name)
         return 0
 
-    if target.startswith(("official:", "repo:")):
+    if target.startswith(("official:", "repo:", "aether:")):
         image = _cached_online_preview(target)
         if image is None:
             print("(no preview image available)")
         elif not _chafa(image):
             print("(image preview needs chafa)")
-        print(f"\n{target.split(':', 1)[1]}  — not installed; Enter installs it")
+        if target.startswith("aether:"):
+            item = _aether_item(load_aether_catalog(), target.split(":", 1)[1])
+            if item:
+                print(
+                    f"\n{item['title']} — {item['variant']} "
+                    f"({item['tone']} {item['color']}, {item['dimensions']})"
+                )
+                print(_swatch_strip(item.get("colors", {})))
+                print(f"{item['name']} — Omarchy Themes / Aether adapter")
+            else:
+                print("\nOmarchy Themes entry is no longer in the cached catalog")
+        else:
+            print(f"\n{target.split(':', 1)[1]}  — not installed; Enter installs it")
         return 0
 
     theme_dir = Path(target) if os.sep in target else themes_home() / target
@@ -1300,28 +1662,42 @@ def cmd_preview(args: argparse.Namespace) -> int:
     return 0
 
 
+def _theme_picker_rows(themes: list[Theme]) -> list[str]:
+    """Keep online sources visible before the installed-theme rows."""
+    rows = [
+        "@aether\t[gallery] Omarchy Themes — 3,000+ wallpapers × five variants …",
+        "@browse\t[online]  Official Omarchy + community repositories …",
+    ]
+    rows.extend(
+        f"{theme.name}\t{_swatch(theme.colors)}  {theme.name} "
+        f"({theme.mode}, {len(theme.backgrounds)} wallpapers)"
+        for theme in themes
+    )
+    return rows
+
+
 def cmd_pick(args: argparse.Namespace) -> int:
     themes = _installed_themes()
-    if not themes:
-        print("no themes installed — try: themeport install owner/repo")
-        _hold_open(args)
-        return 1
-    rows = [
-        f"{t.name}\t{_swatch(t.colors)}  {t.name} ({t.mode}, {len(t.backgrounds)} wallpapers)"
-        for t in themes
-    ]
-    rows.append("@browse\t↓ browse online catalog (official + community) …")
+    rows = _theme_picker_rows(themes)
     if args.list:
         for t in themes:
             print(f"{t.name}\t{t.mode}\t{len(t.backgrounds)}")
         return 0
     choice = _fzf(rows, "theme> ", preview=f"{_self_cmd()} preview {{1}}")
+    if choice == "@aether":
+        return cmd_gallery(argparse.Namespace(
+            list=False,
+            refresh=False,
+            hold=getattr(args, "hold", False),
+        ))
     if choice == "@browse":
         return cmd_browse(argparse.Namespace(list=False, refresh=False, hold=getattr(args, "hold", False)))
     if choice is None:
-        print("fzf unavailable or nothing chosen — themes:")
+        print("fzf unavailable or nothing chosen — installed themes:")
         for t in themes:
             print(f"  {t.name} ({t.mode})")
+        if not themes:
+            print("  (none; use `themeport gallery` or `themeport browse`)")
         _hold_open(args)
         return 1
     rc = cmd_set(argparse.Namespace(name=choice, pair=None))
@@ -1333,12 +1709,13 @@ def cmd_browse(args: argparse.Namespace) -> int:
     try:
         catalog = load_catalog(refresh=getattr(args, "refresh", False))
     except Exception as exc:  # noqa: BLE001
-        print(f"couldn't load the online catalog ({exc}) — check network/rate limits")
-        _hold_open(args)
-        return 1
+        print(f"  ! GitHub catalogs unavailable ({exc}) — Omarchy Themes is still available")
+        catalog = {"official": [], "community": []}
     installed = {t.name for t in _installed_themes()}
 
-    rows: list[str] = []
+    rows: list[str] = [
+        "@aether\t[gallery]   Omarchy Themes — 3,000+ wallpaper-derived themes …"
+    ]
     for name in catalog.get("official", []):
         mark = " [installed]" if name in installed else ""
         rows.append(f"official:{name}\t[official]  {name}{mark}")
@@ -1360,6 +1737,13 @@ def cmd_browse(args: argparse.Namespace) -> int:
         _hold_open(args)
         return 1
 
+    if choice == "@aether":
+        return cmd_gallery(argparse.Namespace(
+            list=False,
+            refresh=getattr(args, "refresh", False),
+            hold=getattr(args, "hold", False),
+        ))
+
     kind, _, ref = choice.partition(":")
     root = themes_home()
     root.mkdir(parents=True, exist_ok=True)
@@ -1379,6 +1763,119 @@ def cmd_browse(args: argparse.Namespace) -> int:
     rc = 0
     if answer in ("", "y", "yes"):
         rc = cmd_set(argparse.Namespace(name=theme.name, pair=None))
+    _hold_open(args)
+    return rc
+
+
+def cmd_gallery(args: argparse.Namespace) -> int:
+    print("loading Omarchy Themes gallery (the first load downloads its large index) ...")
+    try:
+        catalog = load_aether_catalog(refresh=getattr(args, "refresh", False))
+    except (Exception, SystemExit) as exc:
+        print(f"couldn't load the Omarchy Themes gallery ({exc})")
+        _hold_open(args)
+        return 1
+
+    items = catalog.get("items", [])
+    installed = {t.name for t in _installed_themes()}
+    rows = []
+    for item in items:
+        mark = " [installed]" if item["name"] in installed else ""
+        details = " ".join(x for x in (item["tone"], item["color"], item["dimensions"]) if x)
+        rows.append(
+            f"aether:{item['id']}\t[{item['variant']:<8}] {item['title']}  {details}{mark}"
+        )
+
+    if args.list:
+        for row in rows:
+            print(row.split("\t", 1)[1])
+        return 0
+    choice = _fzf(rows, "gallery> ", preview=f"{_self_cmd()} preview {{1}}")
+    if choice is None:
+        print("fzf unavailable or nothing chosen")
+        _hold_open(args)
+        return 1
+    item = _aether_item(catalog, choice.split(":", 1)[1])
+    if item is None:
+        print("the selected gallery entry disappeared; refresh and try again")
+        _hold_open(args)
+        return 1
+
+    root = themes_home()
+    root.mkdir(parents=True, exist_ok=True)
+    try:
+        dest = install_from_aether_urls(
+            item["name"],
+            item["colors_url"],
+            item["wallpaper_url"],
+            root,
+            mode=item["tone"] if item["tone"] in ("dark", "light") else None,
+            source_label=f"omarchy-themes:{item['name']}",
+        )
+        theme = load_theme(dest)
+    except (Exception, SystemExit) as exc:
+        print(f"install failed: {exc}")
+        _hold_open(args)
+        return 1
+    print(f"installed '{theme.name}' ({theme.mode}, {len(theme.backgrounds)} wallpaper) from Omarchy Themes")
+
+    try:
+        answer = input(f"apply '{theme.name}' now? [Y/n] ").strip().lower()
+    except EOFError:
+        answer = "n"
+    rc = 0
+    if answer in ("", "y", "yes"):
+        rc = cmd_set(argparse.Namespace(name=theme.name, pair=None, no_restart=False))
+    _hold_open(args)
+    return rc
+
+
+def cmd_handle_url(args: argparse.Namespace) -> int:
+    """Desktop protocol entrypoint. It never honors silent browser requests."""
+    try:
+        spec = parse_aether_apply_url(args.url)
+    except (Exception, SystemExit) as exc:
+        print(f"ThemePort could not import this Aether link:\n  {exc}")
+        _hold_open(args)
+        return 2
+
+    print("ThemePort Aether adapter")
+    print(f"  theme:     {spec['name']}")
+    print(f"  colors:    {spec['colors']}")
+    if spec["wallpaper"]:
+        print(f"  wallpaper: {spec['wallpaper']}")
+    if spec["mode"]:
+        print(f"  mode:      {spec['mode']}")
+    if spec["requested_silent"]:
+        print("  safety:    the link requested silent apply; ThemePort requires confirmation")
+
+    if not args.yes:
+        try:
+            answer = input(f"\nInstall and apply '{spec['name']}'? [y/N] ").strip().lower()
+        except EOFError:
+            answer = ""
+        if answer not in ("y", "yes"):
+            print("cancelled; nothing was downloaded or changed")
+            _hold_open(args)
+            return 0
+
+    root = themes_home()
+    root.mkdir(parents=True, exist_ok=True)
+    try:
+        dest = install_from_aether_urls(
+            spec["name"],
+            spec["colors"],
+            spec["wallpaper"],
+            root,
+            mode=spec["mode"],
+            source_label=f"aether:{urllib.parse.urlsplit(spec['colors']).hostname}",
+        )
+        theme = load_theme(dest)
+        print(f"installed '{theme.name}' ({theme.mode}, {len(theme.backgrounds)} wallpaper)")
+        rc = cmd_set(argparse.Namespace(name=theme.name, pair=None, no_restart=False))
+    except (Exception, SystemExit) as exc:
+        print(f"import failed: {exc}")
+        rc = 1
     _hold_open(args)
     return rc
 
@@ -1491,11 +1988,31 @@ def main(argv: list[str] | None = None) -> int:
                             "adopting the themeport slot from another DMS theme does)")
     p_set.set_defaults(func=cmd_set)
 
-    p_browse = sub.add_parser("browse", help="pick from the online catalog (official Omarchy themes + community) and install")
+    p_browse = sub.add_parser(
+        "browse",
+        help="pick from the online catalogs (official, community, or Omarchy Themes) and install",
+    )
     p_browse.add_argument("--list", action="store_true", help="print the catalog and exit")
     p_browse.add_argument("--refresh", action="store_true", help="bypass the 24h catalog cache")
     p_browse.add_argument("--hold", action="store_true", help="wait for Enter before exiting (for floating terminals)")
     p_browse.set_defaults(func=cmd_browse)
+
+    p_gallery = sub.add_parser(
+        "gallery", help="browse the Omarchy Themes wallpaper-derived catalog through the Aether adapter"
+    )
+    p_gallery.add_argument("--list", action="store_true", help="print the flattened gallery and exit")
+    p_gallery.add_argument("--refresh", action="store_true", help="bypass the 24h gallery cache")
+    p_gallery.add_argument("--hold", action="store_true", help="wait for Enter before exiting (for floating terminals)")
+    p_gallery.set_defaults(func=cmd_gallery)
+
+    p_handle = sub.add_parser("handle-url", help="handle a browser-dispatched aether://apply URL")
+    p_handle.add_argument("url")
+    p_handle.add_argument(
+        "--yes", action="store_true",
+        help="confirm explicitly from the command line (desktop/browser dispatch never passes this)",
+    )
+    p_handle.add_argument("--hold", action="store_true", help="wait for Enter before exiting (for floating terminals)")
+    p_handle.set_defaults(func=cmd_handle_url)
 
     p_preview = sub.add_parser("preview", help="render a picker preview pane (used internally by fzf)")
     p_preview.add_argument("target", help="theme name, official:<name>, repo:<owner/repo>, or an image path")

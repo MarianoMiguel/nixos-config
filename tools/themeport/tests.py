@@ -144,12 +144,121 @@ def main() -> int:
         except Exception as exc:  # noqa: BLE001
             failures.append(f"[legacy] blew up: {exc}")
 
+        # Aether protocol parsing: URL-decoding, transport flags and the
+        # explicit safety boundary around browser-dispatched imports.
+        try:
+            query = themeport.urllib.parse.urlencode({
+                "colors": "https://themes.example/northern/colors.toml",
+                "wallpaper": "https://images.example/wall paper.jpg",
+                "mode": "light",
+                "silent": "true",
+                "as_omarchy_theme": "northern-light",
+            })
+            spec = themeport.parse_aether_apply_url(f"aether://apply?{query}")
+            check(spec["name"] == "northern-light", "[aether-url] theme name not parsed")
+            check(spec["mode"] == "light", "[aether-url] mode not parsed")
+            check(spec["requested_silent"] is True, "[aether-url] silent request not surfaced")
+            check("wall%20paper.jpg" in spec["wallpaper"], "[aether-url] wallpaper URL not preserved")
+        except BaseException as exc:  # noqa: BLE001
+            failures.append(f"[aether-url] valid URL blew up: {exc}")
+
+        invalid_aether_urls = {
+            "http": "aether://apply?colors=http%3A%2F%2Fthemes.example%2Fcolors.toml",
+            "private": "aether://apply?colors=https%3A%2F%2F127.0.0.1%2Fcolors.toml",
+            "edit": "aether://apply?colors=https%3A%2F%2Fthemes.example%2Fcolors.toml&edit=true",
+            "blueprint": "aether://apply?external_theme=https%3A%2F%2Fthemes.example%2Ftheme.json",
+            "missing-colors": "aether://apply?wallpaper=https%3A%2F%2Fimages.example%2Fwall.jpg",
+        }
+        for label, url in invalid_aether_urls.items():
+            try:
+                themeport.parse_aether_apply_url(url)
+                failures.append(f"[aether-url-{label}] expected rejection, got success")
+            except SystemExit:
+                pass
+
+        # Website adapter: flatten the wallpaper-first manifest into selectable
+        # theme variants without coupling the rest of ThemePort to its schema.
+        try:
+            mini_manifest = {
+                "dark/blue/wall.jpg": {
+                    "title": "Blue Wall",
+                    "tone": "dark",
+                    "color": "blue",
+                    "dimensions": "1920x1080",
+                    "thumb_path": "cache/thumb/dark/blue/wall.jpg",
+                    "themes": {
+                        "palette": {
+                            "name": "blue-wall-palette",
+                            "colors_toml": "omarchy-themes/blue-wall-palette/colors.toml",
+                            "colors": {"background": "#101010", "accent": "#3366ff"},
+                        }
+                    },
+                }
+            }
+            script = (
+                'window.WALLPAPERS_BASE_URL = "https://media.example";\n'
+                f"window.WALLPAPERS = {json.dumps(mini_manifest)};\n"
+            ).encode()
+            base_url, parsed_manifest = themeport._parse_aether_gallery_script(script)
+            adapted = themeport.flatten_aether_catalog(parsed_manifest, base_url)
+            check(len(adapted) == 1, f"[aether-catalog] got {len(adapted)} rows, want 1")
+            check(adapted[0]["variant"] == "Palette", "[aether-catalog] variant label mismatch")
+            check(adapted[0]["wallpaper_url"].endswith("/dark/blue/wall.jpg"),
+                  "[aether-catalog] wallpaper URL mismatch")
+        except BaseException as exc:  # noqa: BLE001
+            failures.append(f"[aether-catalog] blew up: {exc}")
+
+        # Download adapter: bounded fetches produce a normal local theme store
+        # entry, and URL mode= wins without mutating the downloaded TOML.
+        try:
+            colors_payload = (FIXTURES / "tokyo-night/colors.toml").read_bytes()
+            calls: list[tuple[str, int]] = []
+
+            def fake_download(url: str, limit: int) -> tuple[bytes, str, str]:
+                calls.append((url, limit))
+                if url.endswith("colors.toml"):
+                    return colors_payload, "text/plain", url
+                return b"\x89PNG\r\n\x1a\nfixture", "image/png", url
+
+            store = tmpdir / "aether-store"
+            store.mkdir()
+            imported = themeport.install_from_aether_urls(
+                "web-fixture",
+                "https://themes.example/web-fixture/colors.toml",
+                "https://images.example/wall.jpg",
+                store,
+                mode="light",
+                source_label="omarchy-themes:web-fixture",
+                downloader=fake_download,
+            )
+            web_theme = themeport.load_theme(imported)
+            check(web_theme.mode == "light", f"[aether-install] mode {web_theme.mode!r} != light")
+            check(web_theme.backgrounds == ["wall.png"],
+                  f"[aether-install] backgrounds {web_theme.backgrounds!r}")
+            check((imported / "colors.toml").read_bytes() == colors_payload,
+                  "[aether-install] downloaded colors were rewritten")
+            check(len(calls) == 2 and calls[0][1] < calls[1][1],
+                  "[aether-install] fetch size bounds not used")
+        except BaseException as exc:  # noqa: BLE001
+            failures.append(f"[aether-install] blew up: {exc}")
+
+        # The Niri hotkey's first picker must expose the new source directly,
+        # even on a machine with no downloaded themes yet.
+        try:
+            picker_rows = themeport._theme_picker_rows([])
+            check(picker_rows[0].startswith("@aether\t"),
+                  "[picker-sources] Omarchy Themes is not the first visible source")
+            check(any(row.startswith("@browse\t") for row in picker_rows),
+                  "[picker-sources] official/community source missing")
+        except BaseException as exc:  # noqa: BLE001
+            failures.append(f"[picker-sources] blew up: {exc}")
+
     if failures:
         print(f"FAIL ({len(failures)}):")
         for f in failures:
             print(f"  - {f}")
         return 1
-    print(f"OK — {len(themes)} fixture themes + pairing + legacy all validated")
+    print(f"OK — {len(themes)} fixture themes + pairing + legacy + Aether adapter all validated")
     return 0
 
 

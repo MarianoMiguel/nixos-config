@@ -10,20 +10,29 @@ themeport set tokyo-night --pair catppuccin-latte   # dark + light slots
 themeport list
 themeport pick          # fzf theme picker with color swatches
 themeport wallpapers    # fzf wallpaper picker for the current theme (--all for every theme)
-themeport browse        # online catalog: all 22 official Omarchy themes + community themes by stars
+themeport browse        # official/community catalog + the Omarchy Themes gallery source
+themeport gallery       # direct: 3,000+ wallpapers × five Aether-generated variants
 ```
 
 `browse` lists every theme shipped with Omarchy (fetched live from
 basecamp/omarchy, cached 24h — `--refresh` to bust) plus GitHub community
 themes sorted by stars, marks what's already installed, and installs + applies
-your selection. It's also reachable from the bottom of `themeport pick`, so
-Mod+Ctrl+T covers both installed and not-yet-downloaded themes. Pin extra
-repos in `~/.config/themeport/sources.json` (`{"repos": ["owner/repo"]}`) —
-useful for themes whose repo name doesn't match the `omarchy-<x>-theme`
-pattern the search filter expects. A `GITHUB_TOKEN` or `gh` login raises the
-API rate limits but isn't required.
+your selection. Its **Omarchy Themes** row opens bjarneo's wallpaper-first
+gallery as an additional source: each wallpaper becomes five selectable
+Palette/Warm/Cool/Material/Aether themes. The gallery's large index is fetched
+only after that source is chosen and cached for 24 hours. Everything is also
+reachable from the bottom of `themeport pick`, so Mod+Ctrl+T covers installed
+and not-yet-downloaded themes. Pin extra repos in
+`~/.config/themeport/sources.json` (`{"repos": ["owner/repo"]}`) — useful for
+themes whose repo name doesn't match the `omarchy-<x>-theme` pattern the search
+filter expects. A `GITHUB_TOKEN` or `gh` login raises the GitHub API rate limits
+but isn't required.
 
-**Gallery previews:** all three pickers render a preview pane on the right —
+`themeport pick` shows **Omarchy Themes** and **Official Omarchy + community**
+as its first two rows, before installed themes, so both sources are visible
+immediately from `Mod+Ctrl+T`.
+
+**Gallery previews:** all picker views render a preview pane on the right —
 the theme's `preview.png` (or first wallpaper) drawn in the terminal via
 chafa, plus palette swatch strips. Not-yet-installed catalog entries fetch
 their preview image lazily into `~/.cache/themeport/previews/`. Wallpaper
@@ -36,6 +45,29 @@ in their own include because DMS regenerates `dms/binds.kdl` and would drop
 custom entries. A native DMS/Quickshell plugin picker (like dms-codexbar)
 would be a nicer follow-up, but needs to be developed on the Linux box where
 QML can actually run; the fzf pickers are the dependable baseline.
+
+## Aether protocol adapter
+
+The NixOS module registers `themeport-aether-handler.desktop` for
+`x-scheme-handler/aether`. This makes the **Apply** buttons on
+`https://bjarneo.github.io/omarchy-themes/` useful without installing Aether:
+the handler translates the link's remote `colors.toml`, wallpaper, mode and
+theme name into a normal ThemePort theme, then uses the existing render/apply
+pipeline.
+
+Browser links always open a floating confirmation terminal that shows both
+download sources. ThemePort intentionally ignores `silent=true`: Aether's own
+protocol documentation notes that any webpage can construct a silent-apply
+link. Imports accept only bounded public HTTPS downloads and JPEG/PNG/WebP
+wallpapers. Aether blueprint JSON, wallpaper-only links and the Aether editor
+action are outside this adapter; the gallery's **Apply** action is supported.
+
+The same parser can be inspected manually without changing anything by
+answering no at the prompt:
+
+```
+themeport handle-url 'aether://apply?colors=https%3A%2F%2Fexample.com%2Fcolors.toml'
+```
 
 ## How it works
 
@@ -78,8 +110,9 @@ either.
 
 ## Nix wiring (one-time, already in this repo)
 
-- `modules/nixos/themeport.nix` — packages the CLI, ships Yaru/Adwaita icon
-  sets, symlinks the browser policy from `/etc` into the writable tier.
+- `modules/nixos/themeport.nix` — packages the CLI and Aether protocol handler,
+  declares its MIME association, ships Yaru/Adwaita icon sets, and symlinks the
+  browser policy from `/etc` into the writable tier.
 - `modules/nixos/home.nix` — out-of-store symlinks for every rendered file;
   VS Code `settings.json` moved to the writable tier.
 - `dotfiles/ghostty/config.ghostty` → `theme = themeport`;
@@ -92,8 +125,9 @@ either.
 
 `./update-templates.sh` re-vendors Omarchy's templates from the quattro
 branch and records the rev — that is how upstream theming improvements arrive
-here. Then run `python3 tests.py` (validates 10 official fixture themes, a
-dark+light pairing, and a legacy alacritty-only theme) and rebuild.
+here. Then run `python3 tests.py` (validates the official fixture themes, a
+dark+light pairing, a legacy alacritty-only theme, and the Aether URL/catalog/
+download adapters) and rebuild.
 
 ## Verification status
 

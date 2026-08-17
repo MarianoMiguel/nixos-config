@@ -303,3 +303,9 @@ include "dms/alttab.kdl"
 include "dms/binds.kdl"
 include "dms/outputs.kdl"
 include "dms/cursor.kdl"
+
+// User-controlled layout toggles load last so they can temporarily override
+// DMS values without modifying DMS's generated files.
+include "style-toggles.kdl"
+include "toggles/gaps.kdl"
+include "toggles/radius.kdl"

@@ -35,6 +35,47 @@ let
     echo "Timed out waiting for org.kde.StatusNotifierWatcher" >&2
     exit 1
   '';
+  niriStyleToggle = pkgs.writeShellApplication {
+    name = "niri-style-toggle";
+    runtimeInputs = with pkgs; [ coreutils gnugrep ];
+    text = ''
+      set -eu
+
+      state_dir="''${XDG_STATE_HOME:-$HOME/.local/state}/nixos-config/dotfiles/niri/toggles"
+      mkdir -p "$state_dir"
+
+      case "''${1:-}" in
+        gaps)
+          target="$state_dir/gaps.kdl"
+          if grep -q '^[[:space:]]*gaps 0[[:space:]]*$' "$target" 2>/dev/null; then
+            printf '%s\n' '// Window gaps use the current DMS value.' > "$target"
+          else
+            printf '%s\n' \
+              '// Window gaps temporarily disabled.' \
+              'layout {' \
+              '    gaps 0' \
+              '}' > "$target"
+          fi
+          ;;
+        radius)
+          target="$state_dir/radius.kdl"
+          if grep -q '^[[:space:]]*geometry-corner-radius 0[[:space:]]*$' "$target" 2>/dev/null; then
+            printf '%s\n' '// Window corners use the current DMS radius.' > "$target"
+          else
+            printf '%s\n' \
+              '// Window corner radius temporarily disabled.' \
+              'window-rule {' \
+              '    geometry-corner-radius 0' \
+              '}' > "$target"
+          fi
+          ;;
+        *)
+          printf 'usage: niri-style-toggle gaps|radius\n' >&2
+          exit 2
+          ;;
+      esac
+    '';
+  };
   codexbarUnwrapped = pkgs.stdenvNoCC.mkDerivation {
     pname = "codexbar-unwrapped";
     version = "0.29.0";
@@ -289,6 +330,7 @@ in
     wl-mirror
     wtype
     xwayland-satellite
+    niriStyleToggle
     codexbar
     codexbarCookieImporter
     codexbarSslHelper

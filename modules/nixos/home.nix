@@ -18,6 +18,8 @@ let
     "niri/dms/outputs.kdl"
     "niri/dms/windowrules.kdl"
     "niri/dms/wpblur.kdl"
+    "niri/toggles/gaps.kdl"
+    "niri/toggles/radius.kdl"
     "nvim/lua/plugins/dankcolors.lua"
     "themeport"
     "vscode/User/settings.json"
@@ -121,6 +123,7 @@ in
           "alacritty/alacritty.toml".source = ../../dotfiles/alacritty/alacritty.toml;
 
           "niri/config.kdl".source = ../../dotfiles/niri/config.kdl;
+          "niri/style-toggles.kdl".source = ../../dotfiles/niri/style-toggles.kdl;
           "niri/themeport.kdl".source = ../../dotfiles/niri/themeport.kdl;
           "niri/dms/alttab.kdl".source = mutableDotfile "niri/dms/alttab.kdl";
           "niri/dms/binds.kdl".source = mutableDotfile "niri/dms/binds.kdl";
@@ -130,6 +133,8 @@ in
           "niri/dms/outputs.kdl".source = mutableDotfile "niri/dms/outputs.kdl";
           "niri/dms/windowrules.kdl".source = mutableDotfile "niri/dms/windowrules.kdl";
           "niri/dms/wpblur.kdl".source = mutableDotfile "niri/dms/wpblur.kdl";
+          "niri/toggles/gaps.kdl".source = mutableDotfile "niri/toggles/gaps.kdl";
+          "niri/toggles/radius.kdl".source = mutableDotfile "niri/toggles/radius.kdl";
 
           "matugen/config.toml".source = ../../dotfiles/matugen/config.toml;
           "matugen/templates/neovim-dankcolors.lua".source =

@@ -225,6 +225,8 @@ in
     ANDROID_SDK_ROOT = androidHome;
     ANDROID_NDK_HOME = "${androidHome}/ndk/${defaultNdkVersion}";
     ANDROID_NDK_ROOT = "${androidHome}/ndk/${defaultNdkVersion}";
+    ANDROID_USER_HOME = "/home/mariano/.android";
+    ANDROID_AVD_HOME = "/home/mariano/.android/avd";
     JAVA_HOME = jdk.home;
   };
 

@@ -15,6 +15,7 @@ in
   imports = [
     ../nixos-dev/hardware-configuration.nix
     ../../profiles/workstation.nix
+    ../../modules/nixos/android-development.nix
     ../../modules/nixos/displaylink.nix
     ../../modules/nixos/local-web-hosting.nix
     ../../modules/nixos/intervals.nix

@@ -8,6 +8,7 @@
 {
   imports = [
     ../../modules/nixos/hardware-standard.nix
+    ../../modules/nixos/android-development.nix
     ../../profiles/workstation.nix
   ]
   ++ lib.optional (builtins.pathExists ./local.nix) ./local.nix;

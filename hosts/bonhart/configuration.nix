@@ -66,8 +66,12 @@ in
   # 0x800 = DC_DISABLE_IPS, 0x10 = DC_DISABLE_PSR.
   boot.kernelParams = [ "amdgpu.dcdebugmask=0x810" ];
 
+  # Resume hibernation from the persistent 60 GiB swap device. The initrd
+  # unlocks this LUKS mapping before systemd attempts to restore the image.
+  boot.resumeDevice = "/dev/mapper/luks-c59b3968-6411-494d-b849-346ed55773e4";
+
   # This machine is also used unattended as a remote agent host. Keep it awake
-  # when plugged in with the lid closed, while retaining normal battery suspend.
+  # when plugged in with the lid closed, while retaining battery hibernation.
   services.logind.settings.Login.HandleLidSwitchExternalPower = lib.mkForce "ignore";
 
   # This workstation spends most of its time docked as a remote development

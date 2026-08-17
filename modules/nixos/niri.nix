@@ -80,6 +80,15 @@ let
     '';
   };
 
+  # CodexBar returns useful JSON for authenticated providers even when another
+  # requested provider fails. Keep those partial results instead of turning the
+  # entire widget into an error, and support providers without a primary window.
+  codexbarDmsPlugin = pkgs.applyPatches {
+    name = "dms-codexbar-partial-results";
+    src = dms-codexbar;
+    patches = [ ../../patches/dms-codexbar-partial-results.patch ];
+  };
+
   # CodexBar's GNOME extension uses this helper to import the authenticated
   # Codex session from Chromium-family browsers. Package it in the system
   # profile instead of installing it into an unmanaged global Python prefix.
@@ -229,7 +238,7 @@ in
     quickshell.package = quickshell.packages.${system}.default;
     plugins = {
       codexBar = {
-        src = dms-codexbar;
+        src = codexbarDmsPlugin;
         settings = {
           enabled = true;
           codexbarPath = "${codexbar}/bin/codexbar";

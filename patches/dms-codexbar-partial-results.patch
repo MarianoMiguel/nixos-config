@@ -1,0 +1,76 @@
+--- a/CodexBarWidget.qml
++++ b/CodexBarWidget.qml
+@@ -30,20 +30,19 @@
+   readonly property var highestProvider: {
+     if (providers.length === 0) return null
+     var filtered = providers.filter(function(p) {
+-      return p.usage && p.usage.primary && !p.error
++      return p.usage && !p.error && (p.usage.primary || p.usage.secondary || p.usage.tertiary)
+     })
+     if (filtered.length === 0) return null
+     var highest = filtered[0]
+     for (var i = 1; i < filtered.length; i++) {
+-      if (filtered[i].usage.primary.usedPercent > highest.usage.primary.usedPercent)
++      if (providerUsagePercent(filtered[i]) > providerUsagePercent(highest))
+         highest = filtered[i]
+     }
+     return highest
+   }
+
+   readonly property real highestPercent: {
+-    if (!highestProvider || !highestProvider.usage || !highestProvider.usage.primary) return 0
+-    return highestProvider.usage.primary.usedPercent
++    return highestProvider ? providerUsagePercent(highestProvider) : 0
+   }
+
+   readonly property string highestName: {
+@@ -58,6 +57,17 @@ PluginComponent {
+     return Theme.success
+   }
+
++  function providerUsagePercent(provider) {
++    if (!provider || !provider.usage) return 0
++    var windows = [provider.usage.primary, provider.usage.secondary, provider.usage.tertiary]
++    var highest = 0
++    for (var i = 0; i < windows.length; i++) {
++      if (windows[i] && windows[i].usedPercent !== undefined)
++        highest = Math.max(highest, windows[i].usedPercent)
++    }
++    return highest
++  }
++
+   function capitalizeFirst(s) {
+     if (!s) return ""
+     return s.charAt(0).toUpperCase() + s.slice(1)
+@@ -136,14 +146,26 @@ PluginComponent {
+     }
+     onExited: code => {
+       root.isLoading = false
+-      if (code === 0 && root.rawJsonBuffer.length > 0) {
++      if (root.rawJsonBuffer.length > 0) {
+         try {
+           var data = JSON.parse(root.rawJsonBuffer)
+           if (!Array.isArray(data)) data = [data]
+-          root.providers = data
+-          root.hasError = false
+-          root.errorMessage = ""
+-          root.lastUpdated = Qt.formatDateTime(new Date(), "hh:mm:ss")
++          var usable = data.filter(function(p) {
++            return p.usage && !p.error &&
++              (p.usage.primary || p.usage.secondary || p.usage.tertiary)
++          })
++          if (usable.length > 0) {
++            root.providers = data
++            root.hasError = false
++            root.errorMessage = ""
++            root.lastUpdated = Qt.formatDateTime(new Date(), "hh:mm:ss")
++          } else {
++            root.providers = []
++            root.hasError = true
++            root.errorMessage = data.length > 0 && data[0].error
++              ? (data[0].error.message || "Provider unavailable")
++              : "No provider usage available"
++          }
+         } catch (e) {
+           console.warn("CodexBar: JSON parse error:", e)
+           root.hasError = true

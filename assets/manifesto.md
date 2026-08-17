@@ -41,12 +41,6 @@ You do not need to prove that you have money by spending it. Save. Invest. Avoid
 **Stay disciplined.**
 Your daughter will learn far more from what she watches you do than from what you tell her to do. Let her see someone who keeps his word, controls his impulses, takes responsibility, works hard, admits when he is wrong, and does unpleasant things without complaining.
 
-Give her a father she can admire before she is old enough to understand why.
-
-Give your wife a husband she can trust, respect, and be proud to stand beside.
-
-Give your parents the satisfaction of seeing that everything they poured into you became something good.
-
 **Learn to cook.**
 Feed the people you love. Make the ordinary evening meal one of the ways they know they are cared for.
 
@@ -69,7 +63,12 @@ Take care of your money.  \
 Take care of your home.  \
 Take care of your people.
 
-Become the kind of man your daughter is proud to call her father, your wife is proud to call her husband, and your parents are proud to say they raised.
+Give your daughter a father she can admire before she is old enough to understand why.
+
+Give your wife a husband she can trust, respect, and be proud to stand beside.
+
+Give your parents the satisfaction of seeing that everything they poured into you became something good.
+
 
 Then tomorrow, get up and do it again.
 

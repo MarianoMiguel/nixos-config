@@ -1,6 +1,4 @@
-# WHEN YOU WAKE
-
-*Remember what you are getting up for.*
+# MANIFESTO
 
 ---
 

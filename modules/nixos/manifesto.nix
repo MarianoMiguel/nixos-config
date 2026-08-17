@@ -42,7 +42,7 @@ let
     text = ''
       exec ghostty \
         --class=mariano.manifesto \
-        --title="Remember What You Are Getting Up For" \
+        --title="Manifesto" \
         --font-size=13 \
         --window-padding-x=22 \
         --window-padding-y=18 \

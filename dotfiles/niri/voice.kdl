@@ -1,0 +1,28 @@
+// Voice input.
+//
+// Alt+A and Alt+S rather than the letters they stand for: keyd owns Alt+D and
+// Alt+U for PageDown and PageUp (see the [alt] layer in modules/nixos/
+// desktop.nix), and it rewrites those before niri ever sees them. Alt+A and
+// Alt+S fall through keyd's alt layer untouched.
+//
+// Lives in its own include (not dms/binds.kdl, which DMS regenerates and would
+// drop custom binds).
+binds {
+    Alt+A repeat=false hotkey-overlay-title="Dictate into the focused window" {
+        spawn "voiceagent" "dictate";
+    }
+    Alt+S repeat=false hotkey-overlay-title="Talk to the voice agent" {
+        spawn "voiceagent" "toggle";
+    }
+}
+
+// The window the agent types into. Floating and generously sized: it is where
+// you read what Claude is doing, so it has to be legible without being the
+// whole screen, and it must not reshuffle the tiling layout every time a voice
+// session starts.
+window-rule {
+    match app-id=r#"^mariano\.voiceagent$"#
+    open-floating true
+    default-column-width { proportion 0.5; }
+    default-window-height { proportion 0.75; }
+}

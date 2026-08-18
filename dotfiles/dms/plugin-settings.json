@@ -4,5 +4,8 @@
   },
   "catWidget": {
     "enabled": true
+  },
+  "voice": {
+    "enabled": true
   }
 }

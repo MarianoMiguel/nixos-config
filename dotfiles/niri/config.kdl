@@ -299,6 +299,9 @@ include "themeport.kdl"
 // personal manifesto (Mod+Ctrl+M)
 include "manifesto.kdl"
 
+// voice dictation and the live voice agent (Alt+A / Alt+S)
+include "voice.kdl"
+
 // Include dms files
 include "dms/colors.kdl"
 include "dms/layout.kdl"

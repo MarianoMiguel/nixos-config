@@ -295,6 +295,13 @@ in
         src = codeIsland-dms;
         settings.enabled = true;
       };
+      # Microphone state and the agent's approval prompts. The plugin only
+      # views and remote-controls the voice services in modules/nixos/voice.nix;
+      # the gestures keep working with it disabled.
+      voice = {
+        src = ../../dotfiles/dms-plugins/voice;
+        settings.enabled = true;
+      };
     };
 
     # dgop is not available in the current nixpkgs pin.

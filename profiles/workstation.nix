@@ -14,6 +14,7 @@
     ../modules/nixos/tmux.nix
     ../modules/nixos/users.nix
     ../modules/nixos/vicinae.nix
+    ../modules/nixos/voice.nix
     ../modules/nixos/virtualisation.nix
   ];
 }

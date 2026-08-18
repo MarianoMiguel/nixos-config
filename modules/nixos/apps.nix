@@ -192,6 +192,10 @@ in
     enableVirtualCamera = true;
   };
   programs.steam.enable = true;
+  programs.ydotool = {
+    enable = true;
+    group = "input";
+  };
 
   xdg.mime.defaultApplications = browserMimeDefaults // {
     "application/pdf" = "firefox.desktop";

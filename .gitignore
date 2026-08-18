@@ -5,3 +5,4 @@ result-*
 *.tar.zst
 *.manifest.txt
 payload/
+__pycache__/

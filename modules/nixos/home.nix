@@ -126,6 +126,7 @@ in
           "niri/manifesto.kdl".source = ../../dotfiles/niri/manifesto.kdl;
           "niri/style-toggles.kdl".source = ../../dotfiles/niri/style-toggles.kdl;
           "niri/themeport.kdl".source = ../../dotfiles/niri/themeport.kdl;
+          "niri/voice.kdl".source = ../../dotfiles/niri/voice.kdl;
           "niri/dms/alttab.kdl".source = mutableDotfile "niri/dms/alttab.kdl";
           "niri/dms/binds.kdl".source = mutableDotfile "niri/dms/binds.kdl";
           "niri/dms/colors.kdl".source = mutableDotfile "niri/dms/colors.kdl";

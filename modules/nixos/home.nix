@@ -154,6 +154,12 @@ in
           "wireplumber/wireplumber.conf.d/51-bluez-avrcp.conf".source =
             ../../dotfiles/wireplumber/51-bluez-avrcp.conf;
 
+          # Never restore a stored "off" profile for Bluetooth cards, or the
+          # headset reconnects as a device with no sink and vanishes from the
+          # output pickers.
+          "wireplumber/wireplumber.conf.d/52-bluez-no-off-profile.conf".source =
+            ../../dotfiles/wireplumber/52-bluez-no-off-profile.conf;
+
           "input-remapper-2/config.json".source = ../../dotfiles/input-remapper-2/config.json;
           "input-remapper-2/presets/AT Translated Set 2 keyboard/new preset.json".source =
             dotfiles + "/input-remapper-2/presets/AT Translated Set 2 keyboard/new preset.json";

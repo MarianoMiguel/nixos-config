@@ -270,7 +270,7 @@ in
     ]
     ++ [
       davinciResolve
-      codex-desktop-linux.packages.${system}.codex-desktop
+      codex-desktop-linux.packages.${system}.codex-desktop-computer-use-ui
       granola
       herdr
     ];

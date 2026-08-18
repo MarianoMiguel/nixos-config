@@ -16,6 +16,7 @@ in
     ../nixos-dev/hardware-configuration.nix
     ../../profiles/workstation.nix
     ../../modules/nixos/android-development.nix
+    ../../modules/nixos/claude-triage.nix
     ../../modules/nixos/displaylink.nix
     ../../modules/nixos/local-web-hosting.nix
     ../../modules/nixos/intervals.nix
@@ -25,6 +26,20 @@ in
   ++ lib.optional (builtins.pathExists ./local.nix) ./local.nix;
 
   networking.hostName = "bonhart";
+
+  # Long-running user services fail while nobody is watching the journal. Triage
+  # turns each failure into a written diagnosis and a proposed patch against this
+  # flake; applying it stays a manual decision.
+  services.claudeTriage = {
+    enable = true;
+    units = [
+      "overfly-gateway.service"
+      "overfly-t3.service"
+      "overfly-skill-check@.service"
+      "vicinae.service"
+      "voxtype.service"
+    ];
+  };
 
   services.localWebHosting = {
     enable = true;

@@ -17,7 +17,7 @@ cat > "$fake_bin/timeout" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
 [[ $1 == --signal=TERM ]]
-[[ $2 == 35s ]]
+[[ $2 == 60s ]]
 shift 2
 exec "$@"
 EOF
@@ -70,7 +70,7 @@ jq -e '
   }
 ' <<< "$output" >/dev/null
 
-diff -u <(printf '%s\n' --json --secure --duration 8 --timeout 10) "$arguments"
+diff -u <(printf '%s\n' --json --secure --ipv4 --duration 8 --timeout 10) "$arguments"
 if grep -Eq -- '--share|--telemetry|--skip-cert-verify' "$arguments"; then
   printf 'The speed test unexpectedly enabled sharing, telemetry, or insecure TLS.\n' >&2
   exit 1

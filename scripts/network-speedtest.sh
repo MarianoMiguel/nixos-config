@@ -79,8 +79,11 @@ case ${1:-run} in
     trap terminate_test TERM INT HUP
     # LibreSpeed only enables its telemetry path when --share or a telemetry
     # flag is present. Keep the invocation explicit, encrypted, and bounded.
-    setsid timeout --signal=TERM 35s \
-      librespeed-cli --json --secure --duration 8 --timeout 10 > "$result_pipe" &
+    # A complete run includes server discovery, latency sampling, and separate
+    # upload/download windows. The previous 35-second ceiling was too close to
+    # the normal runtime on higher-latency servers and produced false failures.
+    setsid timeout --signal=TERM 60s \
+      librespeed-cli --json --secure --ipv4 --duration 8 --timeout 10 > "$result_pipe" &
     speed_pid=$!
     normalize_result < "$result_pipe" > "$result_file" &
     normalize_pid=$!
@@ -91,6 +94,9 @@ case ${1:-run} in
     wait "$normalize_pid" || normalize_status=$?
     normalize_pid=
     if ((speed_status != 0)); then
+      if ((speed_status == 124)); then
+        printf 'The speed test timed out after 60 seconds.\n' >&2
+      fi
       exit "$speed_status"
     fi
     cat -- "$result_file"

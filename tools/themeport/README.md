@@ -96,7 +96,8 @@ themeport handle-url 'aether://apply?colors=https%3A%2F%2Fexample.com%2Fcolors.t
 | Alacritty | `alacritty/themeport.toml` import (Omarchy tpl) | native live reload |
 | tmux | `tmux/themeport.conf`, sourced from tmux.nix | `tmux source-file` on apply |
 | btop | theme file + `color_theme` edit in btop.conf | next btop start |
-| Neovim | DMS matugen cascade (`dankcolors.lua` + its fs-watcher) | hot reload |
+| Neovim | reviewed Themeport template linked as `dankcolors.lua` | built-in fs-watcher hot reload |
+| ChatGPT / Codex | generated `codex-desktop.css` injected by the patched Electron main process | refreshes every two seconds and after page loads |
 | Chrome | Themeport request validated into a root-owned `BrowserThemeColor` managed policy | live `--refresh-platform-policy` after the policy bridge updates |
 | VS Code | theme's marketplace extension, else generated local extension; sets `workbench.colorTheme` | VS Code watches settings.json |
 | Wallpapers | copied to `~/Pictures/Wallpapers/themeport/<name>/`, best-effort DMS IPC | on apply |

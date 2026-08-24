@@ -398,7 +398,7 @@ verify_install_payload() {
     dms/plugin-settings.json \
     niri/dms/binds.kdl \
     nvim/lazy-lock.json \
-    nvim/lua/plugins/dankcolors.lua
+    themeport/neovim/generated.lua
   do
     [[ -r $mutable_seed/$requisite ]] ||
       die "The bundled Home Manager seed is incomplete. Recreate the installer USB."

@@ -87,6 +87,9 @@ def validate_render(name: str, outdir: Path, expect_mode: str) -> None:
 
     nvim_generated = (outdir / "neovim/generated.lua").read_text()
     check("{{" not in nvim_generated, f"{prefix} generated neovim.lua has unresolved tokens")
+    check("base16-colorscheme" in nvim_generated, f"{prefix} generated neovim.lua missed palette loader")
+    check("_themeport_theme_watcher" in nvim_generated, f"{prefix} generated neovim.lua missed live reload")
+    check(meta["background"] in nvim_generated, f"{prefix} generated neovim.lua missed background")
 
     obsidian = (outdir / "obsidian/themeport.css").read_text()
     check("{{" not in obsidian, f"{prefix} obsidian css has unresolved tokens")

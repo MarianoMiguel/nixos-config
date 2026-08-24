@@ -48,7 +48,6 @@ let
     "niri/toggles/border.kdl"
     "niri/toggles/radius.kdl"
     "nvim/lazy-lock.json"
-    "nvim/lua/plugins/dankcolors.lua"
     "themeport"
     "vscode/User/settings.json"
   ];
@@ -82,7 +81,10 @@ in
           rm "$out/lazy-lock.json"
           ln -s ${mutableState}/nvim/lazy-lock.json "$out/lazy-lock.json"
           rm "$out/lua/plugins/dankcolors.lua"
-          ln -s ${mutableState}/nvim/lua/plugins/dankcolors.lua "$out/lua/plugins/dankcolors.lua"
+          # Themeport renders this from the immutable, reviewed catalog. Link
+          # Neovim to that output directly instead of asking DMS to execute
+          # user Matugen templates merely to update an editor palette.
+          ln -s ${mutableState}/themeport/neovim/generated.lua "$out/lua/plugins/dankcolors.lua"
         '';
       in
       {
@@ -478,8 +480,8 @@ in
           ".config/nvim" = {
             source = nvimConfig;
             # Keep the configuration declarative while letting lazy.nvim update
-            # its lockfile and DMS rewrite the generated palette through the
-            # two out-of-store symlinks above.
+            # its lockfile and Themeport rewrite the generated palette through
+            # the two out-of-store symlinks above.
             force = true;
           };
           ".local/state/DankMaterialShell/session.json".source = mutableDotfile "dms/session.json";

@@ -26,7 +26,8 @@ mkdir -p \
   "$scratch/system" \
   "$scratch/test-mariano-mutable-dotfile-seed/dms" \
   "$scratch/test-mariano-mutable-dotfile-seed/niri/dms" \
-  "$scratch/test-mariano-mutable-dotfile-seed/nvim/lua/plugins"
+  "$scratch/test-mariano-mutable-dotfile-seed/nvim" \
+  "$scratch/test-mariano-mutable-dotfile-seed/themeport/neovim"
 : > "$scratch/state/install.log"
 printf '#!/usr/bin/env bash\n' > "$scratch/system/init"
 chmod +x "$scratch/system/init"
@@ -39,7 +40,7 @@ touch \
   "$scratch/test-mariano-mutable-dotfile-seed/dms/plugin-settings.json" \
   "$scratch/test-mariano-mutable-dotfile-seed/niri/dms/binds.kdl" \
   "$scratch/test-mariano-mutable-dotfile-seed/nvim/lazy-lock.json" \
-  "$scratch/test-mariano-mutable-dotfile-seed/nvim/lua/plugins/dankcolors.lua"
+  "$scratch/test-mariano-mutable-dotfile-seed/themeport/neovim/generated.lua"
 printf '%s\n' \
   "$scratch/system" \
   "$scratch/disko-script" \

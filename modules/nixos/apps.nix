@@ -9,12 +9,26 @@
 
 let
   system = pkgs.stdenv.hostPlatform.system;
-  codexDesktopBase = codex-desktop-linux.packages.${system}.codex-desktop.override {
-    linuxFeatureIds = [
-      "computer-use-linux"
-      "omarchy-theme"
-    ];
-  };
+  codexDesktopSource = pkgs.runCommand "codex-desktop-linux-themeport-source" { } ''
+    cp -R ${codex-desktop-linux.outPath}/. "$out/"
+    chmod -R u+w "$out"
+    install -m 0644 \
+      ${../../packages/codex-desktop/omarchy-theme-patch.js} \
+      "$out/linux-features/omarchy-theme/patch.js"
+  '';
+  codexDesktopBase =
+    (codex-desktop-linux.packages.${system}.codex-desktop.override {
+      linuxFeatureIds = [
+        "computer-use-linux"
+        "omarchy-theme"
+      ];
+    }).overrideAttrs
+      (_: {
+        # Electron's app:// renderer cannot load file:// stylesheets. Replace
+        # the upstream link tag with main-process insertCSS, which crosses that
+        # boundary without relaxing the renderer's CSP or sandbox.
+        src = codexDesktopSource;
+      });
   codexDesktop = codexDesktopBase.overrideAttrs (old: {
     postInstall = (old.postInstall or "") + ''
       # The upstream feature hook expects this directory but start.sh does not

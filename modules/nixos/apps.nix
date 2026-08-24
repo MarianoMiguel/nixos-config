@@ -9,12 +9,22 @@
 
 let
   system = pkgs.stdenv.hostPlatform.system;
-  codexDesktop = codex-desktop-linux.packages.${system}.codex-desktop.override {
+  codexDesktopBase = codex-desktop-linux.packages.${system}.codex-desktop.override {
     linuxFeatureIds = [
       "computer-use-linux"
       "omarchy-theme"
     ];
   };
+  codexDesktop = codexDesktopBase.overrideAttrs (old: {
+    postInstall = (old.postInstall or "") + ''
+      # The upstream feature hook expects this directory but start.sh does not
+      # currently export it. Pin both inputs so the Omarchy loader works on a
+      # clean installation and follows Themeport's live-generated stylesheet.
+      wrapProgram "$out/bin/codex-desktop" \
+        --set-default CODEX_LINUX_FEATURES_DIR "$out/opt/codex-desktop/.codex-linux/features" \
+        --set-default CODEX_LINUX_OMARCHY_STYLESHEET "/home/mariano/.config/omarchy/current/theme/codex-desktop.css"
+    '';
+  });
   defaultBrowserDesktop = "google-chrome.desktop";
   browserMimeTypes = [
     "text/html"

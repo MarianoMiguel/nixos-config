@@ -11,9 +11,10 @@ Personal NixOS workstation and installer configuration.
 - `#bonhart-install`: Bonhart with encrypted root plus 64 GiB hibernation swap.
 - `#installer`: graphical guided installer ISO carrying both complete systems.
 
-The existing `#balerion` and `#bonhart` outputs keep using their current storage
-configuration. After a guided install, the installer saves the selected encrypted
-layout as that machine's local `storage.nix`, which is intentionally not committed.
+The `#balerion` output keeps its existing storage configuration. Bonhart now uses
+the guided installer's encrypted LVM layout by default. After a guided install,
+the installer also saves the selected encrypted layout as that machine's local
+`storage.nix`, which is intentionally not committed.
 
 ## Build The Installer
 
@@ -78,12 +79,11 @@ kernel. Workstation systems retain five systemd-boot generations, run weekly
 garbage collection for store paths older than 14 days, and automatically
 optimise the Nix store.
 
-Bonhart's encrypted install leaves DisplayLink disabled because Synaptics requires
+Bonhart leaves DisplayLink disabled because Synaptics requires
 accepting a separate EULA and the driver archive cannot legally be redistributed
-inside the ISO. The existing legacy Bonhart output keeps DisplayLink enabled. To
-enable it after installation, accept the vendor terms, add the pinned archive to
-the local Nix store, then change `mariano.displaylink.enable` to `true` in
-`hosts/bonhart/storage.nix` before rebuilding:
+inside the ISO. To enable it, accept the vendor terms, add the pinned archive to
+the local Nix store, then change `mariano.displaylink.enable` to `true` in the
+machine-local `hosts/bonhart/storage.nix` before rebuilding:
 
 ```sh
 nix-prefetch-url --name displaylink-620.zip 'https://www.synaptics.com/sites/default/files/exe_files/2025-09/DisplayLink%20USB%20Graphics%20Software%20for%20Ubuntu6.2-EXE.zip'

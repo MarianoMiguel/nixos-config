@@ -24,10 +24,7 @@ let
       substituteInPlace themeport.py \
         --replace-fail \
           '    apply_vscode(state, meta)' \
-          '    # VS Code is themed by DMS Matugen; theme metadata never installs extensions.' \
-        --replace-fail \
-          '    apply_browsers(meta)' \
-          '    # Browser managed policy is deliberately outside Themeport.'
+          '    # VS Code is themed by DMS Matugen; theme metadata never installs extensions.'
       install -Dm0444 themeport.py "$out/share/themeport/themeport.py"
       cp -R templates "$out/share/themeport/templates"
       mkdir -p "$out/share/themeport/themes"
@@ -42,14 +39,75 @@ let
     exec /run/current-system/sw/bin/dms "$@"
   '';
 
+  # Themeport only uses this bridge with Chrome's fixed policy-refresh flags.
+  # Keeping Chrome itself out of the wrapper closure avoids duplicating its
+  # large package while still allowing an already-running browser to update.
+  chromeBridge = pkgs.writeShellScriptBin "google-chrome-stable" ''
+    if [ "$#" -ne 2 ] \
+      || [ "$1" != "--refresh-platform-policy" ] \
+      || [ "$2" != "--no-startup-window" ]; then
+      echo "This bridge only refreshes Chrome platform policy." >&2
+      exit 2
+    fi
+    exec /run/current-system/sw/bin/google-chrome-stable "$@"
+  '';
+
+  chromeThemeRequest = "/home/mariano/.local/state/nixos-config/dotfiles/themeport/chrome/color.json";
+  chromeThemePolicy = "/var/lib/themeport/chrome-color.json";
+  chromePolicySync = pkgs.writeShellApplication {
+    name = "themeport-sync-chrome-policy";
+    runtimeInputs = [
+      pkgs.coreutils
+      pkgs.jq
+    ];
+    text = ''
+      set -eu
+
+      input=${lib.escapeShellArg chromeThemeRequest}
+      output=${lib.escapeShellArg chromeThemePolicy}
+      output_dir=''${output%/*}
+
+      # A missing request is normal on a fresh account; the path unit will run
+      # this service as soon as Themeport creates it.
+      [ -e "$input" ] || exit 0
+      if [ -L "$input" ] \
+        || [ "$(stat -c %F -- "$input")" != "regular file" ] \
+        || [ "$(stat -c %U -- "$input")" != "mariano" ]; then
+        echo "Refusing untrusted Chrome theme request: $input" >&2
+        exit 1
+      fi
+
+      install -d -o root -g root -m 0755 "$output_dir"
+      temporary=$(mktemp "$output_dir/.chrome-color.XXXXXX")
+      trap 'rm -f "$temporary"' EXIT
+
+      # Reconstruct the policy instead of copying it. Even if the user-side
+      # JSON contains extra keys, only a valid six-digit theme color can cross
+      # this privileged boundary.
+      jq -e '
+        if type == "object"
+          and (.BrowserThemeColor | type == "string")
+          and (.BrowserThemeColor | test("^#[0-9A-Fa-f]{6}$"))
+        then {BrowserThemeColor: .BrowserThemeColor}
+        else error("invalid BrowserThemeColor request")
+        end
+      ' "$input" > "$temporary"
+      chmod 0644 "$temporary"
+      mv -f "$temporary" "$output"
+      trap - EXIT
+    '';
+  };
+
   safeRuntime = [
     pkgs.coreutils
     pkgs.findutils
     pkgs.fzf
     pkgs.glib
     pkgs.python3
+    pkgs.procps
     pkgs.systemd
     pkgs.tmux
+    chromeBridge
     dmsBridge
   ];
 
@@ -57,7 +115,8 @@ let
   # still understands upstream formats, but this public command exposes only
   # themes reviewed and copied into the immutable Nix store. It does not expose
   # GitHub installs, galleries, URL handlers, arbitrary theme paths, VS Code
-  # extension installation, or browser managed-policy refreshes.
+  # extension installation, or arbitrary browser policy. Chrome receives only
+  # the validated BrowserThemeColor key through the root-owned bridge below.
   themeport = pkgs.writeShellApplication {
     name = "themeport";
     runtimeInputs = safeRuntime;
@@ -231,6 +290,39 @@ HELP
   };
 in
 {
+  # Chrome reads managed policy from /etc, but Themeport runs as the desktop
+  # user. Point Chrome at a root-owned file and have a sandboxed path service
+  # validate the user-rendered color before updating it.
+  environment.etc."opt/chrome/policies/managed/themeport-color.json".source = chromeThemePolicy;
+
+  systemd.tmpfiles.rules = [ "d /var/lib/themeport 0755 root root -" ];
+
+  systemd.services.themeport-chrome-policy = {
+    description = "Validate and publish Themeport's Chrome color policy";
+    wantedBy = [ "multi-user.target" ];
+    after = [ "local-fs.target" ];
+    serviceConfig = {
+      Type = "oneshot";
+      ExecStart = lib.getExe chromePolicySync;
+      NoNewPrivileges = true;
+      PrivateDevices = true;
+      PrivateTmp = true;
+      ProtectHome = "read-only";
+      ProtectSystem = "strict";
+      ReadWritePaths = [ "/var/lib/themeport" ];
+      RestrictAddressFamilies = [ "AF_UNIX" ];
+    };
+  };
+
+  systemd.paths.themeport-chrome-policy = {
+    description = "Watch Themeport's rendered Chrome color";
+    wantedBy = [ "multi-user.target" ];
+    pathConfig = {
+      PathChanged = chromeThemeRequest;
+      Unit = "themeport-chrome-policy.service";
+    };
+  };
+
   environment.systemPackages = [
     themeport
     pkgs.yaru-theme

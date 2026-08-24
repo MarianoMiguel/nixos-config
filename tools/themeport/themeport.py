@@ -485,10 +485,7 @@ def build_dms_theme(theme: Theme, other: Theme | None) -> dict:
 
 
 def render_browser_policy(colors: dict[str, str]) -> str:
-    return json.dumps(
-        {"BrowserThemeColor": colors["background"], "BrowserColorScheme": colors["mode"]},
-        indent=2,
-    ) + "\n"
+    return json.dumps({"BrowserThemeColor": colors["background"]}, indent=2) + "\n"
 
 
 def render_tmux(colors: dict[str, str]) -> str:
@@ -1150,6 +1147,22 @@ BROWSERS = {"google-chrome-stable": "chrome", "brave": "brave"}
 
 
 def apply_browsers(meta: dict) -> None:
+    # A root systemd service validates the user-rendered request and publishes
+    # only BrowserThemeColor as managed policy.  Wait briefly for that bridge
+    # so a live refresh can never race and re-apply the previous theme.
+    policy = Path("/etc/opt/chrome/policies/managed/themeport-color.json")
+    deadline = time.monotonic() + 5
+    while time.monotonic() < deadline:
+        try:
+            if json.loads(policy.read_text()).get("BrowserThemeColor") == meta["background"]:
+                break
+        except (OSError, json.JSONDecodeError):
+            pass
+        time.sleep(0.1)
+    else:
+        print("  ! chrome: validated policy did not update — check themeport-chrome-policy.service")
+        return
+
     for exe, comm in BROWSERS.items():
         if not shutil.which(exe):
             continue

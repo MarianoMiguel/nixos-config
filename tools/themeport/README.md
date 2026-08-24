@@ -97,7 +97,7 @@ themeport handle-url 'aether://apply?colors=https%3A%2F%2Fexample.com%2Fcolors.t
 | tmux | `tmux/themeport.conf`, sourced from tmux.nix | `tmux source-file` on apply |
 | btop | theme file + `color_theme` edit in btop.conf | next btop start |
 | Neovim | DMS matugen cascade (`dankcolors.lua` + its fs-watcher) | hot reload |
-| Chrome / Brave | managed policy (BrowserThemeColor) symlinked from `/etc` | `--refresh-platform-policy` |
+| Chrome | Themeport request validated into a root-owned `BrowserThemeColor` managed policy | live `--refresh-platform-policy` after the policy bridge updates |
 | VS Code | theme's marketplace extension, else generated local extension; sets `workbench.colorTheme` | VS Code watches settings.json |
 | Wallpapers | copied to `~/Pictures/Wallpapers/themeport/<name>/`, best-effort DMS IPC | on apply |
 | Icons | `icons.theme` → gsettings + DMS settings (Yaru/Adwaita sets pre-installed) | on apply |
@@ -105,7 +105,7 @@ themeport handle-url 'aether://apply?colors=https%3A%2F%2Fexample.com%2Fcolors.t
 | Obsidian | `dotfiles/themeport/obsidian/themeport.css` (Omarchy tpl) | manual: copy into a vault's `.obsidian/snippets/` |
 
 Not covered: Omarchy shell plugins (QML for their shell, not DMS) and anything
-richer than accent-color theming in Chromium — Omarchy doesn't do more there
+richer than generated color theming in Chromium — Omarchy doesn't do more there
 either.
 
 ## Nix wiring (one-time, already in this repo)

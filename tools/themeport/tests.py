@@ -73,8 +73,8 @@ def validate_render(name: str, outdir: Path, expect_mode: str) -> None:
     check("colors" in vscode and "tokenColors" in vscode, f"{prefix} generated vscode theme incomplete")
 
     policy = json.loads((outdir / "chrome/color.json").read_text())
+    check(set(policy) == {"BrowserThemeColor"}, f"{prefix} unexpected Chrome policy keys")
     check(bool(HEX_RE.match(policy["BrowserThemeColor"])), f"{prefix} bad BrowserThemeColor")
-    check(policy["BrowserColorScheme"] in ("dark", "light"), f"{prefix} bad BrowserColorScheme")
 
     tmux = (outdir / "tmux/themeport.conf").read_text()
     check("status-style" in tmux and "#" in tmux, f"{prefix} tmux colors incomplete")

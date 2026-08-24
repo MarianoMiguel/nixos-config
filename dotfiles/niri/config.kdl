@@ -324,4 +324,5 @@ include "dms/cursor.kdl"
 // DMS values without modifying DMS's generated files.
 include "style-toggles.kdl"
 include "toggles/gaps.kdl"
+include "toggles/border.kdl"
 include "toggles/radius.kdl"

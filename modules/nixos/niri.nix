@@ -57,6 +57,20 @@ let
               '}' > "$target"
           fi
           ;;
+        border)
+          target="$state_dir/border.kdl"
+          if grep -q '^[[:space:]]*off[[:space:]]*$' "$target" 2>/dev/null; then
+            printf '%s\n' '// Window borders use the current DMS value.' > "$target"
+          else
+            printf '%s\n' \
+              '// Window borders temporarily disabled.' \
+              'layout {' \
+              '    border {' \
+              '        off' \
+              '    }' \
+              '}' > "$target"
+          fi
+          ;;
         radius)
           target="$state_dir/radius.kdl"
           if grep -q '^[[:space:]]*geometry-corner-radius 0[[:space:]]*$' "$target" 2>/dev/null; then
@@ -70,7 +84,7 @@ let
           fi
           ;;
         *)
-          printf 'usage: niri-style-toggle gaps|radius\n' >&2
+          printf 'usage: niri-style-toggle gaps|border|radius\n' >&2
           exit 2
           ;;
       esac

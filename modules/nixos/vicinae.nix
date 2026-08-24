@@ -11,6 +11,12 @@ let
       --method org.gnome.Shell.Extensions.VicinaeWindowManagement.Execute \
       "$1"
   '';
+  systemMenuCommand = pkgs.writeShellScript "open-mariano-system-menu" ''
+    exec ${pkgs.ghostty}/bin/ghostty \
+      --class=system.actions \
+      --title="System Actions" \
+      -e /run/current-system/sw/bin/mariano-system-menu
+  '';
 in
 {
   # gdbus is the deliberately small bridge between the Vicinae command
@@ -64,6 +70,8 @@ in
     dconf.settings = {
       "org/gnome/desktop/wm/keybindings" = {
         activate-window-menu = lib.hm.gvariant.mkEmptyArray lib.hm.gvariant.type.string;
+        switch-input-source = lib.hm.gvariant.mkEmptyArray lib.hm.gvariant.type.string;
+        switch-input-source-backward = lib.hm.gvariant.mkEmptyArray lib.hm.gvariant.type.string;
         close = [
           "<Alt>F4"
           "<Alt>q"
@@ -77,6 +85,7 @@ in
           "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/vicinae-center/"
           "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/vicinae-almost-maximize/"
           "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/vicinae-hide-others/"
+          "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/system-actions/"
         ];
       };
 
@@ -102,6 +111,12 @@ in
         binding = "<Alt>apostrophe";
         command = "${gnomeWindowAction} hide-others";
         name = "Hide Other Applications";
+      };
+
+      "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/system-actions" = {
+        binding = "<Super>space";
+        command = "${systemMenuCommand}";
+        name = "System Actions";
       };
     };
   };

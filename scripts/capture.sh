@@ -302,9 +302,6 @@ esac
 mkdir -p "$state_dir" "$runtime_dir" "$pictures_dir" "$videos_dir"
 chmod 0700 "$state_dir" "$runtime_dir" "$pictures_dir" "$videos_dir"
 
-exec 9>"$lock_file"
-flock 9
-
 case "${1:-}" in
   screenshot-full)
     capture_screenshot full
@@ -313,12 +310,16 @@ case "${1:-}" in
     capture_screenshot region
     ;;
   video-toggle)
+    exec 9>"$lock_file"
+    flock 9
     toggle_video
     ;;
   audio-status)
     audio_status
     ;;
   audio-toggle)
+    exec 9>"$lock_file"
+    flock 9
     if [[ $(audio_status) == on ]]; then
       set_audio off
     else
@@ -326,9 +327,13 @@ case "${1:-}" in
     fi
     ;;
   audio-on)
+    exec 9>"$lock_file"
+    flock 9
     set_audio on
     ;;
   audio-off)
+    exec 9>"$lock_file"
+    flock 9
     set_audio off
     ;;
   *)

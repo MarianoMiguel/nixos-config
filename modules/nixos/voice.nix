@@ -78,6 +78,10 @@ in
         "/etc/profiles/per-user/mariano"
       ];
       serviceConfig = {
+        # The user manager is started before Niri exports the shell's Qt
+        # variables. Force the overlay onto Wayland so Qt does not select the
+        # unavailable XCB platform and abort when dictation begins.
+        Environment = "QT_QPA_PLATFORM=wayland";
         ExecStart = "${voiceagent}/bin/voiceagent daemon";
         Restart = "on-failure";
         RestartSec = 5;

@@ -42,6 +42,12 @@ command cat > "$TEST_CLIPBOARD"
 printf 'wl-copy' >> "$TEST_LOG"
 printf ' %s' "$@" >> "$TEST_LOG"
 printf '\n' >> "$TEST_LOG"
+if [[ ${TEST_WL_COPY_HOLD:-0} == 1 ]]; then
+  # wl-copy serves the clipboard from a detached child. Keep this test child
+  # alive long enough to catch capture locks accidentally inherited from the
+  # caller, while detaching its standard streams like the real provider.
+  (sleep 2) </dev/null >/dev/null 2>&1 &
+fi
 EOF
 
 cat > "$fake_bin/pactl" <<'EOF'
@@ -125,11 +131,6 @@ output=${!#}
 printf '%s\n' video
 EOF
 
-cat > "$fake_bin/flock" <<'EOF'
-#!/usr/bin/env bash
-exit 0
-EOF
-
 chmod +x "$fake_bin"/*
 
 run_capture() {
@@ -145,16 +146,21 @@ run_capture() {
     TEST_LOG="$log_file" \
     TEST_ACTIVE_FILE="$active_file" \
     TEST_CLIPBOARD="$clipboard_file" \
+    TEST_WL_COPY_HOLD="${TEST_WL_COPY_HOLD:-0}" \
     TEST_SLURP_RESULT="${TEST_SLURP_RESULT:-10,20 301x201}" \
     "$repo/scripts/capture.sh" "$@"
 }
 
-run_capture screenshot-full
+TEST_WL_COPY_HOLD=1 run_capture screenshot-full
 full_screenshot="$pictures_dir/Screenshot 2026-08-23 12-00-00.png"
 [[ -s $full_screenshot ]]
 [[ $(cat "$clipboard_file") == PNG ]]
 grep -Eq '^grim .*/\.capture-.*\.png$' "$log_file"
 grep -Fq 'wl-copy --type image/png' "$log_file"
+# Screenshots must not lock the recording state. The real wl-copy keeps a
+# detached process alive, which used to inherit this lock and deadlock every
+# later capture shortcut.
+flock -n "$state_dir/control.lock" true
 
 : > "$log_file"
 run_capture screenshot-region

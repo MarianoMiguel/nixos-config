@@ -127,6 +127,74 @@ let
     '';
   };
 
+  fingerprintManager = pkgs.writeShellApplication {
+    name = "mariano-fingerprint-manager";
+    runtimeInputs = with pkgs; [ fprintd gum ];
+    text = ''
+      set -eu
+
+      pause() {
+        printf '\nPress Enter to continue.'
+        read -r _ || true
+      }
+
+      manage_account() {
+        account=$1
+        label=$2
+        elevated=$3
+
+        run_fprint() {
+          if [ "$elevated" = 1 ]; then
+            /run/wrappers/bin/sudo "$@"
+          else
+            "$@"
+          fi
+        }
+
+        while choice=$(gum choose --header "$label" \
+          "Enroll a fingerprint" "List enrolled fingerprints" "Delete all fingerprints" "Back"); do
+          case "$choice" in
+            "Enroll a fingerprint")
+              finger=$(gum choose --header "Choose the finger to enroll" \
+                right-index-finger right-middle-finger right-ring-finger right-little-finger right-thumb \
+                left-index-finger left-middle-finger left-ring-finger left-little-finger left-thumb) || continue
+              run_fprint ${pkgs.fprintd}/bin/fprintd-enroll -f "$finger" "$account" || true
+              pause
+              ;;
+            "List enrolled fingerprints")
+              run_fprint ${pkgs.fprintd}/bin/fprintd-list "$account" || true
+              pause
+              ;;
+            "Delete all fingerprints")
+              if gum confirm "Delete every fingerprint enrolled for $account?"; then
+                run_fprint ${pkgs.fprintd}/bin/fprintd-delete "$account" || true
+                pause
+              fi
+              ;;
+            Back)
+              return 0
+              ;;
+          esac
+        done
+      }
+
+      while account_choice=$(gum choose --header "Fingerprint setup" \
+        "Login and unlock (Mariano)" "Administrator authentication (sudo)" "Close"); do
+        case "$account_choice" in
+          "Login and unlock (Mariano)")
+            manage_account "''${USER:?USER is required}" "Login and unlock fingerprints · no sudo required" 0
+            ;;
+          "Administrator authentication (sudo)")
+            manage_account root "Administrator fingerprints · use a different finger" 1
+            ;;
+          Close)
+            exit 0
+            ;;
+        esac
+      done
+    '';
+  };
+
   actionRunner = pkgs.writeShellApplication {
     name = "mariano-system-action";
     runtimeInputs = with pkgs; [
@@ -135,7 +203,6 @@ let
       gnugrep
       libnotify
       networkmanager
-      sudo
     ];
     text = ''
       set -eu
@@ -143,7 +210,7 @@ let
       action="''${1:-}"
       if [ "''${MARIANO_ACTION_DRY_RUN:-0}" = 1 ]; then
         case "$action" in
-          settings|display-settings|display-toggle-internal|capture-full|capture-region|capture-video|capture-audio-toggle|network-settings|network-speed|bluetooth-toggle|wifi-toggle|power-settings|keep-awake-toggle|notifications-toggle|notifications-1h|notifications-morning|notifications-resume|night-light-toggle|dictate|reminders|lock-settings|lock-preview|lock-now|pip-controls|pip-toggle-pin|scratchpad-toggle|scratchpad-send|theme|wallpaper|proton-vpn|fingerprint-user|fingerprint-admin|update)
+          settings|display-settings|display-toggle-internal|capture-full|capture-region|capture-video|capture-audio-toggle|network-settings|network-speed|bluetooth-toggle|wifi-toggle|power-settings|keep-awake-toggle|notifications-toggle|notifications-1h|notifications-morning|notifications-resume|night-light-toggle|dictate|reminders|lock-settings|lock-preview|lock-now|pip-controls|pip-toggle-pin|scratchpad-toggle|scratchpad-send|style-gaps|style-border|theme|wallpaper|proton-vpn|fingerprint|update)
             printf '%s\n' "$action"
             exit 0
             ;;
@@ -347,13 +414,28 @@ let
           fi
           exec /run/current-system/sw/bin/niri-scratchpad send
           ;;
+        style-gaps)
+          if [ "''${XDG_CURRENT_DESKTOP:-}" != niri ]; then
+            notify-send "Window gaps" "Window gap toggling is available in the Niri session."
+            exit 1
+          fi
+          exec /run/current-system/sw/bin/niri-style-toggle gaps
+          ;;
+        style-border)
+          if [ "''${XDG_CURRENT_DESKTOP:-}" != niri ]; then
+            notify-send "Window borders" "Window border toggling is available in the Niri session."
+            exit 1
+          fi
+          exec /run/current-system/sw/bin/niri-style-toggle border
+          ;;
         theme)
           exec /run/current-system/sw/bin/ghostty --class=system.actions --title="Choose Theme" -e \
             /run/current-system/sw/bin/themeport pick --hold
           ;;
         wallpaper)
           if [ "''${XDG_CURRENT_DESKTOP:-}" = niri ]; then
-            exec /run/current-system/sw/bin/dms ipc call dash open wallpaper
+            exec /run/current-system/sw/bin/ghostty --class=system.actions --title="Choose Wallpaper" -e \
+              /run/current-system/sw/bin/themeport wallpapers --hold
           else
             exec /run/current-system/sw/bin/gnome-control-center background
           fi
@@ -361,17 +443,13 @@ let
         proton-vpn)
           exec /run/current-system/sw/bin/protonvpn-app
           ;;
-        fingerprint-user)
-          exec /run/current-system/sw/bin/ghostty --class=system.actions --title="Fingerprint for Login and Unlock" -e \
-            ${pkgs.fprintd}/bin/fprintd-enroll mariano
-          ;;
-        fingerprint-admin)
-          exec /run/current-system/sw/bin/ghostty --class=system.actions --title="Fingerprint for Sudo" -e \
-            ${pkgs.sudo}/bin/sudo ${pkgs.fprintd}/bin/fprintd-enroll root
+        fingerprint)
+          exec /run/current-system/sw/bin/ghostty --class=system.actions --title="Fingerprint Setup" -e \
+            ${fingerprintManager}/bin/mariano-fingerprint-manager
           ;;
         update)
           exec /run/current-system/sw/bin/ghostty --class=system.actions --title="NixOS Update" -e \
-            ${pkgs.sudo}/bin/sudo ${systemUpdate}/bin/mariano-system-update
+            /run/wrappers/bin/sudo ${systemUpdate}/bin/mariano-system-update
           ;;
         *)
           echo "Unknown system action: $action" >&2
@@ -391,6 +469,8 @@ let
         cat <<'CATALOG'
 Appearance · Choose theme
 Appearance · Choose wallpaper
+Appearance · Toggle window gaps
+Appearance · Toggle window borders
 Connections · Network settings
 Connections · Test network speed
 Connections · Toggle Wi-Fi
@@ -418,8 +498,7 @@ Focus · Toggle Night Light
 Security · Lock now
 Security · Preview lock screen
 Security · Lock screen & screensaver settings
-${lib.optionalString fingerprintEnabled ''Security · Fingerprint for login and unlock
-Security · Fingerprint for sudo
+${lib.optionalString fingerprintEnabled ''Security · Set up fingerprints
 ''}System · All settings
 System · Update NixOS packages
 CATALOG
@@ -429,6 +508,8 @@ CATALOG
         case "$1" in
           "Appearance · Choose theme"|"Choose theme") action=theme ;;
           "Appearance · Choose wallpaper"|"Choose wallpaper") action=wallpaper ;;
+          "Appearance · Toggle window gaps"|"Toggle window gaps") action=style-gaps ;;
+          "Appearance · Toggle window borders"|"Toggle window borders") action=style-border ;;
           "Connections · Network settings"|"Network settings") action=network-settings ;;
           "Connections · Test network speed"|"Test network speed") action=network-speed ;;
           "Connections · Toggle Wi-Fi"|"Toggle Wi-Fi") action=wifi-toggle ;;
@@ -456,8 +537,7 @@ CATALOG
           "Security · Lock now"|"Lock now") action=lock-now ;;
           "Security · Preview lock screen"|"Preview lock screen") action=lock-preview ;;
           "Security · Lock screen & screensaver settings"|"Lock screen & screensaver settings") action=lock-settings ;;
-${lib.optionalString fingerprintEnabled ''          "Security · Fingerprint for login and unlock"|"Fingerprint for login and unlock") action=fingerprint-user ;;
-          "Security · Fingerprint for sudo"|"Fingerprint for sudo") action=fingerprint-admin ;;
+${lib.optionalString fingerprintEnabled ''          "Security · Set up fingerprints"|"Set up fingerprints") action=fingerprint ;;
 ''}          "System · All settings"|"All settings") action=settings ;;
           "System · Update NixOS packages"|"Update NixOS packages") action=update ;;
           *)
@@ -472,7 +552,7 @@ ${lib.optionalString fingerprintEnabled ''          "Security · Fingerprint for
         case "$category" in
           Appearance)
             choice=$(gum filter --height 9 --header "Appearance · type to filter · esc/back to categories" \
-              "Choose theme" "Choose wallpaper" "Back") || return 0
+              "Choose theme" "Choose wallpaper" "Toggle window gaps" "Toggle window borders" "Back") || return 0
             ;;
           Connections)
             choice=$(gum filter --height 9 --header "Connections · type to filter · esc/back to categories" \
@@ -505,7 +585,7 @@ ${lib.optionalString fingerprintEnabled ''          "Security · Fingerprint for
           Security)
             choice=$(gum filter --height 9 --header "Security · type to filter · esc/back to categories" \
               "Lock now" "Preview lock screen" "Lock screen & screensaver settings" \
-              ${lib.optionalString fingerprintEnabled ''"Fingerprint for login and unlock" "Fingerprint for sudo"''} "Back") || return 0
+              ${lib.optionalString fingerprintEnabled ''"Set up fingerprints"''} "Back") || return 0
             ;;
           System)
             choice=$(gum filter --height 9 --header "System · type to filter · esc/back to categories" \
@@ -547,244 +627,12 @@ ${lib.optionalString fingerprintEnabled ''          "Security · Fingerprint for
     '';
   };
 
-  actionSpecs = [
-    {
-      id = "settings";
-      name = "System · Settings";
-      comment = "Open the unified DMS settings";
-      icon = "preferences-system";
-    }
-    {
-      id = "display-settings";
-      name = "System · Displays · Settings";
-      comment = "Configure displays in DMS";
-      icon = "video-display";
-    }
-    {
-      id = "display-toggle-internal";
-      name = "System · Displays · Toggle laptop display";
-      comment = "Safely turn the built-in display on or off";
-      icon = "video-display";
-    }
-    {
-      id = "capture-full";
-      name = "System · Capture · Full screenshot";
-      comment = "Capture all displays and copy the image to the clipboard";
-      icon = "camera-photo";
-    }
-    {
-      id = "capture-region";
-      name = "System · Capture · Region screenshot";
-      comment = "Select a region, save it and copy the image to the clipboard";
-      icon = "camera-photo";
-    }
-    {
-      id = "capture-video";
-      name = "System · Capture · Start or stop region recording";
-      comment = "Select a region to record, or finish the active recording";
-      icon = "media-record";
-    }
-    {
-      id = "capture-audio-toggle";
-      name = "System · Capture · Toggle system audio in recordings";
-      comment = "Remember whether new screen recordings include desktop audio";
-      icon = "audio-volume-high";
-    }
-    {
-      id = "network-settings";
-      name = "System · Connections · Settings";
-      comment = "Configure Wi-Fi, Bluetooth and connections in DMS";
-      icon = "network-wireless";
-    }
-    {
-      id = "network-speed";
-      name = "System · Connections · Test network speed";
-      comment = "Open the on-demand network speed panel without result sharing";
-      icon = "network-transmit-receive";
-    }
-    {
-      id = "bluetooth-toggle";
-      name = "System · Connections · Toggle Bluetooth";
-      comment = "Turn Bluetooth on or off";
-      icon = "bluetooth-active";
-    }
-    {
-      id = "wifi-toggle";
-      name = "System · Connections · Toggle Wi-Fi";
-      comment = "Turn Wi-Fi on or off";
-      icon = "network-wireless";
-    }
-    {
-      id = "power-settings";
-      name = "System · Power · Power & Sleep settings";
-      comment = "Configure locking, display power and sleep in DMS";
-      icon = "preferences-system-power-management";
-    }
-    {
-      id = "keep-awake-toggle";
-      name = "System · Focus · Stay awake";
-      comment = "Temporarily prevent automatic display power-off, locking and sleep";
-      icon = "caffeine-cup-full";
-    }
-    {
-      id = "notifications-toggle";
-      name = "System · Focus · Silence notifications";
-      comment = "Toggle DMS Do Not Disturb";
-      icon = "notifications-disabled";
-    }
-    {
-      id = "notifications-1h";
-      name = "System · Focus · Silence notifications for 1 hour";
-      comment = "Enable Do Not Disturb for one hour";
-      icon = "notifications-disabled";
-    }
-    {
-      id = "notifications-morning";
-      name = "System · Focus · Silence notifications until tomorrow morning";
-      comment = "Enable Do Not Disturb until 08:00 tomorrow";
-      icon = "notifications-disabled";
-    }
-    {
-      id = "notifications-resume";
-      name = "System · Focus · Resume notifications";
-      comment = "Disable Do Not Disturb";
-      icon = "preferences-system-notifications";
-    }
-    {
-      id = "reminders";
-      name = "System · Focus · Set or manage reminder";
-      comment = "Schedule a private local desktop reminder";
-      icon = "appointment-soon";
-    }
-    {
-      id = "dictate";
-      name = "System · Focus · Dictate";
-      comment = "Start or stop local speech-to-text dictation";
-      icon = "audio-input-microphone";
-    }
-    {
-      id = "night-light-toggle";
-      name = "System · Focus · Toggle Night Light";
-      comment = "Toggle the DMS warm display color mode";
-      icon = "weather-clear-night";
-    }
-    {
-      id = "lock-now";
-      name = "System · Security · Lock now";
-      comment = "Lock the current session immediately";
-      icon = "system-lock-screen";
-    }
-    {
-      id = "lock-preview";
-      name = "System · Security · Preview lock screen";
-      comment = "Preview the minimal lock screen without locking";
-      icon = "system-lock-screen";
-    }
-    {
-      id = "lock-settings";
-      name = "System · Security · Lock screen & screensaver settings";
-      comment = "Configure lock appearance, authentication and the optional video screensaver";
-      icon = "preferences-desktop-screensaver";
-    }
-    {
-      id = "pip-controls";
-      name = "System · Windows · Picture-in-Picture controls";
-      comment = "Control sticky Picture-in-Picture windows in Niri";
-      icon = "video-display";
-    }
-    {
-      id = "pip-toggle-pin";
-      name = "System · Windows · Toggle pin focused window";
-      comment = "Pin or unpin the focused Niri window across workspaces";
-      icon = "window-pin";
-    }
-    {
-      id = "scratchpad-toggle";
-      name = "System · Windows · Toggle scratchpad for this display";
-      comment = "Summon or hide this display's Niri scratchpad";
-      icon = "window-restore";
-    }
-    {
-      id = "scratchpad-send";
-      name = "System · Windows · Move focused window to scratchpad";
-      comment = "Store the focused window in this display's Niri scratchpad";
-      icon = "window-minimize";
-    }
-    {
-      id = "theme";
-      name = "System · Appearance · Choose theme";
-      comment = "Choose an immutable, reviewed system theme";
-      icon = "preferences-desktop-theme";
-    }
-    {
-      id = "wallpaper";
-      name = "System · Appearance · Choose wallpaper";
-      comment = "Open the DMS wallpaper browser";
-      icon = "preferences-desktop-wallpaper";
-    }
-    {
-      id = "proton-vpn";
-      name = "System · Connections · Proton VPN";
-      comment = "Open Proton VPN";
-      icon = "proton-vpn";
-    }
-    {
-      id = "update";
-      name = "System · Update NixOS packages";
-      comment = "Update reviewed stable inputs and activate the new generation";
-      icon = "system-software-update";
-    }
-  ] ++ lib.optionals fingerprintEnabled [
-    {
-      id = "fingerprint-user";
-      name = "System · Security · Fingerprint for login and unlock";
-      comment = "Enroll a fingerprint for Mariano";
-      icon = "fingerprint-gui";
-    }
-    {
-      id = "fingerprint-admin";
-      name = "System · Security · Fingerprint for sudo";
-      comment = "Enroll a separate fingerprint for the root administrator account";
-      icon = "fingerprint-gui";
-    }
-  ];
-
-  desktopItems = map (action: pkgs.makeDesktopItem {
-    name = "mariano-system-${action.id}";
-    desktopName = action.name;
-    inherit (action) comment icon;
-    exec = "${actionRunner}/bin/mariano-system-action ${action.id}";
-    categories = [ "Settings" ];
-    keywords = [
-      "System"
-      "Settings"
-      action.id
-    ];
-    terminal = false;
-  }) actionSpecs;
-
-  systemMenuDesktop = pkgs.makeDesktopItem {
-    name = "mariano-system-actions";
-    desktopName = "System Actions";
-    comment = "Search system settings, toggles and maintenance";
-    exec = ''${pkgs.ghostty}/bin/ghostty --class=system.actions --title="System Actions" -e ${systemMenu}/bin/mariano-system-menu'';
-    icon = "preferences-system";
-    categories = [ "Settings" ];
-    keywords = [
-      "System"
-      "Actions"
-      "Settings"
-      "Toggle"
-    ];
-    terminal = false;
-  };
 in
 {
   environment.systemPackages = [
     actionRunner
     displayToggle
     systemMenu
-    systemMenuDesktop
     systemUpdate
-  ] ++ desktopItems;
+  ] ++ lib.optionals fingerprintEnabled [ fingerprintManager ];
 }

@@ -9,14 +9,14 @@ binds {
     Mod+T repeat=false hotkey-overlay-title="Open Terminal" { spawn "ghostty"; }
     Super+B repeat=false hotkey-overlay-title="Open Browser" { spawn "google-chrome-stable"; }
     Super+E repeat=false hotkey-overlay-title="Open Files" { spawn "dolphin"; }
-    Mod+Space repeat=false hotkey-overlay-title="Application Launcher" {
-        spawn "dms" "ipc" "call" "spotlight" "toggleWith" "apps";
+    Mod+Space repeat=false hotkey-overlay-title="System Actions" {
+        spawn "ghostty" "--class=system.actions" "--title=System Actions" "-e" "mariano-system-menu";
     }
     Super+Period repeat=false hotkey-overlay-title="Application Launcher" {
-        spawn "dms" "ipc" "call" "spotlight" "toggleWith" "apps";
+        spawn "vicinae" "toggle";
     }
-    Alt+Space repeat=false hotkey-overlay-title="Search Apps & System Actions" {
-        spawn "dms" "ipc" "call" "spotlight-bar" "toggleWith" "apps";
+    Alt+Space repeat=false hotkey-overlay-title="Application Launcher" {
+        spawn "vicinae" "toggle";
     }
     Mod+Alt+Space repeat=false hotkey-overlay-title="Keyboard Pointer" {
         spawn "wl-kbptr" "-o" "modes=floating,click" "-o" "mode_floating.source=detect" "-o" "mode_floating.label_font_size=18 50% 100";

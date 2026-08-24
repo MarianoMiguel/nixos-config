@@ -5,9 +5,18 @@
 }:
 
 let
+  # Pin the official Omarchy catalog so every reviewed theme and its bundled
+  # wallpapers are available offline on both hosts and in the installer.
+  omarchyThemes = pkgs.fetchFromGitHub {
+    owner = "basecamp";
+    repo = "omarchy";
+    rev = "5d3299fb9426ae927b9fc7ef16c94bd334a90f01";
+    hash = "sha256-smjQlpZd7mzMrxV6PQFjXRwVm0s8xybBthcIrvrTYUA=";
+  };
+
   themeportUnwrapped = pkgs.stdenvNoCC.mkDerivation {
     pname = "themeport-unwrapped";
-    version = "0.3.1";
+    version = "0.4.0";
     src = ../../tools/themeport;
     dontBuild = true;
     installPhase = ''
@@ -22,7 +31,7 @@ let
       install -Dm0444 themeport.py "$out/share/themeport/themeport.py"
       cp -R templates "$out/share/themeport/templates"
       mkdir -p "$out/share/themeport/themes"
-      cp -R fixtures/official/. "$out/share/themeport/themes/"
+      cp -R ${omarchyThemes}/themes/. "$out/share/themeport/themes/"
       runHook postInstall
     '';
   };
@@ -163,17 +172,20 @@ HELP
               *) usage >&2; exit 2 ;;
             esac
           done
-          # Only local files below Pictures/Wallpapers are selectable. Avoid
-          # fzf preview shell templates entirely so a filename can never become
-          # executable input.
+          # Offer both the user's own images and every wallpaper in the pinned
+          # catalog. Avoid fzf preview shell templates entirely so a filename
+          # can never become executable input.
           wallpaper_root="$HOME/Pictures/Wallpapers"
-          [ -d "$wallpaper_root" ] || {
-            echo "No wallpaper directory found: $wallpaper_root" >&2
-            exit 1
-          }
-          images=$(find "$wallpaper_root" -type f \( \
-            -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.webp' \
-          \) -print | sort)
+          mkdir -p "$wallpaper_root"
+          images=$(
+            find "$trusted" -mindepth 3 -path '*/backgrounds/*' -type f \( \
+              -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.webp' \
+            \) -print
+            find "$wallpaper_root" -type f \( \
+              -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.webp' \
+            \) -print
+          )
+          images=$(printf '%s\n' "$images" | sort -u)
           if [ "$list" -eq 1 ]; then
             printf '%s\n' "$images"
             exit 0
@@ -185,8 +197,17 @@ HELP
           choice=$(printf '%s\n' "$images" | fzf --prompt='wallpaper> ' --height=80% --border) || exit 0
           resolved=$(realpath -e "$choice")
           root=$(realpath -e "$wallpaper_root")
+          catalog_root=$(realpath -e "$trusted")
           case "$resolved" in
             "$root"/*) ;;
+            "$catalog_root"/*)
+              relative=''${resolved#"$catalog_root"/}
+              theme=''${relative%%/*}
+              destination="$wallpaper_root/themeport/$theme/''${resolved##*/}"
+              mkdir -p "''${destination%/*}"
+              install -m 0600 "$resolved" "$destination"
+              resolved="$destination"
+              ;;
             *) echo "Wallpaper escaped the trusted directory." >&2; exit 2 ;;
           esac
           status=0

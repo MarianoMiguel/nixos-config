@@ -20,6 +20,7 @@ let
     "niri/dms/windowrules.kdl"
     "niri/dms/wpblur.kdl"
     "niri/toggles/gaps.kdl"
+    "niri/toggles/border.kdl"
     "niri/toggles/radius.kdl"
     "nvim/lazy-lock.json"
     "nvim/lua/plugins/dankcolors.lua"
@@ -210,9 +211,9 @@ in
             ${pkgs.coreutils}/bin/rm -f "$temporary"
           fi
 
-          # Alt+Space is an OS-level contract: keep the apps-only Spotlight Bar
-          # and its companion launcher bindings consistent even if an older DMS
-          # generation seeded this mutable file.
+          # Keep the Vicinae application launcher and dedicated system-menu
+          # bindings consistent even if an older DMS generation seeded this
+          # mutable file.
           $DRY_RUN_CMD ${pkgs.coreutils}/bin/install -m 0600 \
             ${dotfiles}/niri/dms/binds.kdl \
             ${lib.escapeShellArg "${mutableState}/niri/dms/binds.kdl"}
@@ -286,6 +287,7 @@ in
           "niri/dms/windowrules.kdl".source = mutableDotfile "niri/dms/windowrules.kdl";
           "niri/dms/wpblur.kdl".source = mutableDotfile "niri/dms/wpblur.kdl";
           "niri/toggles/gaps.kdl".source = mutableDotfile "niri/toggles/gaps.kdl";
+          "niri/toggles/border.kdl".source = mutableDotfile "niri/toggles/border.kdl";
           "niri/toggles/radius.kdl".source = mutableDotfile "niri/toggles/radius.kdl";
 
           "matugen/config.toml".source = ../../dotfiles/matugen/config.toml;

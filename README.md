@@ -102,12 +102,12 @@ applet, Discover and PackageKit are deliberately not installed as competing
 control surfaces. KDE applications such as Dolphin, Krita and Kdenlive remain
 available and follow the same GTK-derived light/dark appearance.
 
-Press `Alt+Space` in Niri to open DMS's compact unified search, or `Mod+Space`
-for its larger launcher. Both index applications and the declarative system
-actions, whose labels retain paths such as `System · Connections · Proton
-VPN`. The `System Actions` launcher entry also provides a dedicated fuzzy
-search, while `System Actions --categories` offers the same commands as a
-browsable nested menu. Important entries include:
+`Alt+Space` opens the Vicinae application launcher in Niri and GNOME;
+`Super+Period` is a second Niri spelling. `Super+Space` opens the separate,
+searchable System Actions menu in both sessions. System actions are not
+exported as fake applications, so they no longer crowd Vicinae's results.
+`mariano-system-menu --categories` offers the same commands as a browsable
+nested menu. Important entries include:
 
 - safe laptop-display toggle, which refuses to turn off the only active screen;
 - DMS display/network settings, Wi-Fi and Bluetooth toggles, and Proton VPN;
@@ -115,7 +115,8 @@ browsable nested menu. Important entries include:
 - DMS Power & Sleep settings plus a Focus menu for notification silence,
   `Stay awake`, reminders, local dictation and Night Light;
 - immediate lock, lock-screen preview, and lock/screen-saver settings;
-- reviewed theme and wallpaper pickers;
+- the 22 pinned official Omarchy themes (including Osaka Jade), their bundled
+  wallpapers, and window border/gap toggles;
 - fingerprint enrollment on Bonhart; and
 - a fixed NixOS updater that updates only `nixpkgs`, Home Manager and Disko,
   rejects a writable or symlinked `/etc/nixos`, restores the old lock file on
@@ -132,12 +133,18 @@ notification and AI-quota feedback use 60 ms. Long-running spinners and active
 recording/dictation indicators keep their slower cycles because they describe
 ongoing work rather than delaying an interaction.
 
-Search `Focus` with `Alt+Space` for notification silence (toggle, one hour, or
+Search `Focus` with `Super+Space` for notification silence (toggle, one hour, or
 until 08:00 tomorrow), resume notifications, `Stay awake`, reminders,
 dictation and Night Light. DMS shows active Do Not Disturb and idle-inhibitor
 state in the control center. Reminders are stored in a private local queue and
 delivered by a persistent user timer, so locking, sleeping or rebooting does
 not discard them.
+
+For dictation, focus any text field, tap `Alt+A`, speak, then tap `Alt+A` again
+to stop; a short silence also ends the recording automatically. Speech is
+transcribed by the pinned local Whisper model and typed into the window that
+was focused when dictation began. `Alt+S` is the separate spoken-agent mode,
+which opens a visible Claude Code terminal instead of typing a transcription.
 
 The CodexBar panel keeps its reviewed OAuth-only quota source, but now presents
 Claude, Codex and any other provider through a compact provider switch and one
@@ -156,7 +163,7 @@ The Niri session has one consistent capture workflow:
 Screenshots are saved privately in `~/Pictures/Screenshots` and copied to the
 clipboard. Recordings are saved privately in `~/Videos/Recordings`. System
 audio defaults to off for privacy. Search for `System · Capture · Toggle system
-audio in recordings` with `Alt+Space` to enable or disable it for future
+audio in recordings` with `Super+Space` to enable or disable it for future
 recordings; that preference survives reboot. The recorder follows the current
 default audio output, so it continues to work when switching between speakers,
 headphones and a dock.
@@ -183,12 +190,11 @@ DMS's optional video screensaver without creating a second idle daemon.
 ### Bonhart fingerprint enrollment
 
 Bonhart enables `fprintd` for greetd login, DMS unlock, `polkit` authorization
-and `sudo`. Because this configuration intentionally makes `sudo` authenticate
-the separate root account, enroll fingerprints from the launcher twice:
-
-1. `System · Security · Fingerprint for login and unlock` enrolls Mariano.
-2. `System · Security · Fingerprint for sudo` enrolls root. Use a different
-   finger if libfprint refuses to duplicate the first print.
+and `sudo`. Open `Super+Space`, then `Security · Set up fingerprints` to list,
+enroll or delete prints. Mariano's account owns login and unlock fingerprints.
+Because `sudo` intentionally authenticates against the separate root account,
+its submenu uses NixOS's root-owned security wrapper and should enroll a
+different finger for administrator authentication.
 
 Passwords remain available as the fallback. Enrollment still needs to be
 performed on the physical ThinkPad because the reader must capture the finger.
@@ -199,7 +205,7 @@ Browser Picture-in-Picture windows are managed by the pinned niri-pip v0.2.1
 daemon. It recognizes Firefox and Chromium-family PiP windows, floats them
 without taking keyboard focus, remembers their geometry and follows the active
 Niri workspace. Search for
-`System · Windows · Picture-in-Picture controls` with Alt+Space to resize,
+`System · Windows · Picture-in-Picture controls` with `Super+Space` to resize,
 position, lock or change the follow behavior. `System · Windows · Toggle
 pin focused window` makes any focused window follow you until it is unpinned.
 

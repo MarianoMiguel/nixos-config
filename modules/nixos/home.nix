@@ -180,6 +180,24 @@ in
             exit 1
           fi
 
+          # System-wide plugin installation and mutable enablement are separate
+          # in DMS. Keep the three reviewed launcher providers active on both
+          # upgrades and fresh installs while preserving every other plugin's
+          # settings.
+          plugin_settings=${lib.escapeShellArg "${mutableState}/dms/plugin-settings.json"}
+          if ! ${pkgs.jq}/bin/jq -e 'type == "object"' "$plugin_settings" >/dev/null 2>&1; then
+            echo "DMS plugin settings are not valid JSON: $plugin_settings" >&2
+            exit 1
+          fi
+          temporary="$(${pkgs.coreutils}/bin/mktemp)"
+          ${pkgs.jq}/bin/jq '
+            .systemMenu.enabled = true
+            | .themePicker.enabled = true
+            | .wallpaperPicker.enabled = true
+          ' "$plugin_settings" > "$temporary"
+          $DRY_RUN_CMD ${pkgs.coreutils}/bin/install -m 0600 "$temporary" "$plugin_settings"
+          ${pkgs.coreutils}/bin/rm -f "$temporary"
+
           # Migrate installations whose seeded DMS policy left every automatic
           # privacy action disabled. Apply this once so Power & Sleep remains a
           # real user-facing settings surface after the secure defaults land.

@@ -1,17 +1,15 @@
-// themeport pickers: theme switcher and wallpaper chooser in a floating
-// terminal. Lives in its own include (not dms/binds.kdl, which DMS
-// regenerates and would drop custom binds).
+// Themeport's image-first DMS pickers. This lives in its own include because
+// DMS regenerates dms/binds.kdl and would otherwise drop custom bindings.
 binds {
-    Mod+Ctrl+T hotkey-overlay-title="Pick a theme (themeport)" {
-        spawn "ghostty" "--class=themeport.picker" "-e" "themeport" "pick" "--hold";
+    Mod+Ctrl+T hotkey-overlay-title="Preview themes" {
+        spawn "mariano-dms-picker" "theme";
     }
-    Mod+Ctrl+W hotkey-overlay-title="Pick a wallpaper (themeport)" {
-        spawn "ghostty" "--class=themeport.picker" "-e" "themeport" "wallpapers" "--hold";
+    Mod+Ctrl+W hotkey-overlay-title="Preview wallpapers" {
+        spawn "mariano-dms-picker" "wall";
     }
 }
 
 window-rule {
-    match app-id=r#"^themeport\.picker$"#
     match app-id=r#"^system\.actions$"#
     open-floating true
     default-column-width { proportion 0.45; }

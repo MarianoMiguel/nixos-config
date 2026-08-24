@@ -15,7 +15,7 @@ let
     exec ${pkgs.ghostty}/bin/ghostty \
       --class=system.actions \
       --title="System Actions" \
-      -e /run/current-system/sw/bin/mariano-system-menu
+      -e /run/current-system/sw/bin/mariano-system-menu --terminal
   '';
 in
 {

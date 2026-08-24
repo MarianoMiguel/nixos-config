@@ -52,6 +52,19 @@ let
     exec /run/current-system/sw/bin/google-chrome-stable "$@"
   '';
 
+  # Themeport may select only its own generated Vicinae theme. Keep the full
+  # launcher CLI out of the renderer's closed PATH.
+  vicinaeBridge = pkgs.writeShellScriptBin "vicinae" ''
+    if [ "$#" -ne 3 ] \
+      || [ "$1" != "theme" ] \
+      || [ "$2" != "set" ] \
+      || [ "$3" != "themeport" ]; then
+      echo "This bridge only selects Vicinae's generated Themeport palette." >&2
+      exit 2
+    fi
+    exec /run/current-system/sw/bin/vicinae "$@"
+  '';
+
   chromeThemeRequest = "/home/mariano/.local/state/nixos-config/dotfiles/themeport/chrome/color.json";
   chromeThemePolicy = "/var/lib/themeport/chrome-color.json";
   chromePolicySync = pkgs.writeShellApplication {
@@ -109,6 +122,7 @@ let
     pkgs.tmux
     chromeBridge
     dmsBridge
+    vicinaeBridge
   ];
 
   # Theme switching is intentionally a closed catalog. The unwrapped renderer
@@ -240,7 +254,7 @@ HELP
             find "$trusted" -mindepth 3 -path '*/backgrounds/*' -type f \( \
               -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.webp' \
             \) -print
-            find "$wallpaper_root" -type f \( \
+            find -L "$wallpaper_root" -type f \( \
               -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.webp' \
             \) -print
           )
@@ -254,18 +268,31 @@ HELP
           # trusted and built-in wallpaper is already below this one root.
           : "$all"
           choice=$(printf '%s\n' "$images" | fzf --prompt='wallpaper> ' --height=80% --border) || exit 0
-          resolved=$(realpath -e "$choice")
-          root=$(realpath -e "$wallpaper_root")
-          catalog_root=$(realpath -e "$trusted")
-          case "$resolved" in
-            "$root"/*) ;;
-            "$catalog_root"/*)
+          case "$choice" in
+            "$wallpaper_root"/*)
+              [ -f "$choice" ] || { echo "Wallpaper no longer exists." >&2; exit 2; }
+              # Preserve the library path instead of resolving its immutable
+              # symlink. DMS uses the active file's parent as its gallery.
+              resolved=$choice
+              ;;
+            "$trusted"/*)
+              resolved=$(realpath -e "$choice")
+              catalog_root=$(realpath -e "$trusted")
+              case "$resolved" in
+                "$catalog_root"/*) ;;
+                *) echo "Wallpaper escaped the trusted catalog." >&2; exit 2 ;;
+              esac
               relative=''${resolved#"$catalog_root"/}
               theme=''${relative%%/*}
-              destination="$wallpaper_root/themeport/$theme/''${resolved##*/}"
-              mkdir -p "''${destination%/*}"
-              install -m 0600 "$resolved" "$destination"
-              resolved="$destination"
+              canonical="$wallpaper_root/$theme--''${resolved##*/}"
+              if [ -f "$canonical" ]; then
+                resolved=$canonical
+              else
+                destination="$wallpaper_root/themeport/$theme/''${resolved##*/}"
+                mkdir -p "''${destination%/*}"
+                install -m 0600 "$resolved" "$destination"
+                resolved="$destination"
+              fi
               ;;
             *) echo "Wallpaper escaped the trusted directory." >&2; exit 2 ;;
           esac
@@ -325,6 +352,9 @@ in
 
   environment.systemPackages = [
     themeport
+    # Export previews and backgrounds at /run/current-system/sw/share/themeport
+    # for the native DMS pickers; the command wrapper itself contains only bin/.
+    themeportUnwrapped
     pkgs.yaru-theme
     pkgs.adwaita-icon-theme
   ];

@@ -504,6 +504,99 @@ set -g copy-mode-current-match-style "bg={c['red']},fg={c['background']}"
 """
 
 
+def render_vicinae_theme(theme: Theme) -> str:
+    """Render Vicinae's native TOML theme from the same resolved palette.
+
+    Keeping this as a custom theme (rather than an opacity or GTK override)
+    lets Vicinae retain its own interaction design while matching every
+    Themeport switch immediately.
+    """
+    c = theme.colors
+    accent = c["accent"]
+    accent_foreground = _on_color(accent, c, theme.mode)
+    inherits = "vicinae-light" if theme.mode == "light" else "vicinae-dark"
+    pretty = theme.name.replace("-", " ").title()
+    return f'''[meta]
+version = 1
+name = "Themeport · {pretty}"
+description = "Generated from the active Themeport palette"
+variant = "{theme.mode}"
+inherits = "{inherits}"
+
+[colors.core]
+accent = "{accent}"
+accent_foreground = "{accent_foreground}"
+background = "{c['background']}"
+foreground = "{c['foreground']}"
+secondary_background = "{c['lighter_background']}"
+border = "{c['selection']}"
+
+[colors.main_window]
+border = "{c['selection']}"
+footer = {{ background = "colors.core.secondary_background" }}
+
+[colors.settings_window]
+border = "{c['selection']}"
+
+[colors.accents]
+blue = "{c['blue']}"
+green = "{c['green']}"
+magenta = "{c['magenta']}"
+orange = "{c['orange']}"
+red = "{c['red']}"
+yellow = "{c['yellow']}"
+cyan = "{c['cyan']}"
+purple = "{c['purple']}"
+
+[colors.shortcut]
+border = "colors.core.border"
+
+[colors.text]
+default = "colors.core.foreground"
+muted = "{c['dark_foreground']}"
+danger = "{c['red']}"
+success = "{c['green']}"
+placeholder = "{c['muted']}"
+selection = {{ background = "{accent}", foreground = "{accent_foreground}" }}
+
+[colors.text.links]
+default = "{c['blue']}"
+visited = "{c['magenta']}"
+
+[colors.input]
+border = "{c['selection']}"
+border_focus = "{accent}"
+border_error = "{c['red']}"
+
+[colors.button.primary]
+background = "{c['lighter_background']}"
+foreground = "{c['foreground']}"
+focus = {{ outline = "colors.core.accent" }}
+
+[colors.list.item.hover]
+foreground = "{c['bright_foreground']}"
+secondary_foreground = "{c['foreground']}"
+
+[colors.list.item.selection]
+background = "{c['selection_background']}"
+foreground = "{c['selection_foreground']}"
+secondary_background = "{c['lighter_background']}"
+secondary_foreground = "{c['foreground']}"
+
+[colors.grid.item]
+background = "{c['lighter_background']}"
+hover = {{ outline = "{accent}" }}
+selection = {{ outline = "{c['bright_foreground']}" }}
+
+[colors.scrollbars]
+background = "{c['selection']}"
+
+[colors.loading]
+bar = "{accent}"
+spinner = "{c['foreground']}"
+'''
+
+
 TPL_OUTPUTS = {
     # template file -> output path (relative to render dir)
     "ghostty.conf.tpl": "ghostty/themes/themeport",
@@ -527,6 +620,7 @@ def render_all(theme: Theme, other: Theme | None) -> dict[str, str]:
 
     out["chrome/color.json"] = render_browser_policy(theme.colors)
     out["tmux/themeport.conf"] = render_tmux(theme.colors)
+    out["vicinae/themeport.toml"] = render_vicinae_theme(theme)
 
     if theme.neovim:
         out["neovim/theme.lua"] = theme.neovim + "\n"
@@ -1020,21 +1114,30 @@ def apply_icons(meta: dict) -> None:
 def apply_wallpapers(theme: Theme, meta: dict) -> None:
     if not theme.backgrounds:
         return
-    dest = Path.home() / "Pictures/Wallpapers/themeport" / theme.name
-    dest.mkdir(parents=True, exist_ok=True)
-    for bg in theme.backgrounds:
-        shutil.copy2(theme.src / "backgrounds" / bg, dest / bg)
-    first = dest / theme.backgrounds[0]
+    wallpaper_root = Path.home() / "Pictures/Wallpapers"
+    canonical = [wallpaper_root / f"{theme.name}--{bg}" for bg in theme.backgrounds]
+    if all(path.is_file() for path in canonical):
+        first = canonical[0]
+        location = f"{len(canonical)} available in the shared library"
+    else:
+        # Custom/legacy themes are not part of the declarative catalog. Keep a
+        # writable fallback for them without affecting the reviewed flat set.
+        dest = wallpaper_root / "themeport" / theme.name
+        dest.mkdir(parents=True, exist_ok=True)
+        for bg in theme.backgrounds:
+            shutil.copy2(theme.src / "backgrounds" / bg, dest / bg)
+        first = dest / theme.backgrounds[0]
+        location = f"{len(theme.backgrounds)} copied"
     if _dms_ipc("wallpaper", "set", str(first), timeout=15) is not None:
-        print(f"  wallpaper: {first.name} ({len(theme.backgrounds)} copied)")
+        print(f"  wallpaper: {first.name} ({location})")
     elif _edit_json(
         xdg_state_home() / "DankMaterialShell/session.json",
         {"wallpaperPath": str(first)},
     ):
         # shell not reachable: stage it in session state for the next start
-        print(f"  wallpaper: staged {first.name} for next DMS start ({len(theme.backgrounds)} copied)")
+        print(f"  wallpaper: staged {first.name} for next DMS start ({location})")
     else:
-        print(f"  wallpaper: {len(theme.backgrounds)} copied to {dest} (set one via the DMS settings UI)")
+        print(f"  wallpaper: {location} (set one via the DMS settings UI)")
 
 
 def _edit_jsonc_string_key(path: Path, key: str, value: str) -> bool:
@@ -1174,6 +1277,15 @@ def apply_browsers(meta: dict) -> None:
             print(f"  ! {exe}: policy refresh failed — restart the browser to apply")
 
 
+def apply_vicinae() -> None:
+    if not shutil.which("vicinae"):
+        return
+    if _run_quiet(["vicinae", "theme", "set", "themeport"]):
+        print("  vicinae: active launcher palette updated")
+    else:
+        print("  ! vicinae: theme staged; restart Vicinae if it did not update live")
+
+
 def apply_terminals() -> None:
     if shutil.which("tmux") and _run_quiet(["tmux", "has-session"]):
         conf = Path.home() / ".config/tmux/themeport.conf"
@@ -1227,6 +1339,7 @@ def cmd_set(args: argparse.Namespace) -> int:
     apply_wallpapers(theme, meta)
     apply_vscode(state, meta)
     apply_browsers(meta)
+    apply_vicinae()
     apply_terminals()
     apply_btop()
     print(f"done. rendered state lives in {state}")

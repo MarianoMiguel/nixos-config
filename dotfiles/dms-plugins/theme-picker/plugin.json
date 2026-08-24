@@ -1,0 +1,14 @@
+{
+  "id": "themePicker",
+  "name": "Theme Preview",
+  "description": "Preview and apply the reviewed Themeport catalog",
+  "version": "1.0.0",
+  "author": "Mariano Miguel",
+  "type": "launcher",
+  "trigger": "theme",
+  "viewMode": "tile",
+  "viewModeEnforced": true,
+  "icon": "palette",
+  "component": "./ThemePicker.qml",
+  "permissions": ["process"]
+}

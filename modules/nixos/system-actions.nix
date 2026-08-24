@@ -195,6 +195,36 @@ let
     '';
   };
 
+  dmsPicker = pkgs.writeShellApplication {
+    name = "mariano-dms-picker";
+    runtimeInputs = [ pkgs.coreutils ];
+    text = ''
+      set -eu
+
+      case "''${1:-}" in
+        sys) query='sys ' ;;
+        theme) query='theme ' ;;
+        wall) query='wall ' ;;
+        *)
+          echo "usage: mariano-dms-picker sys|theme|wall" >&2
+          exit 2
+          ;;
+      esac
+
+      if [ "''${XDG_CURRENT_DESKTOP:-}" != niri ]; then
+        echo "The DMS picker is available only in the Niri session." >&2
+        exit 1
+      fi
+
+      # Selecting Theme or Wallpaper from the system palette first closes the
+      # current DMS launcher. A short deferred reopen avoids that close racing
+      # the next visual picker.
+      delay="''${MARIANO_DMS_PICKER_DELAY:-0}"
+      [ "$delay" = 0 ] || sleep "$delay"
+      exec /run/current-system/sw/bin/dms ipc call launcher openQuery "$query"
+    '';
+  };
+
   actionRunner = pkgs.writeShellApplication {
     name = "mariano-system-action";
     runtimeInputs = with pkgs; [
@@ -429,13 +459,18 @@ let
           exec /run/current-system/sw/bin/niri-style-toggle border
           ;;
         theme)
-          exec /run/current-system/sw/bin/ghostty --class=system.actions --title="Choose Theme" -e \
-            /run/current-system/sw/bin/themeport pick --hold
+          if [ "''${XDG_CURRENT_DESKTOP:-}" = niri ]; then
+            export MARIANO_DMS_PICKER_DELAY=0.15
+            exec ${dmsPicker}/bin/mariano-dms-picker theme
+          else
+            exec /run/current-system/sw/bin/ghostty --class=system.actions --title="Choose Theme" -e \
+              /run/current-system/sw/bin/themeport pick --hold
+          fi
           ;;
         wallpaper)
           if [ "''${XDG_CURRENT_DESKTOP:-}" = niri ]; then
-            exec /run/current-system/sw/bin/ghostty --class=system.actions --title="Choose Wallpaper" -e \
-              /run/current-system/sw/bin/themeport wallpapers --hold
+            export MARIANO_DMS_PICKER_DELAY=0.15
+            exec ${dmsPicker}/bin/mariano-dms-picker wall
           else
             exec /run/current-system/sw/bin/gnome-control-center background
           fi
@@ -464,6 +499,13 @@ let
     runtimeInputs = with pkgs; [ gum ];
     text = ''
       set -eu
+
+      if [ "''${XDG_CURRENT_DESKTOP:-}" = niri ] && [ "''${1:-}" != --terminal ]; then
+        exec ${dmsPicker}/bin/mariano-dms-picker sys
+      fi
+      if [ "''${1:-}" = --terminal ]; then
+        shift
+      fi
 
       print_catalog() {
         cat <<'CATALOG'
@@ -631,6 +673,7 @@ in
 {
   environment.systemPackages = [
     actionRunner
+    dmsPicker
     displayToggle
     systemMenu
     systemUpdate

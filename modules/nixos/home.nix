@@ -5,6 +5,31 @@ let
   dotfiles = ../../dotfiles;
   mutableState = "${home}/.local/state/nixos-config/dotfiles";
   fingerprintEnabled = config.services.fprintd.enable;
+  # Keep one immutable wallpaper catalog for Themeport, the DMS settings page,
+  # DankDash and the visual picker. A flat directory is intentional: DMS shows
+  # siblings of the active wallpaper, so any selection keeps the whole catalog
+  # visible.
+  omarchyThemes = pkgs.fetchFromGitHub {
+    owner = "basecamp";
+    repo = "omarchy";
+    rev = "5d3299fb9426ae927b9fc7ef16c94bd334a90f01";
+    hash = "sha256-smjQlpZd7mzMrxV6PQFjXRwVm0s8xybBthcIrvrTYUA=";
+  };
+  wallpaperLibrary = pkgs.runCommandLocal "mariano-wallpaper-library" { } ''
+    mkdir -p "$out"
+    cp -a ${../../assets/wallpapers}/. "$out/"
+    chmod u+w "$out"
+
+    find ${omarchyThemes}/themes -mindepth 3 -maxdepth 3 \
+      -path '*/backgrounds/*' -type f \
+      \( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.webp' \) \
+      -print | while IFS= read -r source; do
+        theme_dir=$(dirname "$(dirname "$source")")
+        theme=$(basename "$theme_dir")
+        filename=$(basename "$source")
+        ln -s "$source" "$out/$theme--$filename"
+      done
+  '';
   mutableDotfiles = [
     "dms/plugin-settings.json"
     "dms/session.json"
@@ -117,6 +142,8 @@ in
               .runUserMatugenTemplates = false
               | .showThirdPartyPlugins = false
               | .searchAppActions = true
+              | .launcherStyle = "full"
+              | .dankLauncherV2Size = "medium"
               | .gtkThemingEnabled = true
               | .qtThemingEnabled = false
               | .matugenTemplateGtk = true
@@ -238,6 +265,72 @@ in
           retire_display_state "$HOME/.config/kwinoutputconfig.json" "$archive/kwinoutputconfig.json"
         '';
 
+        # Vicinae owns a writable settings file so its GUI can keep managing
+        # preferences. Merge only the two palette pointers instead of replacing
+        # that file with an immutable Home Manager link.
+        home.activation.enforceVicinaeTheme = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
+          settings="$HOME/.config/vicinae/settings.json"
+          $DRY_RUN_CMD ${pkgs.coreutils}/bin/mkdir -p "$HOME/.config/vicinae"
+          temporary="$(${pkgs.coreutils}/bin/mktemp)"
+          source_json="$(${pkgs.coreutils}/bin/mktemp)"
+          if [ -f "$settings" ]; then
+            # Vicinae prefixes its otherwise-valid JSON with documentation
+            # comments. Strip only that generated header before the merge.
+            ${pkgs.gnused}/bin/sed -n '/^[[:space:]]*{/,$p' "$settings" > "$source_json"
+          else
+            ${pkgs.jq}/bin/jq -n '{
+              "$schema": "https://vicinae.com/schemas/config.json",
+              theme: {}
+            }' > "$source_json"
+          fi
+          if ! ${pkgs.jq}/bin/jq -e 'type == "object"' "$source_json" >/dev/null 2>&1; then
+            echo "Vicinae settings are not valid JSON after the generated header: $settings" >&2
+            ${pkgs.coreutils}/bin/rm -f "$temporary" "$source_json"
+            exit 1
+          fi
+          ${pkgs.jq}/bin/jq '
+            .theme.light.name = "themeport"
+            | .theme.dark.name = "themeport"
+          ' "$source_json" > "$temporary"
+          $DRY_RUN_CMD ${pkgs.coreutils}/bin/install -m 0600 "$temporary" "$settings"
+          ${pkgs.coreutils}/bin/rm -f "$temporary" "$source_json"
+        '';
+
+        # Older Themeport generations stored the active image inside a
+        # per-theme subdirectory. Move DMS's three remembered wallpaper slots
+        # to their equivalent flat catalog paths so DankDash immediately sees
+        # every available image after an upgrade.
+        home.activation.migrateDmsWallpaperLibrary = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
+          session=${lib.escapeShellArg "${mutableState}/dms/session.json"}
+
+          migrate_wallpaper_key() {
+            key=$1
+            value=$(${pkgs.jq}/bin/jq -r --arg key "$key" '.[$key] // ""' "$session")
+            prefix="$HOME/Pictures/Wallpapers/themeport/"
+            case "$value" in
+              "$prefix"*/*)
+                relative=''${value#"$prefix"}
+                theme=''${relative%%/*}
+                filename=''${relative#*/}
+                canonical="$HOME/Pictures/Wallpapers/$theme--$filename"
+                if [ -f "$canonical" ]; then
+                  temporary="$(${pkgs.coreutils}/bin/mktemp)"
+                  ${pkgs.jq}/bin/jq --arg key "$key" --arg value "$canonical" \
+                    '.[$key] = $value' "$session" > "$temporary"
+                  $DRY_RUN_CMD ${pkgs.coreutils}/bin/install -m 0600 "$temporary" "$session"
+                  ${pkgs.coreutils}/bin/rm -f "$temporary"
+                fi
+                ;;
+            esac
+          }
+
+          if ${pkgs.jq}/bin/jq -e 'type == "object"' "$session" >/dev/null 2>&1; then
+            migrate_wallpaper_key wallpaperPath
+            migrate_wallpaper_key wallpaperPathLight
+            migrate_wallpaper_key wallpaperPathDark
+          fi
+        '';
+
         programs.zsh = {
           enable = true;
           enableCompletion = true;
@@ -336,6 +429,11 @@ in
           "Code/User/prompts".source = ../../dotfiles/vscode/User/prompts;
         };
 
+        # Vicinae 0.23 discovers TOML themes from XDG_DATA_HOME. The target is
+        # writable state, so Themeport can update it live on every switch.
+        xdg.dataFile."vicinae/themes/themeport.toml".source =
+          mutableDotfile "themeport/vicinae/themeport.toml";
+
         home.file = {
           ".face".source = config.lib.file.mkOutOfStoreSymlink "${home}/Pictures/profile.jpg";
           ".config/nvim" = {
@@ -349,7 +447,7 @@ in
           "Fonts/.keep".text = "";
           ".local/share/fonts/.keep".text = "";
           "Pictures/Wallpapers" = {
-            source = ../../assets/wallpapers;
+            source = wallpaperLibrary;
             recursive = true;
           };
         };

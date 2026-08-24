@@ -79,6 +79,12 @@ def validate_render(name: str, outdir: Path, expect_mode: str) -> None:
     tmux = (outdir / "tmux/themeport.conf").read_text()
     check("status-style" in tmux and "#" in tmux, f"{prefix} tmux colors incomplete")
 
+    vicinae = tomllib.loads((outdir / "vicinae/themeport.toml").read_text())
+    check(vicinae["meta"]["variant"] == expect_mode, f"{prefix} vicinae mode mismatch")
+    check(vicinae["meta"]["inherits"] == f"vicinae-{expect_mode}", f"{prefix} vicinae base mismatch")
+    check(vicinae["colors"]["core"]["background"] == meta["background"], f"{prefix} vicinae background mismatch")
+    check(bool(HEX_RE.match(vicinae["colors"]["core"]["accent"])), f"{prefix} vicinae accent invalid")
+
     nvim_generated = (outdir / "neovim/generated.lua").read_text()
     check("{{" not in nvim_generated, f"{prefix} generated neovim.lua has unresolved tokens")
 

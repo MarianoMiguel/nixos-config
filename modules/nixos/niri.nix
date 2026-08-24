@@ -386,6 +386,21 @@ in
         src = ../../dotfiles/dms-plugins/network-speed;
         settings.enabled = true;
       };
+      # The application launcher remains Vicinae. These reviewed DMS launcher
+      # providers are the theme-aware system surface: a searchable control
+      # palette plus image-first theme and wallpaper browsers.
+      systemMenu = {
+        src = ../../dotfiles/dms-plugins/system-menu;
+        settings.enabled = true;
+      };
+      themePicker = {
+        src = ../../dotfiles/dms-plugins/theme-picker;
+        settings.enabled = true;
+      };
+      wallpaperPicker = {
+        src = ../../dotfiles/dms-plugins/wallpaper-picker;
+        settings.enabled = true;
+      };
     };
 
     # dgop is not available in the current nixpkgs pin.

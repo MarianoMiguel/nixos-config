@@ -36,6 +36,13 @@
     wantedBy = [ "graphical-session.target" ];
     partOf = [ "graphical-session.target" ];
     after = [ "graphical-session.target" ];
+    # NixOS user services receive a minimal PATH. Tailscale's tray uses the
+    # session BROWSER setting first and xdg-open as its portable fallback, so
+    # both must be resolvable when it opens login and administration links.
+    path = [
+      pkgs.google-chrome
+      pkgs.xdg-utils
+    ];
     serviceConfig = {
       ExecStart = "${pkgs.tailscale}/bin/tailscale systray";
       Restart = "on-failure";

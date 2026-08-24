@@ -105,6 +105,7 @@ in
   networking.hostName = "mariano-nixos-installer";
 
   image.baseName = lib.mkForce "mariano-nixos-installer";
+  isoImage.squashfsCompression = "zstd -Xcompression-level 6";
   isoImage.contents = [
     {
       source = repoSource;

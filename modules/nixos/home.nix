@@ -114,7 +114,11 @@ in
           seed_mutable() {
             source=$1
             target=$2
-            if [ ! -e "$target" ]; then
+            if [ -d "$source" ] && [ -d "$target" ]; then
+              # Preserve live rendered state, but merge newly introduced seed
+              # files into existing mutable directories on upgrades.
+              $DRY_RUN_CMD ${pkgs.coreutils}/bin/cp -a -n "$source/." "$target/"
+            elif [ ! -e "$target" ]; then
               $DRY_RUN_CMD ${pkgs.coreutils}/bin/mkdir -p "$(${pkgs.coreutils}/bin/dirname "$target")"
               $DRY_RUN_CMD ${pkgs.coreutils}/bin/cp -a "$source" "$target"
             fi

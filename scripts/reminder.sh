@@ -42,11 +42,9 @@ add_reminder() {
   local message
   local created
   local due
-  local temporary
-  local target
 
-  if [[ ! $minutes =~ ^[0-9]+$ ]] || ((minutes == 0 || minutes > 525600)); then
-    printf 'Minutes must be a whole number between 1 and 525600.\n' >&2
+  if [[ ! $minutes =~ ^[0-9]+$ ]] || ((minutes == 0 || minutes > 5256000)); then
+    printf 'Minutes must be a whole number between 1 and 5256000.\n' >&2
     exit 2
   fi
   shift
@@ -54,14 +52,29 @@ add_reminder() {
   if [[ -z $message ]]; then
     message="Your ${minutes}-minute reminder is due."
   fi
+
+  created=$(now_epoch)
+  due=$((created + minutes * 60))
+  save_reminder "$created" "$due" "$message"
+}
+
+save_reminder() {
+  local created=$1
+  local due=$2
+  local message=$3
+  local temporary
+  local target
+
+  if [[ ! $created =~ ^[0-9]+$ || ! $due =~ ^[0-9]+$ ]] || ((due <= created)); then
+    printf 'The reminder must be scheduled for a future time.\n' >&2
+    exit 2
+  fi
   ((${#message} <= 500)) || {
     printf 'Reminder text must be 500 characters or fewer.\n' >&2
     exit 2
   }
 
   ensure_state
-  created=$(now_epoch)
-  due=$((created + minutes * 60))
   temporary=$(mktemp "$state_dir/.reminder.XXXXXX")
   jq -n \
     --argjson created "$created" \
@@ -73,6 +86,84 @@ add_reminder() {
   mv -f -- "$temporary" "$target"
 
   notify_user "Reminder set" "$message · $(date -d "@$due" '+%H:%M')"
+}
+
+add_relative_reminder() {
+  local amount=${1:-}
+  local unit=${2:-}
+  local message
+  local created
+  local due
+  local maximum
+  local seconds_per_unit
+  local base
+
+  case "$unit" in
+    minute|minutes) unit=minutes; maximum=5256000; seconds_per_unit=60 ;;
+    hour|hours) unit=hours; maximum=87600; seconds_per_unit=3600 ;;
+    day|days) unit=days; maximum=3650; seconds_per_unit=86400 ;;
+    week|weeks) unit=weeks; maximum=520; seconds_per_unit=604800 ;;
+    month|months) unit=months; maximum=120; seconds_per_unit=0 ;;
+    *)
+      printf 'Unit must be minutes, hours, days, weeks, or months.\n' >&2
+      exit 2
+      ;;
+  esac
+  if [[ ! $amount =~ ^[0-9]+$ ]] || ((amount == 0 || amount > maximum)); then
+    printf 'Amount must be a whole number between 1 and %s %s.\n' "$maximum" "$unit" >&2
+    exit 2
+  fi
+  shift 2
+  message=$*
+  if [[ -z $message ]]; then
+    message="Your reminder for ${amount} ${unit} is due."
+  fi
+
+  created=$(now_epoch)
+  if [[ $unit == months ]]; then
+    # Calendar months intentionally preserve the local day and time. Using a
+    # fixed number of days here would make longer reminders drift noticeably.
+    base=$(date -d "@$created" --iso-8601=seconds)
+    due=$(date -d "$base +$amount months" +%s) || {
+      printf 'Could not calculate that calendar date.\n' >&2
+      exit 2
+    }
+  else
+    due=$((created + amount * seconds_per_unit))
+  fi
+  save_reminder "$created" "$due" "$message"
+}
+
+add_absolute_reminder() {
+  local date_value=${1:-}
+  local time_value=${2:-}
+  local message
+  local created
+  local due
+  local normalized
+
+  if [[ ! $date_value =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ \
+    || ! $time_value =~ ^[0-9]{2}:[0-9]{2}$ ]]; then
+    printf 'Date and time must use YYYY-MM-DD and HH:MM.\n' >&2
+    exit 2
+  fi
+  shift 2
+  message=$*
+  if [[ -z $message ]]; then
+    message="Your scheduled reminder is due."
+  fi
+
+  due=$(date -d "$date_value $time_value" +%s 2>/dev/null) || {
+    printf 'That date or time is not valid.\n' >&2
+    exit 2
+  }
+  normalized=$(date -d "@$due" '+%F %H:%M')
+  if [[ $normalized != "$date_value $time_value" ]]; then
+    printf 'That date or time is not valid in the local timezone.\n' >&2
+    exit 2
+  fi
+  created=$(now_epoch)
+  save_reminder "$created" "$due" "$message"
 }
 
 list_json() {
@@ -146,19 +237,35 @@ clear_reminders() {
 
 interactive_add() {
   local choice
+  local amount
+  local unit
+  local date_value
+  local time_value
   local minutes
   local message
 
   choice=$(gum choose --header "When should I remind you?" \
-    "5 minutes" "15 minutes" "30 minutes" "1 hour" "2 hours" "Custom") || return 0
+    "5 minutes" "15 minutes" "1 hour" "24 hours" "1 week" \
+    "Custom duration" "Specific date and time") || return 0
   case "$choice" in
     "5 minutes") minutes=5 ;;
     "15 minutes") minutes=15 ;;
-    "30 minutes") minutes=30 ;;
     "1 hour") minutes=60 ;;
-    "2 hours") minutes=120 ;;
-    Custom)
-      minutes=$(gum input --prompt "Minutes: " --placeholder "45") || return 0
+    "24 hours") minutes=1440 ;;
+    "1 week") minutes=10080 ;;
+    "Custom duration")
+      amount=$(gum input --prompt "Amount: " --placeholder "48") || return 0
+      unit=$(gum choose --header "Unit" minutes hours days weeks months) || return 0
+      message=$(gum input --prompt "Reminder: " --placeholder "What should I remember?") || return 0
+      add_relative_reminder "$amount" "$unit" "$message"
+      return
+      ;;
+    "Specific date and time")
+      date_value=$(gum input --prompt "Date: " --placeholder "$(date '+%F')") || return 0
+      time_value=$(gum input --prompt "Time: " --placeholder "18:30") || return 0
+      message=$(gum input --prompt "Reminder: " --placeholder "What should I remember?") || return 0
+      add_absolute_reminder "$date_value" "$time_value" "$message"
+      return
       ;;
   esac
   message=$(gum input --prompt "Reminder: " --placeholder "What should I remember?") || return 0
@@ -191,6 +298,14 @@ case ${1:-} in
     shift
     add_reminder "$@"
     ;;
+  in)
+    shift
+    add_relative_reminder "$@"
+    ;;
+  at)
+    shift
+    add_absolute_reminder "$@"
+    ;;
   list|show)
     show_reminders
     ;;
@@ -207,7 +322,7 @@ case ${1:-} in
     interactive
     ;;
   *)
-    printf 'usage: mariano-reminder add MINUTES [MESSAGE] | list | json | clear | interactive\n' >&2
+    printf 'usage: mariano-reminder add MINUTES [MESSAGE] | in AMOUNT UNIT [MESSAGE] | at YYYY-MM-DD HH:MM [MESSAGE] | list | json | clear | interactive\n' >&2
     exit 2
     ;;
 esac

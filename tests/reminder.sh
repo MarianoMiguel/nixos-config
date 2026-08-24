@@ -17,6 +17,10 @@ cat > "$fake_bin/date" <<'EOF'
 set -euo pipefail
 case "$*" in
   '+%s') printf '%s\n' "${MARIANO_REMINDER_NOW:?}" ;;
+  '-d @1000 --iso-8601=seconds') printf '%s\n' '1969-12-31T21:16:40-03:00' ;;
+  '-d 1969-12-31T21:16:40-03:00 +1 months +%s') printf '%s\n' '2679400' ;;
+  '-d 2030-01-02 14:45 +%s') printf '%s\n' '1893606300' ;;
+  '-d @1893606300 +%F %H:%M') printf '%s\n' '2030-01-02 14:45' ;;
   '-d @'*' +%H:%M') printf '%s\n' '09:30' ;;
   *) printf 'unexpected date invocation: %s\n' "$*" >&2; exit 1 ;;
 esac
@@ -59,8 +63,17 @@ grep -Fq 'notification: Reminder | Check the oven' <<< "$output"
 
 run_reminder add 15 '--review flags safely' >/dev/null
 run_reminder add 30 'Second reminder' >/dev/null
+run_reminder in 48 hours 'Two-day follow-up' >/dev/null
+run_reminder in 1 month 'Monthly follow-up' >/dev/null
+run_reminder at 2030-01-02 14:45 'Specific appointment' >/dev/null
 printf '%s\n' '{not-json' > "$state_dir/corrupt.json"
-[[ $(run_reminder json | jq length) == 2 ]]
+payload=$(run_reminder json)
+jq -e '
+  length == 5
+  and any(.[]; .message == "Two-day follow-up" and .due == 173800)
+  and any(.[]; .message == "Monthly follow-up" and .due == 2679400)
+  and any(.[]; .message == "Specific appointment" and .due == 1893606300)
+' <<< "$payload" >/dev/null
 run_reminder clear >/dev/null
 [[ $(run_reminder json | jq length) == 0 ]]
 [[ ! -e $state_dir/corrupt.json ]]

@@ -12,7 +12,12 @@ PluginComponent {
 
     readonly property string reminderPath: "/run/current-system/sw/bin/mariano-reminder"
     property var reminders: []
-    property int selectedMinutes: 15
+    property string scheduleMode: "relative"
+    property int selectedQuickMinutes: 15
+    property string relativeAmount: "15"
+    property string relativeUnit: "minutes"
+    property string exactDateDraft: ""
+    property string exactTimeDraft: ""
     property string reminderDraft: ""
     property string pendingReminderText: ""
     property string reminderError: ""
@@ -21,7 +26,8 @@ PluginComponent {
 
     readonly property int reminderCount: reminders.length
     readonly property bool hasFocusState: SessionService.idleInhibited || SessionData.doNotDisturb || DisplayService.nightModeEnabled
-    readonly property real focusViewportHeight: Math.max(260, Math.min(520, (parentScreen?.height ?? 900) - barThickness - 200))
+    readonly property bool scheduleValid: scheduleMode === "relative" ? relativeScheduleIsValid() : exactScheduleIsValid()
+    readonly property real focusViewportHeight: Math.max(300, Math.min(620, (parentScreen?.height ?? 900) - barThickness - 140))
 
     readonly property string pillIcon: {
         if (SessionService.idleInhibited)
@@ -47,6 +53,91 @@ PluginComponent {
 
     readonly property color pillColor: hasFocusState || reminderCount > 0 ? Theme.primary : Theme.surfaceText
 
+    function relativeMaximum() {
+        switch (relativeUnit) {
+        case "minutes": return 5256000;
+        case "hours": return 87600;
+        case "days": return 3650;
+        case "weeks": return 520;
+        case "months": return 120;
+        default: return 0;
+        }
+    }
+
+    function parsedRelativeAmount() {
+        const clean = relativeAmount.trim();
+        if (!/^[0-9]+$/.test(clean))
+            return 0;
+        return Number(clean);
+    }
+
+    function relativeScheduleIsValid() {
+        const amount = parsedRelativeAmount();
+        return amount >= 1 && amount <= relativeMaximum();
+    }
+
+    function exactDateValue() {
+        const dateMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(exactDateDraft.trim());
+        const timeMatch = /^(\d{2}):(\d{2})$/.exec(exactTimeDraft.trim());
+        if (!dateMatch || !timeMatch)
+            return null;
+        const value = new Date(Number(dateMatch[1]), Number(dateMatch[2]) - 1,
+                               Number(dateMatch[3]), Number(timeMatch[1]),
+                               Number(timeMatch[2]), 0, 0);
+        if (value.getFullYear() !== Number(dateMatch[1])
+                || value.getMonth() !== Number(dateMatch[2]) - 1
+                || value.getDate() !== Number(dateMatch[3])
+                || value.getHours() !== Number(timeMatch[1])
+                || value.getMinutes() !== Number(timeMatch[2]))
+            return null;
+        return value;
+    }
+
+    function exactScheduleIsValid() {
+        const value = exactDateValue();
+        return value !== null && value.getTime() > Date.now();
+    }
+
+    function prepareExactSchedule() {
+        if (exactScheduleIsValid())
+            return;
+        const target = new Date(Date.now() + 60 * 60 * 1000);
+        target.setMinutes(Math.ceil(target.getMinutes() / 5) * 5, 0, 0);
+        exactDateDraft = Qt.formatDate(target, "yyyy-MM-dd");
+        exactTimeDraft = Qt.formatTime(target, "HH:mm");
+    }
+
+    function selectQuickReminder(minutes, amount, unit) {
+        scheduleMode = "relative";
+        selectedQuickMinutes = minutes;
+        relativeAmount = String(amount);
+        relativeUnit = unit;
+        reminderError = "";
+    }
+
+    function scheduleSummary() {
+        if (scheduleMode === "at") {
+            const exact = exactDateValue();
+            return exactScheduleIsValid()
+                ? "Due " + Qt.formatDateTime(exact, "ddd d MMM · HH:mm")
+                : "Choose a valid future date and time.";
+        }
+        if (!relativeScheduleIsValid())
+            return "Enter a valid duration.";
+        const amount = parsedRelativeAmount();
+        const singular = relativeUnit.slice(0, -1);
+        const target = new Date();
+        switch (relativeUnit) {
+        case "minutes": target.setMinutes(target.getMinutes() + amount); break;
+        case "hours": target.setHours(target.getHours() + amount); break;
+        case "days": target.setDate(target.getDate() + amount); break;
+        case "weeks": target.setDate(target.getDate() + amount * 7); break;
+        case "months": target.setMonth(target.getMonth() + amount); break;
+        }
+        return "In " + amount + " " + (amount === 1 ? singular : relativeUnit)
+            + " · " + Qt.formatDateTime(target, "ddd d MMM · HH:mm");
+    }
+
     function refreshReminders() {
         if (!listProcess.running) {
             listProcess.command = [reminderPath, "json"];
@@ -58,10 +149,18 @@ PluginComponent {
         const cleanMessage = message.trim();
         if (!cleanMessage || mutationProcess.running)
             return;
+        if (!scheduleValid) {
+            reminderError = scheduleMode === "at"
+                ? "Choose a valid future date and time."
+                : "Enter a valid duration and unit.";
+            return;
+        }
         reminderError = "";
         mutationOperation = "add";
         pendingReminderText = cleanMessage;
-        mutationProcess.command = [reminderPath, "add", String(selectedMinutes), cleanMessage];
+        mutationProcess.command = scheduleMode === "at"
+            ? [reminderPath, "at", exactDateDraft.trim(), exactTimeDraft.trim(), cleanMessage]
+            : [reminderPath, "in", relativeAmount.trim(), relativeUnit, cleanMessage];
         mutationProcess.running = true;
     }
 
@@ -92,9 +191,15 @@ PluginComponent {
             relative = "in " + minutes + " min";
         else if (minutes < 1440)
             relative = "in " + Math.ceil(minutes / 60) + " hr";
-        else
+        else if (minutes < 20160)
             relative = "in " + Math.ceil(minutes / 1440) + " days";
-        return relative + " · " + Qt.formatTime(due, "HH:mm");
+        else if (minutes < 86400)
+            relative = "in " + Math.ceil(minutes / 10080) + " weeks";
+        else
+            relative = "in " + Math.ceil(minutes / 43200) + " months";
+        return relative + " · " + (minutes < 1440
+            ? Qt.formatTime(due, "HH:mm")
+            : Qt.formatDateTime(due, "ddd d MMM · HH:mm"));
     }
 
     function isActivationKey(event) {
@@ -171,7 +276,10 @@ PluginComponent {
         }
     }
 
-    Component.onCompleted: Qt.callLater(refreshReminders)
+    Component.onCompleted: {
+        prepareExactSchedule();
+        Qt.callLater(refreshReminders);
+    }
 
     horizontalBarPill: Component {
         Row {
@@ -360,38 +468,49 @@ PluginComponent {
                     }
 
                     Row {
+                        id: scheduleModeRow
+
                         width: parent.width
                         spacing: Theme.spacingXS
 
                         Repeater {
                             model: [
-                                { "label": "5m", "minutes": 5 },
-                                { "label": "15m", "minutes": 15 },
-                                { "label": "30m", "minutes": 30 },
-                                { "label": "1h", "minutes": 60 },
-                                { "label": "2h", "minutes": 120 }
+                                { "label": "In a duration", "mode": "relative", "icon": "schedule" },
+                                { "label": "On a date", "mode": "at", "icon": "event" }
                             ]
 
                             DankButton {
-                                id: durationButton
+                                id: scheduleModeButton
                                 required property var modelData
+                                readonly property bool selected: root.scheduleMode === modelData.mode
 
                                 text: modelData.label
-                                buttonHeight: 36
+                                iconName: modelData.icon
+                                width: (scheduleModeRow.width - scheduleModeRow.spacing) / 2
+                                buttonHeight: 40
                                 horizontalPadding: Theme.spacingM
-                                backgroundColor: root.selectedMinutes === modelData.minutes ? Theme.primary : Theme.buttonBg
-                                textColor: root.selectedMinutes === modelData.minutes ? Theme.onPrimary : Theme.buttonText
+                                backgroundColor: selected ? Theme.primary : Theme.surfaceContainerHighest
+                                textColor: selected ? Theme.onPrimary : Theme.surfaceText
+                                border.width: selected ? 0 : 1
+                                border.color: Theme.outlineStrong
                                 activeFocusOnTab: true
                                 Accessible.role: Accessible.Button
-                                Accessible.name: "Reminder delay " + modelData.label
-                                onActiveFocusChanged: if (activeFocus) focusScroll.revealItem(durationButton)
+                                Accessible.name: "Schedule " + modelData.label
+                                Accessible.checked: selected
+                                onActiveFocusChanged: if (activeFocus) focusScroll.revealItem(scheduleModeButton)
                                 onClicked: {
                                     forceActiveFocus();
-                                    root.selectedMinutes = modelData.minutes;
+                                    root.scheduleMode = modelData.mode;
+                                    if (modelData.mode === "at")
+                                        root.prepareExactSchedule();
+                                    root.reminderError = "";
                                 }
                                 Keys.onPressed: event => {
                                     if (root.isActivationKey(event)) {
-                                        root.selectedMinutes = modelData.minutes;
+                                        root.scheduleMode = modelData.mode;
+                                        if (modelData.mode === "at")
+                                            root.prepareExactSchedule();
+                                        root.reminderError = "";
                                         event.accepted = true;
                                     }
                                 }
@@ -408,14 +527,295 @@ PluginComponent {
                         }
                     }
 
+                    Column {
+                        width: parent.width
+                        spacing: Theme.spacingXS
+                        visible: root.scheduleMode === "relative"
+
+                        StyledText {
+                            text: "Quick choices"
+                            font.pixelSize: Theme.fontSizeSmall
+                            font.weight: Font.Medium
+                            color: Theme.surfaceVariantText
+                        }
+
+                        Flow {
+                            id: quickChoiceFlow
+
+                            width: parent.width
+                            spacing: Theme.spacingXS
+
+                            Repeater {
+                                model: [
+                                    { "label": "5m", "minutes": 5, "amount": 5, "unit": "minutes" },
+                                    { "label": "15m", "minutes": 15, "amount": 15, "unit": "minutes" },
+                                    { "label": "1h", "minutes": 60, "amount": 1, "unit": "hours" },
+                                    { "label": "24h", "minutes": 1440, "amount": 24, "unit": "hours" },
+                                    { "label": "1 week", "minutes": 10080, "amount": 1, "unit": "weeks" }
+                                ]
+
+                                DankButton {
+                                    id: quickChoiceButton
+                                    required property var modelData
+                                    readonly property bool selected: root.selectedQuickMinutes === modelData.minutes
+
+                                    text: modelData.label
+                                    buttonHeight: 36
+                                    horizontalPadding: Theme.spacingM
+                                    backgroundColor: selected ? Theme.primary : Theme.surfaceContainerHighest
+                                    textColor: selected ? Theme.onPrimary : Theme.surfaceText
+                                    border.width: selected ? 0 : 1
+                                    border.color: Theme.outlineStrong
+                                    activeFocusOnTab: true
+                                    Accessible.role: Accessible.Button
+                                    Accessible.name: "Remind me in " + modelData.label
+                                    Accessible.checked: selected
+                                    onActiveFocusChanged: if (activeFocus) focusScroll.revealItem(quickChoiceButton)
+                                    onClicked: {
+                                        forceActiveFocus();
+                                        root.selectQuickReminder(modelData.minutes, modelData.amount, modelData.unit);
+                                    }
+                                    Keys.onPressed: event => {
+                                        if (root.isActivationKey(event)) {
+                                            root.selectQuickReminder(modelData.minutes, modelData.amount, modelData.unit);
+                                            event.accepted = true;
+                                        }
+                                    }
+
+                                    StyledRect {
+                                        anchors.fill: parent
+                                        z: 10
+                                        radius: parent.radius
+                                        color: "transparent"
+                                        border.width: parent.activeFocus ? 2 : 0
+                                        border.color: Theme.primary
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    StyledRect {
+                        width: parent.width
+                        height: relativeScheduleColumn.implicitHeight + Theme.spacingM * 2
+                        visible: root.scheduleMode === "relative"
+                        radius: Theme.cornerRadius
+                        color: Theme.surfaceContainerHigh
+                        border.width: 1
+                        border.color: Theme.outlineMedium
+
+                        Column {
+                            id: relativeScheduleColumn
+
+                            x: Theme.spacingM
+                            y: Theme.spacingM
+                            width: parent.width - Theme.spacingM * 2
+                            spacing: Theme.spacingS
+
+                            StyledText {
+                                text: "Custom duration"
+                                font.pixelSize: Theme.fontSizeMedium
+                                font.weight: Font.DemiBold
+                                color: Theme.surfaceText
+                            }
+
+                            DankTextField {
+                                id: durationAmountField
+
+                                width: parent.width
+                                text: root.relativeAmount
+                                labelText: "Amount"
+                                placeholderText: "48"
+                                leftIconName: "hourglass_top"
+                                maximumLength: 7
+                                validator: IntValidator { bottom: 1; top: 5256000 }
+                                onTextEdited: {
+                                    root.relativeAmount = text;
+                                    root.selectedQuickMinutes = 0;
+                                    root.reminderError = "";
+                                }
+                                onAccepted: root.setReminder(reminderField.text)
+                                onFocusStateChanged: hasFocus => {
+                                    if (hasFocus)
+                                        focusScroll.revealItem(durationAmountField);
+                                }
+                            }
+
+                            Flow {
+                                id: durationUnitFlow
+
+                                width: parent.width
+                                spacing: Theme.spacingXS
+
+                                Repeater {
+                                    model: ["minutes", "hours", "days", "weeks", "months"]
+
+                                    DankButton {
+                                        id: durationUnitButton
+                                        required property string modelData
+                                        readonly property bool selected: root.relativeUnit === modelData
+
+                                        text: modelData.charAt(0).toUpperCase() + modelData.slice(1)
+                                        buttonHeight: 34
+                                        horizontalPadding: Theme.spacingS
+                                        backgroundColor: selected ? Theme.primary : Theme.surfaceContainerHighest
+                                        textColor: selected ? Theme.onPrimary : Theme.surfaceText
+                                        border.width: selected ? 0 : 1
+                                        border.color: Theme.outlineStrong
+                                        activeFocusOnTab: true
+                                        Accessible.role: Accessible.Button
+                                        Accessible.name: "Duration unit " + modelData
+                                        Accessible.checked: selected
+                                        onActiveFocusChanged: if (activeFocus) focusScroll.revealItem(durationUnitButton)
+                                        onClicked: {
+                                            forceActiveFocus();
+                                            root.relativeUnit = modelData;
+                                            root.selectedQuickMinutes = 0;
+                                            root.reminderError = "";
+                                        }
+                                        Keys.onPressed: event => {
+                                            if (root.isActivationKey(event)) {
+                                                root.relativeUnit = modelData;
+                                                root.selectedQuickMinutes = 0;
+                                                root.reminderError = "";
+                                                event.accepted = true;
+                                            }
+                                        }
+
+                                        StyledRect {
+                                            anchors.fill: parent
+                                            z: 10
+                                            radius: parent.radius
+                                            color: "transparent"
+                                            border.width: parent.activeFocus ? 2 : 0
+                                            border.color: Theme.primary
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    StyledRect {
+                        width: parent.width
+                        height: exactScheduleColumn.implicitHeight + Theme.spacingM * 2
+                        visible: root.scheduleMode === "at"
+                        radius: Theme.cornerRadius
+                        color: Theme.surfaceContainerHigh
+                        border.width: 1
+                        border.color: Theme.outlineMedium
+
+                        Column {
+                            id: exactScheduleColumn
+
+                            x: Theme.spacingM
+                            y: Theme.spacingM
+                            width: parent.width - Theme.spacingM * 2
+                            spacing: Theme.spacingS
+
+                            StyledText {
+                                text: "Specific date and time"
+                                font.pixelSize: Theme.fontSizeMedium
+                                font.weight: Font.DemiBold
+                                color: Theme.surfaceText
+                            }
+
+                            Row {
+                                id: exactFieldsRow
+
+                                width: parent.width
+                                spacing: Theme.spacingS
+
+                                DankTextField {
+                                    id: exactDateField
+
+                                    width: Math.floor((exactFieldsRow.width - exactFieldsRow.spacing) * 0.62)
+                                    text: root.exactDateDraft
+                                    labelText: "Date"
+                                    placeholderText: "YYYY-MM-DD"
+                                    leftIconName: "calendar_today"
+                                    maximumLength: 10
+                                    onTextEdited: {
+                                        root.exactDateDraft = text;
+                                        root.reminderError = "";
+                                    }
+                                    onAccepted: root.setReminder(reminderField.text)
+                                    onFocusStateChanged: hasFocus => {
+                                        if (hasFocus)
+                                            focusScroll.revealItem(exactDateField);
+                                    }
+                                }
+
+                                DankTextField {
+                                    id: exactTimeField
+
+                                    width: exactFieldsRow.width - exactDateField.width - exactFieldsRow.spacing
+                                    text: root.exactTimeDraft
+                                    labelText: "Time"
+                                    placeholderText: "HH:MM"
+                                    leftIconName: "schedule"
+                                    maximumLength: 5
+                                    onTextEdited: {
+                                        root.exactTimeDraft = text;
+                                        root.reminderError = "";
+                                    }
+                                    onAccepted: root.setReminder(reminderField.text)
+                                    onFocusStateChanged: hasFocus => {
+                                        if (hasFocus)
+                                            focusScroll.revealItem(exactTimeField);
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    StyledRect {
+                        width: parent.width
+                        height: scheduleSummaryRow.implicitHeight + Theme.spacingM * 2
+                        radius: Theme.cornerRadius
+                        color: Theme.primaryContainer
+
+                        Row {
+                            id: scheduleSummaryRow
+
+                            x: Theme.spacingM
+                            y: Theme.spacingM
+                            width: parent.width - Theme.spacingM * 2
+                            spacing: Theme.spacingS
+
+                            DankIcon {
+                                name: root.scheduleValid ? "notifications_active" : "warning"
+                                size: Theme.iconSize
+                                color: root.scheduleValid ? Theme.primary : Theme.error
+                                anchors.verticalCenter: parent.verticalCenter
+                            }
+
+                            StyledText {
+                                width: parent.width - Theme.iconSize - parent.spacing
+                                text: root.scheduleSummary()
+                                textFormat: Text.PlainText
+                                font.pixelSize: Theme.fontSizeSmall
+                                font.weight: Font.Medium
+                                color: Theme.surfaceText
+                                wrapMode: Text.WordWrap
+                                anchors.verticalCenter: parent.verticalCenter
+                            }
+                        }
+                    }
+
                     DankButton {
                         id: setReminderButton
 
                         text: mutationProcess.running && root.mutationOperation === "add" ? "Setting…" : "Set reminder"
                         iconName: "add_alert"
-                        enabled: reminderField.text.trim().length > 0 && !mutationProcess.running
-                        backgroundColor: Theme.primary
-                        textColor: Theme.onPrimary
+                        width: parent.width
+                        buttonHeight: 42
+                        enabled: reminderField.text.trim().length > 0 && root.scheduleValid && !mutationProcess.running
+                        opacity: 1
+                        backgroundColor: enabled ? Theme.primary : Theme.surfaceContainerHighest
+                        textColor: enabled ? Theme.onPrimary : Theme.surfaceVariantText
+                        border.width: enabled ? 0 : 1
+                        border.color: Theme.outlineStrong
                         activeFocusOnTab: true
                         Accessible.role: Accessible.Button
                         Accessible.name: text

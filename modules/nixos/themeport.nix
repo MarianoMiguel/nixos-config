@@ -1,10 +1,14 @@
 {
   lib,
   pkgs,
+  quickshell,
   ...
 }:
 
 let
+  system = pkgs.stdenv.hostPlatform.system;
+  quickshellPackage = quickshell.packages.${system}.default;
+
   # Pin the official Omarchy catalog so every reviewed theme and its bundled
   # wallpapers are available offline on both hosts and in the installer.
   omarchyThemes = pkgs.fetchFromGitHub {
@@ -33,9 +37,11 @@ let
     '';
   };
 
-  # Give the renderer exactly one DMS executable without pulling DMS into the
-  # wrapper closure or exposing the rest of the user's PATH.
+  # Give the renderer exactly one DMS executable without exposing the rest of
+  # the user's PATH. The DMS CLI delegates IPC transport to Quickshell, so make
+  # qs visible only inside this bridge rather than in Themeport's outer PATH.
   dmsBridge = pkgs.writeShellScriptBin "dms" ''
+    export PATH=${lib.makeBinPath [ quickshellPackage ]}
     exec /run/current-system/sw/bin/dms "$@"
   '';
 

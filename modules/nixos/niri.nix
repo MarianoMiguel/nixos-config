@@ -386,9 +386,9 @@ in
         src = ../../dotfiles/dms-plugins/network-speed;
         settings.enabled = true;
       };
-      # The application launcher remains Vicinae. These reviewed DMS launcher
-      # providers are the theme-aware system surface: a searchable control
-      # palette plus image-first theme and wallpaper browsers.
+      # Niri uses DMS for its app launcher and theme-aware system surface:
+      # a searchable control palette plus image-first theme and wallpaper
+      # browsers. Vicinae remains the GNOME launcher.
       systemMenu = {
         src = ../../dotfiles/dms-plugins/system-menu;
         settings.enabled = true;

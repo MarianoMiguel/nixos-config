@@ -280,6 +280,12 @@ class Theme:
             for p in (src / "backgrounds").glob("*")
             if p.suffix.lower() in (".jpg", ".jpeg", ".png", ".webp")
         ) if (src / "backgrounds").is_dir() else []
+        # Omarchy themes use backgrounds/omarchy.* as their intentional
+        # default. Numbered images are gallery ordering, not preference.
+        self.default_background = next(
+            (name for name in self.backgrounds if Path(name).stem.lower() == "omarchy"),
+            self.backgrounds[0] if self.backgrounds else None,
+        )
 
     @staticmethod
     def _read(p: Path) -> str | None:
@@ -605,6 +611,7 @@ TPL_OUTPUTS = {
     "vscode-theme.json.tpl": "vscode/themeport-color-theme.json",
     "neovim.lua.tpl": "neovim/generated.lua",
     "obsidian.css.tpl": "obsidian/themeport.css",
+    "codex-desktop.css.tpl": "codex-desktop.css",
 }
 
 
@@ -632,6 +639,7 @@ def render_all(theme: Theme, other: Theme | None) -> dict[str, str]:
         "vscode": theme.vscode,
         "has_theme_neovim": theme.neovim is not None,
         "backgrounds": theme.backgrounds,
+        "default_background": theme.default_background,
         "paired_with": other.name if other else None,
         "accent": theme.colors["accent"],
         "background": theme.colors["background"],
@@ -1112,12 +1120,12 @@ def apply_icons(meta: dict) -> None:
 
 
 def apply_wallpapers(theme: Theme, meta: dict) -> None:
-    if not theme.backgrounds:
+    if not theme.default_background:
         return
     wallpaper_root = Path.home() / "Pictures/Wallpapers"
     canonical = [wallpaper_root / f"{theme.name}--{bg}" for bg in theme.backgrounds]
     if all(path.is_file() for path in canonical):
-        first = canonical[0]
+        selected = wallpaper_root / f"{theme.name}--{theme.default_background}"
         location = f"{len(canonical)} available in the shared library"
     else:
         # Custom/legacy themes are not part of the declarative catalog. Keep a
@@ -1126,16 +1134,16 @@ def apply_wallpapers(theme: Theme, meta: dict) -> None:
         dest.mkdir(parents=True, exist_ok=True)
         for bg in theme.backgrounds:
             shutil.copy2(theme.src / "backgrounds" / bg, dest / bg)
-        first = dest / theme.backgrounds[0]
+        selected = dest / theme.default_background
         location = f"{len(theme.backgrounds)} copied"
-    if _dms_ipc("wallpaper", "set", str(first), timeout=15) is not None:
-        print(f"  wallpaper: {first.name} ({location})")
+    if _dms_ipc("wallpaper", "set", str(selected), timeout=15) is not None:
+        print(f"  wallpaper: {selected.name} ({location})")
     elif _edit_json(
         xdg_state_home() / "DankMaterialShell/session.json",
-        {"wallpaperPath": str(first)},
+        {"wallpaperPath": str(selected)},
     ):
         # shell not reachable: stage it in session state for the next start
-        print(f"  wallpaper: staged {first.name} for next DMS start ({location})")
+        print(f"  wallpaper: staged {selected.name} for next DMS start ({location})")
     else:
         print(f"  wallpaper: {location} (set one via the DMS settings UI)")
 

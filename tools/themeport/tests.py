@@ -91,6 +91,10 @@ def validate_render(name: str, outdir: Path, expect_mode: str) -> None:
     obsidian = (outdir / "obsidian/themeport.css").read_text()
     check("{{" not in obsidian, f"{prefix} obsidian css has unresolved tokens")
 
+    codex = (outdir / "codex-desktop.css").read_text()
+    check("{{" not in codex, f"{prefix} Codex desktop CSS has unresolved tokens")
+    check(meta["background"] in codex, f"{prefix} Codex desktop CSS missed the background")
+
 
 def main() -> int:
     themes = sorted(p for p in FIXTURES.iterdir() if p.is_dir())
@@ -149,6 +153,27 @@ def main() -> int:
             validate_render("legacy-nordish", outdir, "dark")
         except Exception as exc:  # noqa: BLE001
             failures.append(f"[legacy] blew up: {exc}")
+
+        # Omarchy's named background is the theme default. Numbered filenames
+        # only control gallery ordering and must not win during a theme switch.
+        try:
+            default_dir = tmpdir / "wallpaper-default"
+            default_dir.mkdir()
+            (default_dir / "colors.toml").write_text(
+                (FIXTURES / "tokyo-night/colors.toml").read_text()
+            )
+            backgrounds = default_dir / "backgrounds"
+            backgrounds.mkdir()
+            (backgrounds / "0-gallery-first.jpg").write_bytes(b"gallery")
+            (backgrounds / "omarchy.webp").write_bytes(b"default")
+            default_theme = themeport.load_theme(default_dir)
+            default_meta = json.loads(themeport.render_all(default_theme, None)["meta.json"])
+            check(default_theme.default_background == "omarchy.webp",
+                  "[wallpaper-default] did not prefer backgrounds/omarchy.*")
+            check(default_meta["default_background"] == "omarchy.webp",
+                  "[wallpaper-default] metadata lost the selected default")
+        except Exception as exc:  # noqa: BLE001
+            failures.append(f"[wallpaper-default] blew up: {exc}")
 
         # Aether protocol parsing: URL-decoding, transport flags and the
         # explicit safety boundary around browser-dispatched imports.

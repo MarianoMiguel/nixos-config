@@ -13,10 +13,10 @@ binds {
         spawn "mariano-dms-picker" "sys";
     }
     Super+Period repeat=false hotkey-overlay-title="Application Launcher" {
-        spawn "vicinae" "toggle";
+        spawn "dms" "ipc" "call" "launcher" "toggle";
     }
-    Alt+Space repeat=false hotkey-overlay-title="Application Launcher" {
-        spawn "vicinae" "toggle";
+    Alt+Space repeat=false hotkey-overlay-title="System Actions" {
+        spawn "mariano-dms-picker" "sys";
     }
     Mod+Alt+Space repeat=false hotkey-overlay-title="Keyboard Pointer" {
         spawn "wl-kbptr" "-o" "modes=floating,click" "-o" "mode_floating.source=detect" "-o" "mode_floating.label_font_size=18 50% 100";

@@ -17,6 +17,7 @@
     "6-oma.jpg",
     "omarchy.png"
   ],
+  "default_background": "omarchy.png",
   "paired_with": null,
   "accent": "#7aa2f7",
   "background": "#1a1b26"

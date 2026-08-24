@@ -260,9 +260,9 @@ in
             ${pkgs.coreutils}/bin/rm -f "$temporary"
           fi
 
-          # Keep the Vicinae application launcher and dedicated system-menu
-          # bindings consistent even if an older DMS generation seeded this
-          # mutable file.
+          # Keep Niri's DMS application launcher and dedicated system-menu
+          # bindings consistent even if an older generation seeded this
+          # mutable file. Vicinae is reserved for GNOME.
           $DRY_RUN_CMD ${pkgs.coreutils}/bin/install -m 0600 \
             ${dotfiles}/niri/dms/binds.kdl \
             ${lib.escapeShellArg "${mutableState}/niri/dms/binds.kdl"}
@@ -446,6 +446,10 @@ in
           "alacritty/themeport.toml".source = mutableDotfile "themeport/alacritty/themeport.toml";
           "btop/themes/themeport.theme".source = mutableDotfile "themeport/btop/themes/themeport.theme";
           "tmux/themeport.conf".source = mutableDotfile "themeport/tmux/themeport.conf";
+          # ChatGPT Community's omarchy-theme feature watches this conventional
+          # path and reloads the generated palette in open windows.
+          "omarchy/current/theme/codex-desktop.css".source =
+            mutableDotfile "themeport/codex-desktop.css";
         }
         // lib.optionalAttrs (builtins.pathExists ../../dotfiles/vscode/User/prompts) {
           "Code/User/prompts".source = ../../dotfiles/vscode/User/prompts;

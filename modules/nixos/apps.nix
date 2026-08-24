@@ -9,6 +9,12 @@
 
 let
   system = pkgs.stdenv.hostPlatform.system;
+  codexDesktop = codex-desktop-linux.packages.${system}.codex-desktop.override {
+    linuxFeatureIds = [
+      "computer-use-linux"
+      "omarchy-theme"
+    ];
+  };
   defaultBrowserDesktop = "google-chrome.desktop";
   browserMimeTypes = [
     "text/html"
@@ -264,7 +270,7 @@ in
     ]
     ++ [
       davinciResolve
-      codex-desktop-linux.packages.${system}.codex-desktop-computer-use-ui
+      codexDesktop
       granola
       herdr
     ];

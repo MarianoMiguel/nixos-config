@@ -14,6 +14,17 @@
     login.fprintAuth = true;
     polkit-1.fprintAuth = true;
     sudo.fprintAuth = true;
+
+    # DMS deliberately runs password and fingerprint authentication in two
+    # parallel PAM contexts. Its password context prefers /etc/pam.d/dankshell
+    # when present; without this service it falls back to `login`, whose first
+    # module is pam_fprintd, so a typed password is stuck behind the fingerprint
+    # prompt and ends as an authentication error. Keep this context password-
+    # only while DMS's separate `fprint` context handles the enrolled finger.
+    dankshell = {
+      allowNullPassword = false;
+      fprintAuth = false;
+    };
   };
 
   environment.systemPackages = [ pkgs.fprintd ];

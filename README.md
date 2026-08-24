@@ -196,6 +196,11 @@ Because `sudo` intentionally authenticates against the separate root account,
 its submenu uses NixOS's root-owned security wrapper and should enroll a
 different finger for administrator authentication.
 
+The DMS lock screen exposes password and fingerprint as independent parallel
+methods: typing Mariano's password never waits for or consumes a fingerprint
+attempt, and touching the enrolled finger does not require opening the password
+field first.
+
 Passwords remain available as the fallback. Enrollment still needs to be
 performed on the physical ThinkPad because the reader must capture the finger.
 

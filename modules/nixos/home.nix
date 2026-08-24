@@ -72,7 +72,7 @@ in
     backupFileExtension = "before-nixos";
 
     users.mariano =
-      { config, lib, ... }:
+      { config, lib, marianoCodexbar, ... }:
       let
         mutableDotfile = path: config.lib.file.mkOutOfStoreSymlink "${mutableState}/${path}";
         nvimConfig = pkgs.runCommand "nvim-config" { } ''
@@ -202,8 +202,13 @@ in
             exit 1
           fi
           temporary="$(${pkgs.coreutils}/bin/mktemp)"
-          ${pkgs.jq}/bin/jq '
-            .systemMenu.enabled = true
+          ${pkgs.jq}/bin/jq \
+            --arg codexbar ${lib.escapeShellArg "${marianoCodexbar}/bin/codexbar"} '
+            .codexBar.enabled = true
+            | .codexBar.codexbarPath = $codexbar
+            | .codexBar.refreshInterval = "60000"
+            | .codexBar.sourceMode = "oauth"
+            | .systemMenu.enabled = true
             | .themePicker.enabled = true
             | .wallpaperPicker.enabled = true
           ' "$plugin_settings" > "$temporary"

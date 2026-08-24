@@ -2,7 +2,7 @@ diff --git a/Modules/DankBar/DankBarWindow.qml b/Modules/DankBar/DankBarWindow.q
 index e8dbbaa..8d17d36 100644
 --- a/Modules/DankBar/DankBarWindow.qml
 +++ b/Modules/DankBar/DankBarWindow.qml
-@@ -43,7 +43,7 @@ PanelWindow {
+@@ -43,7 +43,8 @@ PanelWindow {
          PopoutManager.requestPopout(popout, undefined, "systemUpdate");
      }
 
@@ -10,6 +10,7 @@ index e8dbbaa..8d17d36 100644
 +    function triggerControlCenter(section) {
          controlCenterLoader.active = true;
          if (!controlCenterLoader.item) {
++            Qt.callLater(() => triggerControlCenter(section));
              return;
 @@ -59,7 +59,17 @@ PanelWindow {
              controlCenterLoader.item.triggerScreen = barWindow.screen;
@@ -30,6 +31,32 @@ index e8dbbaa..8d17d36 100644
          if (controlCenterLoader.item.shouldBeVisible && NetworkService.wifiEnabled) {
              NetworkService.scanWifi();
          }
+diff --git a/DMSShellIPC.qml b/DMSShellIPC.qml
+index 8dd8bf7..248ffb2 100644
+--- a/DMSShellIPC.qml
++++ b/DMSShellIPC.qml
+@@ -224,3 +224,21 @@ Item {
++        function openSection(section: string): string {
++            if (!section)
++                return "CONTROL_CENTER_OPEN_SECTION_FAILED";
++
++            const bar = root.getPreferredBar("controlCenterButtonRef");
++            if (bar) {
++                bar.triggerControlCenter(section);
++                return "CONTROL_CENTER_OPEN_SECTION_SUCCESS";
++            }
++            return "CONTROL_CENTER_OPEN_SECTION_FAILED";
++        }
++
++        function section(): string {
++            if (!root.controlCenterLoader.item)
++                return "";
++            return root.controlCenterLoader.item.expandedSection || "";
++        }
++
+         function hide(): string {
+             if (root.controlCenterLoader.item && root.controlCenterLoader.item.shouldBeVisible) {
+                 root.controlCenterLoader.item.close();
 diff --git a/Modules/DankBar/Widgets/SystemTrayBar.qml b/Modules/DankBar/Widgets/SystemTrayBar.qml
 index c72165e..45cd96a 100644
 --- a/Modules/DankBar/Widgets/SystemTrayBar.qml

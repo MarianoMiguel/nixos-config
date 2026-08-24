@@ -138,19 +138,24 @@ let
     '';
   };
 
-  # CodexBar reports provider CLI versions by looking them up in PATH. Both
-  # provider CLIs install themselves into ~/.local/bin, which is outside the
-  # system profile that the DMS service receives, so put that directory back on
-  # the path for every caller of this binary.
+  # CodexBar reports provider CLI versions by looking them up in PATH. Its
+  # Linux Swift build can trap in Foundation.Process when that lookup runs
+  # below Quickshell or systemd. Point the Codex probe at a known executable so
+  # it never needs the fragile nested `which` process; retain ~/.local/bin for
+  # provider CLIs installed outside the system profile.
   codexbar = pkgs.symlinkJoin {
     name = "codexbar-${codexbarUnwrapped.version}";
     paths = [ codexbarUnwrapped ];
-    nativeBuildInputs = [ pkgs.makeWrapper ];
     postBuild = ''
       for binary in codexbar CodexBarCLI; do
         rm "$out/bin/$binary"
-        makeWrapper "${codexbarUnwrapped}/bin/$binary" "$out/bin/$binary" \
-          --run 'export PATH="$HOME/.local/bin:$PATH"'
+        ${pkgs.coreutils}/bin/tee "$out/bin/$binary" >/dev/null <<EOF
+#!${pkgs.runtimeShell}
+export PATH="\$HOME/.local/bin:\$PATH"
+export CODEX_CLI_PATH="${pkgs.codex}/bin/codex"
+exec "${codexbarUnwrapped}/bin/$binary" "\$@"
+EOF
+        chmod 0755 "$out/bin/$binary"
       done
     '';
   };
@@ -355,6 +360,11 @@ EOF
 in
 
 {
+  # Keep the mutable DMS plugin settings pinned to the same reviewed CodexBar
+  # package as the system profile instead of relying on whichever executable
+  # happens to appear first in the shell service's PATH.
+  home-manager.extraSpecialArgs.marianoCodexbar = codexbar;
+
   programs.niri.enable = true;
 
   # Keep the compositor and shell responsive when builds or AI agents saturate

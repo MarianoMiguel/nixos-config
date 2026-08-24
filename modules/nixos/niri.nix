@@ -113,11 +113,11 @@ let
   };
   codexbarUnwrapped = pkgs.stdenvNoCC.mkDerivation {
     pname = "codexbar-unwrapped";
-    version = "0.29.0";
+    version = "0.55.0";
 
     src = pkgs.fetchzip {
-      url = "https://github.com/steipete/CodexBar/releases/download/v0.29.0/CodexBarCLI-v0.29.0-linux-x86_64.tar.gz";
-      sha256 = "0n372hpdiqy52fx7jm4gvv257l1vvfkq2k53lfirsb85c26cx5s2";
+      url = "https://github.com/steipete/CodexBar/releases/download/v0.55.0/CodexBarCLI-v0.55.0-linux-x86_64.tar.gz";
+      sha256 = "sha256-Mx2Zs5X2ZniPmqCB5Dk66yYP7DlE5sh/FRzp1mh7J04=";
       stripRoot = false;
     };
 
@@ -132,17 +132,16 @@ let
       runHook preInstall
       install -Dm0755 codexbar "$out/bin/codexbar"
       install -Dm0755 CodexBarCLI "$out/bin/CodexBarCLI"
+      cp -R CodexBar_CodexBarCore.bundle "$out/bin/"
+      install -Dm0644 VERSION "$out/bin/VERSION"
       runHook postInstall
     '';
   };
 
-  # codexbar reports the provider CLI versions by shelling out to `which codex`,
-  # and aborts on an illegal instruction rather than reporting an error when
-  # that lookup comes back empty. Both provider CLIs install themselves into
-  # ~/.local/bin, which is outside the system profile that the DMS service is
-  # limited to, so the bar plugin crashed on every refresh while the same
-  # command succeeded from an interactive shell. Put that directory back on the
-  # path for every caller of this binary.
+  # CodexBar reports provider CLI versions by looking them up in PATH. Both
+  # provider CLIs install themselves into ~/.local/bin, which is outside the
+  # system profile that the DMS service receives, so put that directory back on
+  # the path for every caller of this binary.
   codexbar = pkgs.symlinkJoin {
     name = "codexbar-${codexbarUnwrapped.version}";
     paths = [ codexbarUnwrapped ];
@@ -203,6 +202,19 @@ let
         --replace-fail \
           'if ((savedSession || savedDesktopId) && GreetdSettings.rememberLastSession) {' \
           'if (savedSession || savedDesktopId) {'
+
+      # Tailscale advertises a DBusMenu-only tray item. Quickshell's generic
+      # menu renderer intermittently fails to instantiate that menu, while DMS
+      # already has a richer native Tailscale detail with connect, peer, exit
+      # node, and LAN-access controls. Route a left click on every tray layout
+      # to that native detail instead.
+      chmod u+w \
+        "$out/share/quickshell/dms/Modules/DankBar" \
+        "$out/share/quickshell/dms/Modules/DankBar/Widgets" \
+        "$out/share/quickshell/dms/Modules/DankBar/DankBarWindow.qml" \
+        "$out/share/quickshell/dms/Modules/DankBar/Widgets/SystemTrayBar.qml"
+      patch -d "$out/share/quickshell/dms" -p1 \
+        < ${../../patches/dms-tailscale-native-tray.patch}
     '';
   });
 

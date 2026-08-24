@@ -165,6 +165,14 @@ in
               | .notificationCustomAnimationDuration = 60
               | .controlCenterShowIdleInhibitorIcon = false
               | .controlCenterShowDoNotDisturbIcon = false
+              | .controlCenterWidgets = (
+                  (.controlCenterWidgets // []) as $widgets
+                  | if any($widgets[]?; .id == "builtin_tailscale") then
+                      [$widgets[] | if .id == "builtin_tailscale" then . + {enabled: true, width: 100} else . end]
+                    else
+                      $widgets + [{id: "builtin_tailscale", enabled: true, width: 100}]
+                    end
+                )
               | .fadeToLockEnabled = false
               | .fadeToLockGracePeriod = 0
               | .lockScreenShowPowerActions = false

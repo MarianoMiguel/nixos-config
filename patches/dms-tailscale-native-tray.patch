@@ -1,0 +1,90 @@
+diff --git a/Modules/DankBar/DankBarWindow.qml b/Modules/DankBar/DankBarWindow.qml
+index e8dbbaa..8d17d36 100644
+--- a/Modules/DankBar/DankBarWindow.qml
++++ b/Modules/DankBar/DankBarWindow.qml
+@@ -43,7 +43,7 @@ PanelWindow {
+         PopoutManager.requestPopout(popout, undefined, "systemUpdate");
+     }
+
+-    function triggerControlCenter() {
++    function triggerControlCenter(section) {
+         controlCenterLoader.active = true;
+         if (!controlCenterLoader.item) {
+             return;
+@@ -59,7 +59,17 @@ PanelWindow {
+             controlCenterLoader.item.triggerScreen = barWindow.screen;
+         }
+
+-        controlCenterLoader.item.toggle();
++        if (!section || !controlCenterLoader.item.shouldBeVisible)
++            controlCenterLoader.item.toggle();
++        if (section && controlCenterLoader.item.shouldBeVisible) {
++            const widgetIndex = (SettingsData.controlCenterWidgets || []).findIndex(widget => widget.id === section);
++            const widgetData = widgetIndex >= 0 ? SettingsData.controlCenterWidgets[widgetIndex] : null;
++            Qt.callLater(() => {
++                controlCenterLoader.item.expandedWidgetIndex = widgetIndex;
++                controlCenterLoader.item.expandedWidgetData = widgetData;
++                controlCenterLoader.item.expandedSection = section;
++            });
++        }
+         if (controlCenterLoader.item.shouldBeVisible && NetworkService.wifiEnabled) {
+             NetworkService.scanWifi();
+         }
+diff --git a/Modules/DankBar/Widgets/SystemTrayBar.qml b/Modules/DankBar/Widgets/SystemTrayBar.qml
+index c72165e..45cd96a 100644
+--- a/Modules/DankBar/Widgets/SystemTrayBar.qml
++++ b/Modules/DankBar/Widgets/SystemTrayBar.qml
+@@ -74,6 +74,8 @@ BasePill {
+     function activateInlineTrayItem(trayItem, anchorItem) {
+         if (!trayItem)
+             return;
++        if (openTailscaleControl(trayItem))
++            return;
+         if (!trayItem.onlyMenu) {
+             trayItem.activate();
+             return;
+@@ -83,6 +85,15 @@ BasePill {
+         root.showForTrayItem(trayItem, anchorItem, parentScreen, root.isAtBottom, root.isVerticalOrientation, root.axis);
+     }
+
++    function openTailscaleControl(trayItem) {
++        if ((trayItem?.id || "").toLowerCase() !== "tailscale")
++            return false;
++        if (!parentWindow || typeof parentWindow.triggerControlCenter !== "function")
++            return false;
++        parentWindow.triggerControlCenter("builtin_tailscale");
++        return true;
++    }
++
+     function openInlineTrayContextMenu(trayItem, areaItem, mouse, anchorItem) {
+         if (!trayItem) {
+             return;
+@@ -583,6 +595,8 @@ BasePill {
+
+                             if (!delegateRoot.trayItem)
+                                 return;
++                            if (root.openTailscaleControl(delegateRoot.trayItem))
++                                return;
+                             if (!delegateRoot.trayItem.onlyMenu) {
+                                 delegateRoot.trayItem.activate();
+                                 return;
+@@ -909,6 +923,8 @@ BasePill {
+
+                     if (!trayItem)
+                         return;
++                    if (root.openTailscaleControl(trayItem))
++                        return;
+                     if (!trayItem.onlyMenu) {
+                         trayItem.activate();
+                         return;
+@@ -1461,6 +1477,10 @@ BasePill {
+                                         return;
+                                     if (!trayItem)
+                                         return;
++                                    if (mouse.button === Qt.LeftButton && root.openTailscaleControl(trayItem)) {
++                                        root.menuOpen = false;
++                                        return;
++                                    }
+                                     if (mouse.button === Qt.LeftButton && !trayItem.onlyMenu) {
+                                         trayItem.activate();
+                                         root.menuOpen = false;

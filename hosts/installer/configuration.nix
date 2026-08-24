@@ -22,10 +22,10 @@ let
       ];
   };
 
-  targetSystems = [
-    self.nixosConfigurations."balerion-install"
-    self.nixosConfigurations."bonhart-install"
-  ];
+  targetSystems = {
+    balerion = self.nixosConfigurations."balerion-install";
+    bonhart = self.nixosConfigurations."bonhart-install";
+  };
 
   flakeOutPaths =
     let
@@ -55,7 +55,7 @@ let
     ];
 
   offlineDependencies = lib.unique (
-    lib.flatten (map systemDependencies targetSystems) ++ flakeOutPaths
+    lib.flatten (map systemDependencies (lib.attrValues targetSystems)) ++ flakeOutPaths
   );
   installClosure = pkgs.closureInfo { rootPaths = offlineDependencies; };
 
@@ -71,6 +71,7 @@ let
       gum
       jq
       lvm2
+      nix
       nixos-install-tools
       openssl
       parted
@@ -80,7 +81,10 @@ let
     ];
     text = ''
       export INSTALLER_CONFIG_SOURCE=${lib.escapeShellArg repoSource}
-      export INSTALLER_FLAKE_SOURCE=${lib.escapeShellArg self}
+      export INSTALLER_BALERION_SYSTEM=${lib.escapeShellArg targetSystems.balerion.config.system.build.toplevel}
+      export INSTALLER_BALERION_DISKO_SCRIPT=${lib.escapeShellArg targetSystems.balerion.config.system.build.diskoScript}
+      export INSTALLER_BONHART_SYSTEM=${lib.escapeShellArg targetSystems.bonhart.config.system.build.toplevel}
+      export INSTALLER_BONHART_DISKO_SCRIPT=${lib.escapeShellArg targetSystems.bonhart.config.system.build.diskoScript}
       exec ${repoSource}/scripts/install-system.sh "$@"
     '';
   };
@@ -90,7 +94,7 @@ let
     Type=Application
     Name=Install Mariano NixOS
     Comment=Install the encrypted Balerion or Bonhart configuration
-    Exec=${pkgs.kdePackages.konsole}/bin/konsole --fullscreen -e ${pkgs.sudo}/bin/sudo ${guidedInstaller}/bin/install-mariano-nixos
+    Exec=${pkgs.kdePackages.konsole}/bin/konsole --fullscreen --hold -e ${pkgs.sudo}/bin/sudo ${guidedInstaller}/bin/install-mariano-nixos
     Icon=drive-harddisk
     Terminal=false
     Categories=System;
@@ -112,7 +116,8 @@ in
       target = "/nixos-config";
     }
   ];
-  isoImage.storeContents = [ installClosure ] ++ lib.concatMap systemDependencies targetSystems;
+  isoImage.storeContents =
+    [ installClosure ] ++ lib.concatMap systemDependencies (lib.attrValues targetSystems);
 
   environment.etc = {
     "nixos-config".source = repoSource;

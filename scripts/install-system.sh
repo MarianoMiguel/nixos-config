@@ -7,8 +7,9 @@ readonly luks_password_file="$state_dir/luks-password"
 readonly user_password_file="$state_dir/user-password"
 readonly sudo_password_file="$state_dir/sudo-password"
 readonly install_log="$state_dir/install.log"
-readonly mount_root="/mnt/mariano-install"
+readonly mount_root="/mnt"
 readonly crypt_name="nixos-crypt"
+readonly target_disk_alias="/dev/disk/by-id/installer-selects-this-disk"
 
 preview=0
 noninteractive=${INSTALLER_NONINTERACTIVE:-0}
@@ -18,6 +19,7 @@ mounted_root=0
 mounted_boot=0
 opened_crypt=0
 activated_vg=0
+target_alias_created=0
 
 usage() {
   cat <<'USAGE'
@@ -49,8 +51,15 @@ cleanup() {
   if (( opened_crypt )) && cryptsetup status "$crypt_name" >/dev/null 2>&1; then
     cryptsetup close "$crypt_name"
   fi
+  if (( target_alias_created )) && [[ -L $target_disk_alias ]]; then
+    rm -f "$target_disk_alias"
+  fi
 
-  rm -f "$luks_password_file" "$user_password_file" "$sudo_password_file"
+  rm -f \
+    "$luks_password_file" \
+    "$user_password_file" \
+    "$sudo_password_file" \
+    "$state_dir/install-requisites"
 }
 
 abort_install() {
@@ -328,8 +337,7 @@ prompt_password_pair() {
   fi
 
   (( ${#first} >= 8 )) || die "$title must contain at least 8 characters."
-  umask 077
-  printf '%s' "$first" > "$destination"
+  (umask 077; printf '%s' "$first" > "$destination")
   unset first second
 }
 
@@ -340,12 +348,49 @@ preflight_environment() {
   [[ -d /sys/firmware/efi/efivars ]] || die "Boot the USB installer in UEFI mode."
 
   need_command cryptsetup
-  need_command disko-install
   need_command findmnt
+  need_command nix-store
   need_command nixos-enter
+  need_command nixos-install
   need_command rsync
-  need_command udevadm
+  need_command setpriv
   need_command vgchange
+}
+
+select_install_payload() {
+  case $configuration in
+    balerion)
+      install_system_path=${INSTALLER_BALERION_SYSTEM:?INSTALLER_BALERION_SYSTEM is not set}
+      install_disko_script=${INSTALLER_BALERION_DISKO_SCRIPT:?INSTALLER_BALERION_DISKO_SCRIPT is not set}
+      ;;
+    bonhart)
+      install_system_path=${INSTALLER_BONHART_SYSTEM:?INSTALLER_BONHART_SYSTEM is not set}
+      install_disko_script=${INSTALLER_BONHART_DISKO_SCRIPT:?INSTALLER_BONHART_DISKO_SCRIPT is not set}
+      ;;
+    *) die "Configuration must be balerion or bonhart." ;;
+  esac
+}
+
+verify_install_payload() {
+  local path requisites_file="$state_dir/install-requisites"
+
+  (( preview )) && return
+
+  [[ -x $install_disko_script ]] ||
+    die "The bundled disk-layout program is missing. Recreate the installer USB."
+  [[ -x $install_system_path/init ]] ||
+    die "The bundled $configuration_label system image is missing. Recreate the installer USB."
+
+  if ! nix-store --query --requisites "$install_system_path" "$install_disko_script" \
+    > "$requisites_file" 2>> "$install_log"; then
+    die "The bundled offline installation payload could not be read. Recreate the installer USB."
+  fi
+
+  while IFS= read -r path; do
+    [[ -e $path ]] ||
+      die "The installer USB is missing part of the offline payload. Recreate it before erasing a disk."
+  done < "$requisites_file"
+  rm -f "$requisites_file"
 }
 
 preflight_target() {
@@ -405,72 +450,107 @@ show_summary() {
 
   if (( noninteractive )); then
     confirmation=${INSTALLER_CONFIRMATION:-}
+    [[ $confirmation == "$expected_confirmation" ]] || die "The erase confirmation did not match."
   else
-    confirmation=$(gum input \
-      --placeholder "$expected_confirmation" \
-      --prompt "Type the phrase exactly › " \
-      --prompt.foreground 212) || die "Confirmation cancelled."
+    while true; do
+      confirmation=$(gum input \
+        --placeholder "$expected_confirmation" \
+        --prompt "Type the phrase exactly › " \
+        --prompt.foreground 212) || die "Confirmation cancelled."
+      [[ $confirmation == "$expected_confirmation" ]] && break
+      gum style --foreground 196 --bold "The erase confirmation did not match. Try again."
+      printf '\n'
+    done
   fi
-
-  [[ $confirmation == "$expected_confirmation" ]] || die "The erase confirmation did not match."
 }
 
-run_logged() {
+run_logged_once() {
   local title=$1
   local child_program="exec \"\$@\" >>\"\$INSTALLER_LOG_FILE\" 2>&1"
   shift
 
   if declare -F "$1" >/dev/null 2>&1; then
-    if ! "$@" >> "$install_log" 2>&1; then
-      tail -n 40 "$install_log" >&2
-      die "$title failed."
-    fi
-    if (( !noninteractive )) && [[ -t 1 ]]; then
-      success "$title"
-    fi
+    "$@" >> "$install_log" 2>&1
   elif (( noninteractive )) || [[ ! -t 1 ]]; then
     printf '%s...\n' "$title"
-    if ! "$@" >> "$install_log" 2>&1; then
-      tail -n 40 "$install_log" >&2
-      die "$title failed."
-    fi
-  elif ! gum spin --spinner dot --title "$title" -- \
-    env INSTALLER_LOG_FILE="$install_log" bash -c "$child_program" _ "$@"; then
-    gum style --foreground 196 --bold "$title failed."
-    tail -n 40 "$install_log" >&2
-    die "The detailed log is at $install_log."
+    "$@" >> "$install_log" 2>&1
   else
-    success "$title"
+    gum spin --spinner dot --title "$title" -- \
+      env INSTALLER_LOG_FILE="$install_log" bash -c "$child_program" _ "$@"
   fi
 }
 
-open_installed_system() {
-  udevadm settle
+run_logged() {
+  local title=$1
+  local choice
+  shift
+
+  while true; do
+    if run_logged_once "$title" "$@"; then
+      if (( !noninteractive )) && [[ -t 1 ]]; then
+        success "$title"
+      fi
+      return
+    fi
+
+    tail -n 40 "$install_log" >&2
+    if (( noninteractive )); then
+      die "$title failed."
+    fi
+
+    gum style --foreground 196 --bold "$title failed."
+    notice "The detailed log is at $install_log. You can retry without re-entering anything."
+    printf '\n'
+    choice=$(
+      printf '%s\n' "Retry this step" "Stop installer" |
+        gum choose --header "What would you like to do?" --cursor.foreground 212
+    ) || die "$title was cancelled."
+    [[ $choice == "Retry this step" ]] || die "$title failed."
+  done
+}
+
+link_selected_disk() {
+  local alias_path=$1
+  local selected_disk=$2
+
+  if [[ -e $alias_path && ! -L $alias_path ]]; then
+    die "The installer disk alias is unexpectedly occupied: $alias_path"
+  fi
+  mkdir -p "$(dirname "$alias_path")"
+  ln -sfn "$selected_disk" "$alias_path"
+  if [[ $alias_path == "$target_disk_alias" ]]; then
+    target_alias_created=1
+  fi
+}
+
+refresh_target_state() {
   crypt_partition=$(target_partition NIXOS-CRYPT)
   boot_partition=$(target_partition NIXOS-BOOT)
-  [[ -b $crypt_partition ]] || die "Encrypted partition was not created."
-  [[ -b $boot_partition ]] || die "Boot partition was not created."
-
-  if ! cryptsetup status "$crypt_name" >/dev/null 2>&1; then
-    cryptsetup open --key-file "$luks_password_file" "$crypt_partition" "$crypt_name" \
-      >> "$install_log" 2>&1
-  fi
-  opened_crypt=1
-
+  mountpoint -q "$mount_root" && mounted_root=1
+  mountpoint -q "$mount_root/boot" && mounted_boot=1
+  cryptsetup status "$crypt_name" >/dev/null 2>&1 && opened_crypt=1
   if [[ $configuration == bonhart ]]; then
-    vgchange -ay nixos >> "$install_log" 2>&1
     activated_vg=1
-    root_device=/dev/nixos/root
-  else
-    root_device="/dev/mapper/$crypt_name"
   fi
+  [[ -b $crypt_partition && -b $boot_partition ]]
+}
 
-  mkdir -p "$mount_root"
-  mount "$root_device" "$mount_root"
-  mounted_root=1
-  mkdir -p "$mount_root/boot"
-  mount "$boot_partition" "$mount_root/boot"
-  mounted_boot=1
+install_disk_layout() {
+  local status=0
+
+  link_selected_disk "$target_disk_alias" "$disk_path"
+  DISKO_SKIP_SWAP=1 "$install_disko_script" || status=$?
+  refresh_target_state || status=$?
+  return "$status"
+}
+
+install_prebuilt_system() {
+  nixos-install \
+    --no-channel-copy \
+    --no-root-password \
+    --system "$install_system_path" \
+    --root "$mount_root" \
+    --option substituters ""
 }
 
 persist_configuration() {
@@ -498,7 +578,7 @@ set_installed_passwords() {
 }
 
 verify_installation() {
-  local user_shadow root_shadow
+  local user_shadow root_shadow user_uid user_gid
 
   cryptsetup isLuks "$crypt_partition" || die "LUKS verification failed."
   [[ -x $mount_root/nix/var/nix/profiles/system/init ]] ||
@@ -515,27 +595,22 @@ verify_installation() {
   [[ -n $root_shadow && $root_shadow != '!'* ]] ||
     die "The administrator password was not installed."
 
+  user_uid=$(nixos-enter --root "$mount_root" -c "id -u $installer_user")
+  user_gid=$(nixos-enter --root "$mount_root" -c "id -g $installer_user")
+  setpriv --reuid "$user_uid" --regid "$user_gid" --clear-groups \
+    test -x "$mount_root/nix/var/nix/profiles/system/init" ||
+    die "The installed Nix store is not accessible to normal users."
+
   install -Dm0600 "$install_log" "$mount_root/var/log/mariano-installer.log"
 }
 
 install_system() {
-  local flake_source=${INSTALLER_FLAKE_SOURCE:?INSTALLER_FLAKE_SOURCE is not set}
-  local flake_reference="$flake_source#$configuration-install"
-
   render_header
-  notice "The installer is now working from the pinned, offline system image."
+  notice "Installing the verified $configuration_label image. Wi-Fi may remain connected, but no live build is performed."
   printf '\n'
 
-  run_logged \
-    "Partitioning, encrypting, and installing $configuration_label" \
-    disko-install \
-      --flake "$flake_reference" \
-      --disk main "$disk_path" \
-      --mount-point /mnt/disko-install-root \
-      --write-efi-boot-entries \
-      --option offline true
-
-  run_logged "Opening the installed system for final setup" open_installed_system
+  run_logged "Partitioning and encrypting $disk_kernel_path" install_disk_layout
+  run_logged "Installing the bundled $configuration_label system" install_prebuilt_system
   run_logged "Saving the pinned configuration" persist_configuration
   run_logged "Setting login and administrator passwords" set_installed_passwords
   run_logged "Verifying encryption, boot files, and accounts" verify_installation
@@ -585,8 +660,14 @@ main() {
   chmod 0600 "$install_log"
 
   choose_configuration
+  if (( !preview )); then
+    select_install_payload
+  fi
   choose_disk
   preflight_target
+  if (( !preview )); then
+    verify_install_payload
+  fi
   collect_passwords
   show_summary
 

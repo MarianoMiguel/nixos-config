@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+[[ ${1:-} == --query && ${2:-} == --requisites ]] || {
+  printf 'Unexpected nix-store invocation: %s\n' "$*" >&2
+  exit 1
+}
+cat "${INSTALLER_NIX_STORE_REQUISITES:?INSTALLER_NIX_STORE_REQUISITES is required}"

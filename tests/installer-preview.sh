@@ -45,6 +45,37 @@ assert_no_secrets() {
   [[ ! -e $state/sudo-password ]]
 }
 
+interactive_state="$scratch/interactive-state"
+interactive_choices="$scratch/interactive-choices"
+interactive_inputs="$scratch/interactive-inputs"
+cat > "$interactive_choices" <<'EOF'
+Balerion  · Intel 13900KF + RTX 3080 Ti
+/dev/nvme0n1  ·  1.8 TiB  ·  Test NVMe  ·  nvme
+EOF
+cat > "$interactive_inputs" <<'EOF'
+disk:unlock password
+disk:unlock password
+desktop:login password
+desktop:login password
+sudo:administrator password
+sudo:administrator password
+ERASE /nvme0n1
+ERASE /dev/nvme0n1
+EOF
+interactive_output=$(env \
+  PATH="$test_path" \
+  TERM=xterm-256color \
+  INSTALLER_NONINTERACTIVE=0 \
+  INSTALLER_EXCLUDED_DISK=/dev/sda \
+  INSTALLER_LSBLK_JSON="$fixture" \
+  INSTALLER_GUM_CHOOSE_QUEUE="$interactive_choices" \
+  INSTALLER_GUM_INPUT_QUEUE="$interactive_inputs" \
+  INSTALLER_STATE_DIR="$interactive_state" \
+  "$repo/scripts/install-system.sh" --preview)
+grep -q 'The erase confirmation did not match. Try again.' <<<"$interactive_output"
+grep -q 'Preview complete. No disks were changed.' <<<"$interactive_output"
+assert_no_secrets "$interactive_state"
+
 balerion_state="$scratch/balerion-state"
 balerion_output=$(run_preview balerion /dev/nvme0n1 'ERASE /dev/nvme0n1' "$balerion_state")
 grep -q 'Configuration  Balerion' <<<"$balerion_output"

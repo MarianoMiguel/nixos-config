@@ -7,6 +7,10 @@
       url = "github:nix-community/home-manager/release-26.05";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    disko = {
+      url = "github:nix-community/disko";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     dms.url = "github:AvengeMedia/DankMaterialShell";
     nixpkgs-unstable.follows = "dms/nixpkgs";
     quickshell = {
@@ -24,6 +28,12 @@
     };
     codeIsland-dms = {
       url = "github:payprays/codeIsland-dms";
+      flake = false;
+    };
+    niri-pip = {
+      # Keep the reviewed v0.2.1 source immutable. This is intentionally not a
+      # moving tag because the daemon controls compositor windows at runtime.
+      url = "github:t1ktakdev/niri-pip/4f2075ce35697169e43889aadd55f0900f1d4710";
       flake = false;
     };
     librepods-rust = {
@@ -79,8 +89,16 @@
           ./hosts/bonhart/configuration.nix
         ];
 
+        "bonhart-install" = mkSystem [
+          ./hosts/bonhart/install-configuration.nix
+        ];
+
         balerion = mkSystem [
           ./hosts/balerion/configuration.nix
+        ];
+
+        "balerion-install" = mkSystem [
+          ./hosts/balerion/install-configuration.nix
         ];
 
         standard = standardSystem;
@@ -106,6 +124,13 @@
       packages.${system} = {
         granola = self.nixosConfigurations.bonhart.pkgs.callPackage ./packages/granola-linux { };
         librepods = inputs.librepods-rust.packages.${system}.default;
+        niri-pip = self.nixosConfigurations.bonhart.pkgs.callPackage ./packages/niri-pip.nix {
+          src = inputs.niri-pip;
+        };
+        mt76-mt7925 =
+          self.nixosConfigurations.bonhart.config.boot.kernelPackages.callPackage
+            ./packages/mt76-mt7925.nix
+            { };
         installerIso = self.nixosConfigurations.installer.config.system.build.isoImage;
       };
     };

@@ -2,6 +2,7 @@
   lib,
   modulesPath,
   pkgs,
+  self,
   ...
 }:
 
@@ -21,56 +22,148 @@ let
       ];
   };
 
-  installBalerion = pkgs.writeShellApplication {
-    name = "install-balerion";
+  targetSystems = [
+    self.nixosConfigurations."balerion-install"
+    self.nixosConfigurations."bonhart-install"
+  ];
+
+  flakeOutPaths =
+    let
+      collect =
+        parent:
+        map (
+          child:
+          [ child.outPath ]
+          ++ (if child ? inputs && child.inputs != { } then collect child else [ ])
+        ) (lib.attrValues parent.inputs);
+    in
+    lib.unique (lib.flatten (collect self));
+
+  systemDependencies =
+    system:
+    let
+      systemPkgs = system.pkgs;
+    in
+    [
+      system.config.system.build.toplevel
+      system.config.system.build.diskoScript
+      system.config.system.build.diskoScript.drvPath
+      systemPkgs.stdenv.drvPath
+      systemPkgs.perlPackages.ConfigIniFiles
+      systemPkgs.perlPackages.FileSlurp
+      (systemPkgs.closureInfo { rootPaths = [ ]; }).drvPath
+    ];
+
+  offlineDependencies = lib.unique (
+    lib.flatten (map systemDependencies targetSystems) ++ flakeOutPaths
+  );
+  installClosure = pkgs.closureInfo { rootPaths = offlineDependencies; };
+
+  guidedInstaller = pkgs.writeShellApplication {
+    name = "install-mariano-nixos";
+    runtimeInputs = with pkgs; [
+      coreutils
+      cryptsetup
+      disko
+      dosfstools
+      findutils
+      gnugrep
+      gum
+      jq
+      lvm2
+      nixos-install-tools
+      openssl
+      parted
+      rsync
+      shadow
+      util-linux
+    ];
     text = ''
-      export NIXOS_CONFIGURATION=balerion
-      export NIXOS_CONFIG=/etc/nixos-config
-      exec /etc/nixos-config/scripts/install-standard-system.sh "$@"
+      export INSTALLER_CONFIG_SOURCE=${lib.escapeShellArg repoSource}
+      export INSTALLER_FLAKE_SOURCE=${lib.escapeShellArg self}
+      exec ${repoSource}/scripts/install-system.sh "$@"
     '';
   };
-in
 
+  installerDesktop = pkgs.writeText "mariano-nixos-installer.desktop" ''
+    [Desktop Entry]
+    Type=Application
+    Name=Install Mariano NixOS
+    Comment=Install the encrypted Balerion or Bonhart configuration
+    Exec=${pkgs.kdePackages.konsole}/bin/konsole --fullscreen -e ${pkgs.sudo}/bin/sudo ${guidedInstaller}/bin/install-mariano-nixos
+    Icon=drive-harddisk
+    Terminal=false
+    Categories=System;
+  '';
+in
 {
   imports = [
-    "${modulesPath}/installer/cd-dvd/installation-cd-graphical-calamares-plasma6.nix"
+    "${modulesPath}/installer/cd-dvd/installation-cd-graphical-base.nix"
     ../../modules/nixos/nix.nix
   ];
 
   networking.hostName = "mariano-nixos-installer";
 
-  image.baseName = lib.mkForce "mariano-nixos-balerion-installer";
+  image.baseName = lib.mkForce "mariano-nixos-installer";
   isoImage.contents = [
     {
       source = repoSource;
       target = "/nixos-config";
     }
   ];
+  isoImage.storeContents = [ installClosure ] ++ lib.concatMap systemDependencies targetSystems;
 
-  environment.etc."nixos-config".source = repoSource;
+  environment.etc = {
+    "nixos-config".source = repoSource;
+    "install-closure".source = "${installClosure}/store-paths";
+  };
+
+  services.desktopManager.plasma6 = {
+    enable = true;
+    enableQt5Integration = false;
+  };
+  services.displayManager = {
+    plasma-login-manager.enable = true;
+    autoLogin = {
+      enable = true;
+      user = "nixos";
+    };
+  };
+  environment.plasma6.excludePackages = [ pkgs.kdePackages.plasma-workspace-wallpapers ];
+  programs.kde-pim.enable = false;
 
   environment.systemPackages = with pkgs; [
     curl
-    dosfstools
-    e2fsprogs
     exfatprogs
     git
     gptfdisk
-    jq
-    parted
+    guidedInstaller
+    kdePackages.konsole
     pv
-    rsync
     vim
     wget
     zstd
-    installBalerion
   ];
 
-  users.motd = ''
-    Balerion installer
+  system.activationScripts.guidedInstallerDesktop = ''
+    home_dir=/home/nixos
+    desktop_dir=$home_dir/Desktop
+    autostart_dir=$home_dir/.config/autostart
 
-    Connect to the internet, identify the target disk with lsblk, then run:
-      sudo install-balerion /dev/disk/by-id/<target-disk>
+    mkdir -p "$desktop_dir" "$autostart_dir"
+    ln -sfT ${installerDesktop} "$desktop_dir/install-mariano-nixos.desktop"
+    ln -sfT ${installerDesktop} "$autostart_dir/install-mariano-nixos.desktop"
+    chown -R nixos:users "$desktop_dir" "$home_dir/.config"
+  '';
+
+  documentation.nixos.enable = lib.mkForce false;
+  documentation.man.cache.enable = lib.mkForce false;
+
+  users.motd = ''
+    Mariano NixOS installer
+
+    The guided encrypted installer opens automatically. To reopen it, run:
+      sudo install-mariano-nixos
   '';
 
   services.openssh.enable = true;

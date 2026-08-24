@@ -30,10 +30,22 @@ in
         autoStart = true;
       };
       extensions = [
-        (config.lib.vicinae.mkExtension {
+        ((config.lib.vicinae.mkExtension {
           name = "gnome-window-management";
           src = ../../extensions/vicinae-window-management;
-        })
+        }).overrideAttrs (_: {
+          # Home Manager 26.05 hard-codes /build here, but modern Nix uses a
+          # private build directory. The extension is emitted below that build
+          # directory, so use Nix's path for it instead.
+          installPhase = ''
+            runHook preInstall
+
+            mkdir -p "$out"
+            cp -r "$NIX_BUILD_TOP/.local/share/vicinae/extensions/gnome-window-management/." "$out/"
+
+            runHook postInstall
+          '';
+        }))
       ];
     };
 

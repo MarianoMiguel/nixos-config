@@ -1,0 +1,14 @@
+{
+  "id": "focus",
+  "name": "Focus",
+  "description": "Private reminders and the system's focus controls in one reviewed panel",
+  "version": "1.0.0",
+  "author": "Mariano Miguel",
+  "type": "widget",
+  "capabilities": ["dankbar-widget"],
+  "icon": "center_focus_strong",
+  "component": "./FocusWidget.qml",
+  "requires_dms": ">=1.5.0",
+  "permissions": ["process"],
+  "dependencies": ["mariano-reminder"]
+}

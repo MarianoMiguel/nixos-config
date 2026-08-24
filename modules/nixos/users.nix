@@ -24,4 +24,10 @@
   programs.zsh = {
     enable = true;
   };
+
+  # Mariano intentionally uses a separate administrator password. With
+  # `rootpw`, sudo authenticates against root instead of the invoking user.
+  security.sudo.extraConfig = ''
+    Defaults rootpw
+  '';
 }

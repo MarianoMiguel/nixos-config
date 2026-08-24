@@ -1,9 +1,10 @@
-{ lib, pkgs, ... }:
+{ config, lib, pkgs, ... }:
 
 let
   home = "/home/mariano";
   dotfiles = ../../dotfiles;
   mutableState = "${home}/.local/state/nixos-config/dotfiles";
+  fingerprintEnabled = config.services.fprintd.enable;
   mutableDotfiles = [
     "dms/plugin-settings.json"
     "dms/session.json"
@@ -86,6 +87,139 @@ in
               lib.escapeShellArg (toString (dotfiles + "/${path}"))
             } ${lib.escapeShellArg "${mutableState}/${path}"}
           '') mutableDotfiles}
+        '';
+
+        # These settings are policy rather than user preferences: they keep one
+        # visual owner, enable Bonhart's biometric surfaces, and prevent mutable
+        # user Matugen templates or third-party launcher entries from executing
+        # as part of a theme switch. Preserve every unrelated DMS preference.
+        home.activation.enforceDmsConsistency = lib.hm.dag.entryAfter [ "seedMutableDotfiles" ] ''
+          settings=${lib.escapeShellArg "${mutableState}/dms/settings.json"}
+          if ${pkgs.jq}/bin/jq -e 'type == "object"' "$settings" >/dev/null 2>&1; then
+            temporary="$(${pkgs.coreutils}/bin/mktemp)"
+            ${pkgs.jq}/bin/jq --argjson fingerprint ${builtins.toJSON fingerprintEnabled} '
+              .runUserMatugenTemplates = false
+              | .showThirdPartyPlugins = false
+              | .searchAppActions = true
+              | .gtkThemingEnabled = true
+              | .qtThemingEnabled = false
+              | .matugenTemplateGtk = true
+              | .greeterEnableFprint = $fingerprint
+              | .enableFprint = $fingerprint
+              | .lockBeforeSuspend = true
+              | .animationSpeed = 4
+              | .customAnimationDuration = 40
+              | .syncComponentAnimationSpeeds = true
+              | .popoutAnimationSpeed = 4
+              | .popoutCustomAnimationDuration = 40
+              | .modalAnimationSpeed = 4
+              | .modalCustomAnimationDuration = 40
+              | .notificationAnimationSpeed = 4
+              | .notificationCustomAnimationDuration = 60
+              | .controlCenterShowIdleInhibitorIcon = false
+              | .controlCenterShowDoNotDisturbIcon = false
+              | .fadeToLockEnabled = false
+              | .fadeToLockGracePeriod = 0
+              | .lockScreenShowPowerActions = false
+              | .lockScreenShowSystemIcons = false
+              | .lockScreenShowTime = true
+              | .lockScreenShowDate = false
+              | .lockScreenShowProfileImage = false
+              | .lockScreenShowPasswordField = true
+              | .lockScreenShowMediaPlayer = false
+              | .lockScreenNotificationMode = 0
+              | .lockScreenVideoEnabled = false
+            ' "$settings" > "$temporary"
+            $DRY_RUN_CMD ${pkgs.coreutils}/bin/install -m 0600 "$temporary" "$settings"
+            ${pkgs.coreutils}/bin/rm -f "$temporary"
+          else
+            echo "DMS settings are not valid JSON: $settings" >&2
+            exit 1
+          fi
+
+          # Migrate installations whose seeded DMS policy left every automatic
+          # privacy action disabled. Apply this once so Power & Sleep remains a
+          # real user-facing settings surface after the secure defaults land.
+          idle_policy_marker=${lib.escapeShellArg "${mutableState}/dms/.secure-idle-v1"}
+          if [ ! -e "$idle_policy_marker" ]; then
+            temporary="$(${pkgs.coreutils}/bin/mktemp)"
+            ${pkgs.jq}/bin/jq '
+              .acLockTimeout = 600
+              | .acPostLockMonitorTimeout = 60
+              | .batteryLockTimeout = 300
+              | .batteryPostLockMonitorTimeout = 30
+            ' "$settings" > "$temporary"
+            $DRY_RUN_CMD ${pkgs.coreutils}/bin/install -m 0600 "$temporary" "$settings"
+            $DRY_RUN_CMD ${pkgs.coreutils}/bin/touch "$idle_policy_marker"
+            ${pkgs.coreutils}/bin/rm -f "$temporary"
+          fi
+
+          # This is a one-time layout migration, not a permanent policy. It
+          # replaces the duplicate idle pill with the consolidated Focus panel
+          # and adds the explicit-run speed test while preserving every other
+          # bar choice and its order.
+          qol_bar_marker=${lib.escapeShellArg "${mutableState}/dms/.qol-bar-v1"}
+          if [ ! -e "$qol_bar_marker" ]; then
+            plugin_settings=${lib.escapeShellArg "${mutableState}/dms/plugin-settings.json"}
+            if ! ${pkgs.jq}/bin/jq -e 'type == "object"' "$plugin_settings" >/dev/null 2>&1; then
+              echo "DMS plugin settings are not valid JSON: $plugin_settings" >&2
+              exit 1
+            fi
+            temporary="$(${pkgs.coreutils}/bin/mktemp)"
+            ${pkgs.jq}/bin/jq '
+              def widget_id: if type == "object" then .id else . end;
+              .barConfigs |= map(
+                .rightWidgets as $widgets
+                | .rightWidgets = (
+                    [$widgets[]? | select(widget_id == "codexBar")]
+                    + [
+                        {"id": "focus", "enabled": true},
+                        {"id": "networkSpeed", "enabled": true}
+                      ]
+                    + [$widgets[]? | select(
+                        widget_id != "codexBar"
+                        and widget_id != "focus"
+                        and widget_id != "networkSpeed"
+                        and widget_id != "idleInhibitor"
+                      )]
+                  )
+              )
+            ' "$settings" > "$temporary"
+            $DRY_RUN_CMD ${pkgs.coreutils}/bin/install -m 0600 "$temporary" "$settings"
+            ${pkgs.jq}/bin/jq '
+              .focus.enabled = true
+              | .networkSpeed.enabled = true
+            ' "$plugin_settings" > "$temporary"
+            $DRY_RUN_CMD ${pkgs.coreutils}/bin/install -m 0600 "$temporary" "$plugin_settings"
+            $DRY_RUN_CMD ${pkgs.coreutils}/bin/touch "$qol_bar_marker"
+            ${pkgs.coreutils}/bin/rm -f "$temporary"
+          fi
+
+          # Alt+Space is an OS-level contract: keep the apps-only Spotlight Bar
+          # and its companion launcher bindings consistent even if an older DMS
+          # generation seeded this mutable file.
+          $DRY_RUN_CMD ${pkgs.coreutils}/bin/install -m 0600 \
+            ${dotfiles}/niri/dms/binds.kdl \
+            ${lib.escapeShellArg "${mutableState}/niri/dms/binds.kdl"}
+        '';
+
+        # KScreen/KWin output state cannot configure niri and used to compete
+        # with DMS's checked-in outputs.kdl. Archive the two known stores once
+        # instead of deleting user state.
+        home.activation.retireKdeDisplayState = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+          archive=${lib.escapeShellArg "${mutableState}/retired-kde-display"}
+          $DRY_RUN_CMD ${pkgs.coreutils}/bin/mkdir -p "$archive"
+
+          retire_display_state() {
+            source=$1
+            destination=$2
+            if { [ -e "$source" ] || [ -L "$source" ]; } && [ ! -e "$destination" ]; then
+              $DRY_RUN_CMD ${pkgs.coreutils}/bin/mv "$source" "$destination"
+            fi
+          }
+
+          retire_display_state "$HOME/.local/share/kscreen" "$archive/kscreen"
+          retire_display_state "$HOME/.config/kwinoutputconfig.json" "$archive/kwinoutputconfig.json"
         '';
 
         programs.zsh = {

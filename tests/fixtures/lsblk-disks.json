@@ -1,0 +1,59 @@
+{
+  "blockdevices": [
+    {
+      "name": "sda",
+      "path": "/dev/sda",
+      "model": "Installer USB",
+      "serial": "USB-INSTALLER",
+      "size": 137438953472,
+      "type": "disk",
+      "ro": false,
+      "rm": true,
+      "tran": "usb"
+    },
+    {
+      "name": "nvme0n1",
+      "path": "/dev/nvme0n1",
+      "model": "Primary NVMe",
+      "serial": "NVME-PRIMARY",
+      "size": 2000398934016,
+      "type": "disk",
+      "ro": false,
+      "rm": false,
+      "tran": "nvme"
+    },
+    {
+      "name": "nvme1n1",
+      "path": "/dev/nvme1n1",
+      "model": "Small NVMe",
+      "serial": "NVME-SMALL",
+      "size": 85899345920,
+      "type": "disk",
+      "ro": false,
+      "rm": false,
+      "tran": "nvme"
+    },
+    {
+      "name": "sdb",
+      "path": "/dev/sdb",
+      "model": "Read-only disk",
+      "serial": "READ-ONLY",
+      "size": 2000398934016,
+      "type": "disk",
+      "ro": true,
+      "rm": false,
+      "tran": "sata"
+    },
+    {
+      "name": "loop0",
+      "path": "/dev/loop0",
+      "model": "Loop fixture",
+      "serial": null,
+      "size": 2000398934016,
+      "type": "loop",
+      "ro": false,
+      "rm": false,
+      "tran": null
+    }
+  ]
+}

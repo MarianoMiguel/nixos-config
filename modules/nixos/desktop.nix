@@ -41,17 +41,13 @@ in
 
   services.displayManager.sddm.enable = false;
   services.displayManager.defaultSession = "niri";
-  services.desktopManager.plasma6.enable = true;
   services.desktopManager.gnome.enable = true;
-  # Keep Plasma's supporting components installed without exposing a Plasma
-  # session. GNOME is the stock fallback; Niri remains the default.
+  # GNOME is the stock fallback; Niri with DMS remains the default. Avoid a
+  # second desktop stack owning Bluetooth, display and package-management UI.
   services.displayManager.sessionPackages = lib.mkForce [
     pkgs.niri
     gnomeSessionsWithDesktopEnv
   ];
-  # Plasma and GNOME each provide a default SSH askpass implementation. Keep
-  # the prompt already used by the default Niri session to resolve that tie.
-  programs.ssh.askPassword = lib.mkForce "${pkgs.kdePackages.ksshaskpass}/bin/ksshaskpass";
 
   users.groups.greeter = { };
   users.users.greeter = {
@@ -97,8 +93,6 @@ in
       };
     };
   };
-  services.blueman.enable = true;
-
   systemd.services.bluetooth-rfkill-unblock = {
     description = "Unblock Bluetooth rfkill switches";
     wantedBy = [ "bluetooth.service" ];
@@ -158,11 +152,8 @@ in
   };
 
   environment.systemPackages = with pkgs; [
-    blueman
     bluez-tools
     pciutils
     usbutils
-    kdePackages.kconfig
-    kdePackages.ksshaskpass
   ];
 }

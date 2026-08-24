@@ -42,6 +42,14 @@
         "enabled": true
       },
       {
+        "id": "focus",
+        "enabled": true
+      },
+      {
+        "id": "networkSpeed",
+        "enabled": true
+      },
+      {
         "id": "systemTray",
         "enabled": true
       },

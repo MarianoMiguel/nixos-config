@@ -1,77 +1,218 @@
-{ pkgs, ... }:
+{
+  lib,
+  pkgs,
+  ...
+}:
 
 let
-  themeportState = "/home/mariano/.local/state/nixos-config/dotfiles/themeport";
-
-  themeport = pkgs.stdenv.mkDerivation {
-    pname = "themeport";
-    version = "0.2.0";
+  themeportUnwrapped = pkgs.stdenvNoCC.mkDerivation {
+    pname = "themeport-unwrapped";
+    version = "0.3.1";
     src = ../../tools/themeport;
-    nativeBuildInputs = [ pkgs.makeWrapper ];
     dontBuild = true;
     installPhase = ''
-      mkdir -p $out/share/themeport $out/bin
-      cp themeport.py $out/share/themeport/
-      cp -r templates $out/share/themeport/
-      makeWrapper ${pkgs.python3}/bin/python3 $out/bin/themeport \
-        --add-flags "$out/share/themeport/themeport.py"
+      runHook preInstall
+      substituteInPlace themeport.py \
+        --replace-fail \
+          '    apply_vscode(state, meta)' \
+          '    # VS Code is themed by DMS Matugen; theme metadata never installs extensions.' \
+        --replace-fail \
+          '    apply_browsers(meta)' \
+          '    # Browser managed policy is deliberately outside Themeport.'
+      install -Dm0444 themeport.py "$out/share/themeport/themeport.py"
+      cp -R templates "$out/share/themeport/templates"
+      mkdir -p "$out/share/themeport/themes"
+      cp -R fixtures/official/. "$out/share/themeport/themes/"
+      runHook postInstall
     '';
   };
 
-  # Browser aether:// links need a visible confirmation surface. Launch the
-  # adapter in the same floating Ghostty class as the normal ThemePort picker;
-  # the CLI deliberately ignores upstream's silent=true request.
-  themeportAetherHandler = pkgs.writeShellApplication {
-    name = "themeport-aether-handler";
-    runtimeInputs = [
-      pkgs.ghostty
-      themeport
-    ];
+  # Give the renderer exactly one DMS executable without pulling DMS into the
+  # wrapper closure or exposing the rest of the user's PATH.
+  dmsBridge = pkgs.writeShellScriptBin "dms" ''
+    exec /run/current-system/sw/bin/dms "$@"
+  '';
+
+  safeRuntime = [
+    pkgs.coreutils
+    pkgs.findutils
+    pkgs.fzf
+    pkgs.glib
+    pkgs.python3
+    pkgs.systemd
+    pkgs.tmux
+    dmsBridge
+  ];
+
+  # Theme switching is intentionally a closed catalog. The unwrapped renderer
+  # still understands upstream formats, but this public command exposes only
+  # themes reviewed and copied into the immutable Nix store. It does not expose
+  # GitHub installs, galleries, URL handlers, arbitrary theme paths, VS Code
+  # extension installation, or browser managed-policy refreshes.
+  themeport = pkgs.writeShellApplication {
+    name = "themeport";
+    runtimeInputs = safeRuntime;
     text = ''
-      if [ "$#" -ne 1 ]; then
-        echo "usage: themeport-aether-handler aether://apply?..." >&2
-        exit 2
-      fi
-      exec ghostty --class=themeport.picker -e themeport handle-url "$1" --hold
-    '';
-  };
+      set -eu
 
-  themeportAetherDesktop = pkgs.makeDesktopItem {
-    name = "themeport-aether-handler";
-    desktopName = "ThemePort Aether Adapter";
-    comment = "Review and import Aether theme links with ThemePort";
-    exec = "${themeportAetherHandler}/bin/themeport-aether-handler %u";
-    icon = "preferences-desktop-theme";
-    terminal = false;
-    noDisplay = true;
-    mimeTypes = [ "x-scheme-handler/aether" ];
-    categories = [ "Settings" ];
+      trusted=${themeportUnwrapped}/share/themeport/themes
+      renderer=${themeportUnwrapped}/share/themeport/themeport.py
+      export THEMEPORT_HOME="$trusted"
+      export PATH=${lib.makeBinPath safeRuntime}
+
+      usage() {
+        cat <<'HELP'
+Themeport (trusted catalog)
+
+  themeport list
+  themeport pick [--hold]
+  themeport set THEME [--pair THEME] [--no-restart]
+  themeport wallpapers [--all] [--list] [--hold]
+
+Themes are shipped inside the immutable NixOS system. Online installs,
+browser links, executable hooks and third-party catalogs are disabled.
+HELP
+      }
+
+      validate_theme() {
+        name=$1
+        case "$name" in
+          ""|*[!A-Za-z0-9_.-]*)
+            echo "Invalid theme name: $name" >&2
+            exit 2
+            ;;
+        esac
+        if [ ! -d "$trusted/$name" ]; then
+          echo "Theme is not in the trusted catalog: $name" >&2
+          exit 2
+        fi
+      }
+
+      command="''${1:-help}"
+      [ "$#" -eq 0 ] || shift
+      case "$command" in
+        help|-h|--help)
+          usage
+          ;;
+        list)
+          [ "$#" -eq 0 ] || { usage >&2; exit 2; }
+          exec python3 "$renderer" list
+          ;;
+        set)
+          [ "$#" -ge 1 ] || { usage >&2; exit 2; }
+          theme=$1
+          shift
+          validate_theme "$theme"
+          pair=""
+          no_restart=0
+          while [ "$#" -gt 0 ]; do
+            case "$1" in
+              --pair)
+                [ "$#" -ge 2 ] || { usage >&2; exit 2; }
+                pair=$2
+                validate_theme "$pair"
+                shift 2
+                ;;
+              --no-restart)
+                no_restart=1
+                shift
+                ;;
+              *)
+                usage >&2
+                exit 2
+                ;;
+            esac
+          done
+          set -- "$theme"
+          if [ -n "$pair" ]; then
+            set -- "$@" --pair "$pair"
+          fi
+          if [ "$no_restart" -eq 1 ]; then
+            set -- "$@" --no-restart
+          fi
+          exec python3 "$renderer" set "$@"
+          ;;
+        pick)
+          hold=0
+          if [ "''${1:-}" = --hold ] && [ "$#" -eq 1 ]; then
+            hold=1
+          elif [ "$#" -ne 0 ]; then
+            usage >&2
+            exit 2
+          fi
+          themes=$(find "$trusted" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort)
+          choice=$(printf '%s\n' "$themes" | fzf --prompt='theme> ' --height=80% --border) || exit 0
+          validate_theme "$choice"
+          status=0
+          python3 "$renderer" set "$choice" || status=$?
+          if [ "$hold" -eq 1 ]; then
+            printf '\nPress Enter to close.'
+            read -r _ || true
+          fi
+          exit "$status"
+          ;;
+        wallpapers)
+          all=0
+          list=0
+          hold=0
+          for argument in "$@"; do
+            case "$argument" in
+              --all) all=1 ;;
+              --list) list=1 ;;
+              --hold) hold=1 ;;
+              *) usage >&2; exit 2 ;;
+            esac
+          done
+          # Only local files below Pictures/Wallpapers are selectable. Avoid
+          # fzf preview shell templates entirely so a filename can never become
+          # executable input.
+          wallpaper_root="$HOME/Pictures/Wallpapers"
+          [ -d "$wallpaper_root" ] || {
+            echo "No wallpaper directory found: $wallpaper_root" >&2
+            exit 1
+          }
+          images=$(find "$wallpaper_root" -type f \( \
+            -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.webp' \
+          \) -print | sort)
+          if [ "$list" -eq 1 ]; then
+            printf '%s\n' "$images"
+            exit 0
+          fi
+          [ -n "$images" ] || { echo "No wallpapers found." >&2; exit 1; }
+          # --all is retained as a harmless compatibility spelling; every
+          # trusted and built-in wallpaper is already below this one root.
+          : "$all"
+          choice=$(printf '%s\n' "$images" | fzf --prompt='wallpaper> ' --height=80% --border) || exit 0
+          resolved=$(realpath -e "$choice")
+          root=$(realpath -e "$wallpaper_root")
+          case "$resolved" in
+            "$root"/*) ;;
+            *) echo "Wallpaper escaped the trusted directory." >&2; exit 2 ;;
+          esac
+          status=0
+          dms ipc call wallpaper set "$resolved" || status=$?
+          if [ "$hold" -eq 1 ]; then
+            printf '\nPress Enter to close.'
+            read -r _ || true
+          fi
+          exit "$status"
+          ;;
+        install|browse|gallery|handle-url|preview|render)
+          echo "Themeport '$command' is disabled: only immutable, reviewed themes are allowed." >&2
+          exit 2
+          ;;
+        *)
+          usage >&2
+          exit 2
+          ;;
+      esac
+    '';
   };
 in
 {
   environment.systemPackages = [
     themeport
-    themeportAetherHandler
-    themeportAetherDesktop
-    # Omarchy themes name Yaru-<color> and Adwaita icon variants; ship them so
-    # `themeport set` can apply icons.theme without a per-theme rebuild.
     pkgs.yaru-theme
     pkgs.adwaita-icon-theme
-    # renders theme preview images inside the fzf picker panes
-    pkgs.chafa
   ];
-
-  xdg.mime.defaultApplications."x-scheme-handler/aether" = "themeport-aether-handler.desktop";
-  xdg.mime.addedAssociations."x-scheme-handler/aether" = [
-    "themeport-aether-handler.desktop"
-  ];
-
-  # Browser accent theming, Omarchy-style: a two-key managed policy that both
-  # Chromium-family browsers re-read live via --refresh-platform-policy. The
-  # The policy file lives in Themeport's writable per-user state so a theme
-  # switch applies live without depending on the config checkout location.
-  environment.etc."opt/chrome/policies/managed/themeport-color.json".source =
-    "${themeportState}/chrome/color.json";
-  environment.etc."brave/policies/managed/themeport-color.json".source =
-    "${themeportState}/chrome/color.json";
 }

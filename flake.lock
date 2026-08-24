@@ -66,6 +66,26 @@
         "type": "github"
       }
     },
+    "disko": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1781152676,
+        "narHash": "sha256-RxWs5ND31KzTG7wvMM+PMfUjyNpmIEr999lqNARaM5o=",
+        "owner": "nix-community",
+        "repo": "disko",
+        "rev": "ff8702b4de27f72b4c78573dfb89ec74e36abdf1",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nix-community",
+        "repo": "disko",
+        "type": "github"
+      }
+    },
     "dms": {
       "inputs": {
         "flake-compat": "flake-compat",
@@ -214,6 +234,23 @@
         "type": "github"
       }
     },
+    "niri-pip": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1786876968,
+        "narHash": "sha256-2pg18dBMZ+9RoZ5h0LJk66t5AbWzQGXCuM/xEVeuqsQ=",
+        "owner": "t1ktakdev",
+        "repo": "niri-pip",
+        "rev": "4f2075ce35697169e43889aadd55f0900f1d4710",
+        "type": "github"
+      },
+      "original": {
+        "owner": "t1ktakdev",
+        "repo": "niri-pip",
+        "rev": "4f2075ce35697169e43889aadd55f0900f1d4710",
+        "type": "github"
+      }
+    },
     "nixpkgs": {
       "locked": {
         "lastModified": 1772773019,
@@ -318,10 +355,12 @@
         "cat-dms": "cat-dms",
         "codeIsland-dms": "codeIsland-dms",
         "codex-desktop-linux": "codex-desktop-linux",
+        "disko": "disko",
         "dms": "dms",
         "dms-codexbar": "dms-codexbar",
         "home-manager": "home-manager",
         "librepods-rust": "librepods-rust",
+        "niri-pip": "niri-pip",
         "nixpkgs": "nixpkgs_4",
         "nixpkgs-unstable": [
           "dms",

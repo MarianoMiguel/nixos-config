@@ -12,6 +12,7 @@ binds {
 
 window-rule {
     match app-id=r#"^themeport\.picker$"#
+    match app-id=r#"^system\.actions$"#
     open-floating true
     default-column-width { proportion 0.45; }
     default-window-height { proportion 0.6; }

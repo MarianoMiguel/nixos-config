@@ -2,7 +2,6 @@
 
 {
   networking.networkmanager.enable = true;
-  programs.nm-applet.enable = true;
 
   services.avahi = {
     enable = true;
@@ -54,6 +53,6 @@
   environment.systemPackages = with pkgs; [
     tailscale
     opensnitch-ui
-    protonvpn-gui
+    proton-vpn
   ];
 }

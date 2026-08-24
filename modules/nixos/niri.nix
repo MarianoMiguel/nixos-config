@@ -76,6 +76,27 @@ let
       esac
     '';
   };
+  niriScratchpad = pkgs.writeShellApplication {
+    name = "niri-scratchpad";
+    runtimeInputs = with pkgs; [
+      coreutils
+      jq
+      libnotify
+      niri
+      util-linux
+    ];
+    text = builtins.readFile ../../scripts/niri-scratchpad.sh;
+  };
+  networkSpeedtest = pkgs.writeShellApplication {
+    name = "mariano-network-speedtest";
+    runtimeInputs = with pkgs; [
+      coreutils
+      jq
+      librespeed-cli
+      util-linux
+    ];
+    text = builtins.readFile ../../scripts/network-speedtest.sh;
+  };
   codexbarUnwrapped = pkgs.stdenvNoCC.mkDerivation {
     pname = "codexbar-unwrapped";
     version = "0.29.0";
@@ -125,10 +146,39 @@ let
   # requested provider fails. Keep those partial results instead of turning the
   # entire widget into an error, and support providers without a primary window.
   codexbarDmsPlugin = pkgs.applyPatches {
-    name = "dms-codexbar-partial-results";
+    name = "dms-codexbar-focused-usage";
     src = dms-codexbar;
     patches = [ ../../patches/dms-codexbar-partial-results.patch ];
   };
+
+  # DMS's custom motion base already keeps expressive transitions at or below
+  # 80 ms. Two inline notification transitions bypass that base upstream, so
+  # bind them back to the configured duration in the installed shell.
+  dmsShell = dms.packages.${system}.dms-shell.overrideAttrs (old: {
+    postInstall = (old.postInstall or "") + ''
+      substituteInPlace "$out/share/quickshell/dms/Common/Theme.qml" \
+        --replace-fail \
+          'readonly property int notificationInlineExpandDuration: notificationAnimationBaseDuration === 0 ? 0 : 185' \
+          'readonly property int notificationInlineExpandDuration: notificationAnimationBaseDuration' \
+        --replace-fail \
+          'readonly property int notificationInlineCollapseDuration: notificationAnimationBaseDuration === 0 ? 0 : 150' \
+          'readonly property int notificationInlineCollapseDuration: notificationAnimationBaseDuration === 0 ? 0 : Math.round(notificationAnimationBaseDuration * 0.85)'
+
+      # The shipped widgets are reviewed Nix inputs. Do not execute mutable
+      # plugins from ~/.config/DankMaterialShell/plugins, even if a catalog or
+      # a local process writes files there.
+      substituteInPlace "$out/share/quickshell/dms/Services/PluginService.qml" \
+        --replace-fail \
+          'userWatcher.folder = Paths.toFileUrl(root.pluginDirectory);' \
+          'userWatcher.folder = "";' \
+        --replace-fail \
+          'const userList = snapshotModel(userWatcher, "user");' \
+          'const userList = [];' \
+        --replace-fail \
+          'const userUrl = Paths.toFileUrl(root.pluginDirectory);' \
+          'const userUrl = "";'
+    '';
+  });
 
   # CodexBar's GNOME extension uses this helper to import the authenticated
   # Codex session from Chromium-family browsers. Package it in the system
@@ -275,7 +325,7 @@ in
 
   programs.dank-material-shell = {
     enable = true;
-    package = dms.packages.${system}.dms-shell;
+    package = dmsShell;
     quickshell.package = quickshell.packages.${system}.default;
     plugins = {
       codexBar = {
@@ -283,7 +333,7 @@ in
         settings = {
           enabled = true;
           codexbarPath = "${codexbar}/bin/codexbar";
-          refreshInterval = "120000";
+          refreshInterval = "60000";
           sourceMode = "oauth";
         };
       };
@@ -300,6 +350,14 @@ in
       # the gestures keep working with it disabled.
       voice = {
         src = ../../dotfiles/dms-plugins/voice;
+        settings.enabled = true;
+      };
+      focus = {
+        src = ../../dotfiles/dms-plugins/focus;
+        settings.enabled = true;
+      };
+      networkSpeed = {
+        src = ../../dotfiles/dms-plugins/network-speed;
         settings.enabled = true;
       };
     };
@@ -337,7 +395,9 @@ in
     wl-mirror
     wtype
     xwayland-satellite
+    niriScratchpad
     niriStyleToggle
+    networkSpeedtest
     codexbar
     codexbarCookieImporter
     codexbarSslHelper

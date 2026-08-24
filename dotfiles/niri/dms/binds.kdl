@@ -10,12 +10,15 @@ binds {
     Super+B repeat=false hotkey-overlay-title="Open Browser" { spawn "google-chrome-stable"; }
     Super+E repeat=false hotkey-overlay-title="Open Files" { spawn "dolphin"; }
     Mod+Space repeat=false hotkey-overlay-title="Application Launcher" {
-        spawn "dms" "ipc" "call" "spotlight" "toggle";
+        spawn "dms" "ipc" "call" "spotlight" "toggleWith" "apps";
     }
     Super+Period repeat=false hotkey-overlay-title="Application Launcher" {
-        spawn "dms" "ipc" "call" "spotlight" "toggle";
+        spawn "dms" "ipc" "call" "spotlight" "toggleWith" "apps";
     }
-    Alt+Space repeat=false hotkey-overlay-title="Keyboard Pointer" {
+    Alt+Space repeat=false hotkey-overlay-title="Search Apps & System Actions" {
+        spawn "dms" "ipc" "call" "spotlight-bar" "toggleWith" "apps";
+    }
+    Mod+Alt+Space repeat=false hotkey-overlay-title="Keyboard Pointer" {
         spawn "wl-kbptr" "-o" "modes=floating,click" "-o" "mode_floating.source=detect" "-o" "mode_floating.label_font_size=18 50% 100";
     }
     Mod+V repeat=false hotkey-overlay-title="Clipboard Manager" {
@@ -84,6 +87,12 @@ binds {
     }
 
     // === Window Management ===
+    Super+S repeat=false hotkey-overlay-title="Toggle Scratchpad for This Display" {
+        spawn "niri-scratchpad" "toggle";
+    }
+    Super+Shift+S repeat=false hotkey-overlay-title="Move Window to This Display's Scratchpad" {
+        spawn "niri-scratchpad" "send";
+    }
     Mod+Q repeat=false { close-window; }
     Mod+F { maximize-column; }
     Mod+Shift+F { fullscreen-window; }
@@ -228,7 +237,16 @@ binds {
     Ctrl+Alt+M repeat=false hotkey-overlay-title="Share Focused Monitor" { set-dynamic-cast-monitor; }
     Ctrl+Alt+C repeat=false hotkey-overlay-title="Clear Dynamic Share Target" { clear-dynamic-cast-target; }
 
-    // === Screenshots ===
+    // === Capture ===
+    Alt+Shift+3 repeat=false hotkey-overlay-title="Capture All Displays" {
+        spawn "mariano-capture" "screenshot-full";
+    }
+    Alt+Shift+4 repeat=false hotkey-overlay-title="Capture Region" {
+        spawn "mariano-capture" "screenshot-region";
+    }
+    Alt+Shift+5 repeat=false hotkey-overlay-title="Start or Stop Region Recording" {
+        spawn "mariano-capture" "video-toggle";
+    }
     XF86Launch1 { screenshot; }
     Ctrl+XF86Launch1 { screenshot-screen; }
     Alt+XF86Launch1 { screenshot-window; }

@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ ${1:-} == -f && ${2:-} == /dev/* ]]; then
+  printf '%s\n' "$2"
+  exit 0
+fi
+
+printf 'Unexpected readlink invocation in fixture-backed preview test: %s\n' "$*" >&2
+exit 1

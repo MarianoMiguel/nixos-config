@@ -1,33 +1,26 @@
+diff --git a/CodexBarWidget.qml b/CodexBarWidget.qml
+index fa51194..087f780 100644
 --- a/CodexBarWidget.qml
 +++ b/CodexBarWidget.qml
-@@ -30,20 +30,19 @@
-   readonly property var highestProvider: {
-     if (providers.length === 0) return null
-     var filtered = providers.filter(function(p) {
+@@ -19,0 +20,7 @@ PluginComponent {
++  property string selectedProviderId: ""
++  readonly property int selectedProviderIndex: {
++    for (var i = 0; i < providers.length; i++) {
++      if (providers[i].provider === selectedProviderId) return i
++    }
++    return 0
++  }
+@@ -33 +40 @@ PluginComponent {
 -      return p.usage && p.usage.primary && !p.error
 +      return p.usage && !p.error && (p.usage.primary || p.usage.secondary || p.usage.tertiary)
-     })
-     if (filtered.length === 0) return null
-     var highest = filtered[0]
-     for (var i = 1; i < filtered.length; i++) {
+@@ -38 +45 @@ PluginComponent {
 -      if (filtered[i].usage.primary.usedPercent > highest.usage.primary.usedPercent)
 +      if (providerUsagePercent(filtered[i]) > providerUsagePercent(highest))
-         highest = filtered[i]
-     }
-     return highest
-   }
-
-   readonly property real highestPercent: {
+@@ -45,2 +52 @@ PluginComponent {
 -    if (!highestProvider || !highestProvider.usage || !highestProvider.usage.primary) return 0
 -    return highestProvider.usage.primary.usedPercent
 +    return highestProvider ? providerUsagePercent(highestProvider) : 0
-   }
-
-   readonly property string highestName: {
-@@ -58,6 +57,17 @@ PluginComponent {
-     return Theme.success
-   }
-
+@@ -60,0 +67,11 @@ PluginComponent {
 +  function providerUsagePercent(provider) {
 +    if (!provider || !provider.usage) return 0
 +    var windows = [provider.usage.primary, provider.usage.secondary, provider.usage.tertiary]
@@ -39,18 +32,10 @@
 +    return highest
 +  }
 +
-   function capitalizeFirst(s) {
-     if (!s) return ""
-     return s.charAt(0).toUpperCase() + s.slice(1)
-@@ -136,14 +146,26 @@ PluginComponent {
-     }
-     onExited: code => {
-       root.isLoading = false
+@@ -139 +156 @@ PluginComponent {
 -      if (code === 0 && root.rawJsonBuffer.length > 0) {
 +      if (root.rawJsonBuffer.length > 0) {
-         try {
-           var data = JSON.parse(root.rawJsonBuffer)
-           if (!Array.isArray(data)) data = [data]
+@@ -143,4 +160,22 @@ PluginComponent {
 -          root.providers = data
 -          root.hasError = false
 -          root.errorMessage = ""
@@ -60,17 +45,200 @@
 +              (p.usage.primary || p.usage.secondary || p.usage.tertiary)
 +          })
 +          if (usable.length > 0) {
-+            root.providers = data
++            root.providers = usable
++            var selected = usable.filter(function(p) {
++              return p.provider === root.selectedProviderId
++            })[0]
++            if (!selected)
++              root.selectedProviderId = usable[0].provider
 +            root.hasError = false
 +            root.errorMessage = ""
 +            root.lastUpdated = Qt.formatDateTime(new Date(), "hh:mm:ss")
 +          } else {
 +            root.providers = []
++            root.selectedProviderId = ""
 +            root.hasError = true
 +            root.errorMessage = data.length > 0 && data[0].error
 +              ? (data[0].error.message || "Provider unavailable")
 +              : "No provider usage available"
 +          }
-         } catch (e) {
-           console.warn("CodexBar: JSON parse error:", e)
-           root.hasError = true
+@@ -314,0 +350,80 @@ PluginComponent {
++          // One compact subscription switch keeps the panel readable as more
++          // providers appear. The numeric value makes selection state useful
++          // without relying on color alone.
++          Flow {
++            id: providerSelector
++            width: parent.width
++            spacing: Theme.spacingS
++            visible: root.providers.length > 1
++            readonly property int columnCount: Math.min(2, root.providers.length)
++            height: visible ? childrenRect.height : 0
++
++            Repeater {
++              model: root.providers
++
++              StyledRect {
++                required property var modelData
++                required property int index
++
++                width: (providerSelector.width - providerSelector.spacing * (providerSelector.columnCount - 1)) / providerSelector.columnCount
++                height: Math.max(selectedIndicator.implicitHeight, providerLabel.implicitHeight, percentageLabel.implicitHeight) + Theme.spacingM * 2
++                radius: Theme.cornerRadius
++                color: index === root.selectedProviderIndex
++                  ? Theme.primarySelected
++                  : (selectorArea.containsMouse ? Theme.primaryHover : Theme.surfaceContainerHigh)
++                activeFocusOnTab: true
++                Accessible.role: Accessible.Button
++                Accessible.name: (index === root.selectedProviderIndex ? "Selected " : "")
++                  + root.capitalizeFirst(modelData.provider) + ", "
++                  + Math.round(root.providerUsagePercent(modelData)) + " percent used"
++                Keys.onReturnPressed: root.selectedProviderId = modelData.provider
++                Keys.onSpacePressed: root.selectedProviderId = modelData.provider
++
++                StyledText {
++                  id: selectedIndicator
++                  anchors.left: parent.left
++                  anchors.verticalCenter: parent.verticalCenter
++                  anchors.leftMargin: Theme.spacingM
++                  visible: index === root.selectedProviderIndex
++                  text: "✓"
++                  font.pixelSize: Theme.fontSizeSmall
++                  font.weight: Font.Medium
++                  color: Theme.surfaceText
++                }
++
++                StyledText {
++                  id: percentageLabel
++                  anchors.right: parent.right
++                  anchors.verticalCenter: parent.verticalCenter
++                  anchors.rightMargin: Theme.spacingM
++                  text: Math.round(root.providerUsagePercent(modelData)) + "%"
++                  font.pixelSize: Theme.fontSizeSmall
++                  font.weight: Font.Medium
++                  color: Theme.surfaceText
++                }
++
++                StyledText {
++                  id: providerLabel
++                  anchors.left: selectedIndicator.visible ? selectedIndicator.right : parent.left
++                  anchors.right: percentageLabel.left
++                  anchors.verticalCenter: parent.verticalCenter
++                  anchors.leftMargin: selectedIndicator.visible ? Theme.spacingXS : Theme.spacingM
++                  anchors.rightMargin: Theme.spacingXS
++                  text: root.capitalizeFirst(modelData.provider)
++                  font.pixelSize: Theme.fontSizeSmall
++                  font.weight: Font.Medium
++                  color: Theme.surfaceText
++                  elide: Text.ElideRight
++                }
++
++                MouseArea {
++                  id: selectorArea
++                  anchors.fill: parent
++                  hoverEnabled: true
++                  cursorShape: Qt.PointingHandCursor
++                  onClicked: root.selectedProviderId = modelData.provider
++                }
++              }
++            }
++          }
++
+@@ -324,0 +440 @@ PluginComponent {
++              visible: index === root.selectedProviderIndex
+@@ -337,2 +453,3 @@ PluginComponent {
+-                Row {
+-                  spacing: Theme.spacingS
++                Item {
++                  width: parent.width
++                  height: Math.max(providerHeading.implicitHeight, loginMethod.implicitHeight)
+@@ -340,0 +458,4 @@ PluginComponent {
++                    id: providerHeading
++                    anchors.left: parent.left
++                    anchors.right: loginMethod.visible ? loginMethod.left : parent.right
++                    anchors.rightMargin: loginMethod.visible ? Theme.spacingS : 0
+@@ -344,0 +466 @@ PluginComponent {
++                    elide: Text.ElideRight
+@@ -347,0 +470,3 @@ PluginComponent {
++                    id: loginMethod
++                    anchors.right: parent.right
++                    width: Math.min(implicitWidth, parent.width * 0.4)
+@@ -356,0 +482 @@ PluginComponent {
++                    elide: Text.ElideRight
+@@ -361,0 +488 @@ PluginComponent {
++                  width: parent.width
+@@ -372,0 +500 @@ PluginComponent {
++                    width: parent.width - Theme.spacingXS - 14
+@@ -376,0 +505 @@ PluginComponent {
++                    wrapMode: Text.WordWrap
+@@ -392,0 +522,2 @@ PluginComponent {
++                      anchors.right: primValue.left
++                      anchors.rightMargin: Theme.spacingS
+@@ -395,0 +527 @@ PluginComponent {
++                      elide: Text.ElideRight
+@@ -416,4 +548,2 @@ PluginComponent {
+-                      width: {
+-                        var pct = modelData.usage && modelData.usage.primary ? modelData.usage.primary.usedPercent : 0
+-                        return Math.min(1, pct / 100) * parent.width
+-                      }
++                      id: primaryFill
++                      width: parent.width
+@@ -422 +552,9 @@ PluginComponent {
+-                      Behavior on width { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
++                      transform: Scale {
++                        origin.x: 0
++                        origin.y: primaryFill.height / 2
++                        xScale: {
++                          var pct = modelData.usage && modelData.usage.primary ? modelData.usage.primary.usedPercent : 0
++                          return Math.min(1, pct / 100)
++                        }
++                        Behavior on xScale { NumberAnimation { duration: 60; easing.type: Easing.OutCubic } }
++                      }
+@@ -439,0 +578,2 @@ PluginComponent {
++                      anchors.right: secValue.left
++                      anchors.rightMargin: Theme.spacingS
+@@ -442,0 +583 @@ PluginComponent {
++                      elide: Text.ElideRight
+@@ -463,4 +604,2 @@ PluginComponent {
+-                      width: {
+-                        var pct = modelData.usage && modelData.usage.secondary ? modelData.usage.secondary.usedPercent : 0
+-                        return Math.min(1, pct / 100) * parent.width
+-                      }
++                      id: secondaryFill
++                      width: parent.width
+@@ -469 +608,9 @@ PluginComponent {
+-                      Behavior on width { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
++                      transform: Scale {
++                        origin.x: 0
++                        origin.y: secondaryFill.height / 2
++                        xScale: {
++                          var pct = modelData.usage && modelData.usage.secondary ? modelData.usage.secondary.usedPercent : 0
++                          return Math.min(1, pct / 100)
++                        }
++                        Behavior on xScale { NumberAnimation { duration: 60; easing.type: Easing.OutCubic } }
++                      }
+@@ -486,0 +634,2 @@ PluginComponent {
++                      anchors.right: terValue.left
++                      anchors.rightMargin: Theme.spacingS
+@@ -492,0 +642 @@ PluginComponent {
++                      elide: Text.ElideRight
+@@ -513,4 +663,2 @@ PluginComponent {
+-                      width: {
+-                        var pct = modelData.usage && modelData.usage.tertiary ? modelData.usage.tertiary.usedPercent : 0
+-                        return Math.min(1, pct / 100) * parent.width
+-                      }
++                      id: tertiaryFill
++                      width: parent.width
+@@ -518,0 +667,9 @@ PluginComponent {
++                      transform: Scale {
++                        origin.x: 0
++                        origin.y: tertiaryFill.height / 2
++                        xScale: {
++                          var pct = modelData.usage && modelData.usage.tertiary ? modelData.usage.tertiary.usedPercent : 0
++                          return Math.min(1, pct / 100)
++                        }
++                        Behavior on xScale { NumberAnimation { duration: 60; easing.type: Easing.OutCubic } }
++                      }
+@@ -544,0 +702 @@ PluginComponent {
++                  width: parent.width
+@@ -552,0 +711 @@ PluginComponent {
++                  elide: Text.ElideRight

@@ -6,8 +6,8 @@ usage() {
 Usage:
   build-installer-iso.sh
 
-Validates the current Balerion configuration, then builds a graphical installer
-ISO containing the literal current workspace snapshot.
+Validates both current machines and their encrypted install targets, then builds
+a graphical installer ISO containing the literal current workspace snapshot.
 
 Environment:
   SKIP_VALIDATION=1  Build only the ISO.
@@ -37,9 +37,14 @@ flake="path:$repo"
 out_link=${OUT_LINK:-result-installer}
 
 if [[ ${SKIP_VALIDATION:-0} != 1 ]]; then
-  echo "Validating the current flake and Balerion system..." >&2
+  echo "Evaluating every flake output..." >&2
   nix flake check --no-build "$flake"
-  nix build --no-link "$flake#nixosConfigurations.balerion.config.system.build.toplevel"
+
+  for configuration in balerion bonhart balerion-install bonhart-install; do
+    echo "Building $configuration..." >&2
+    nix build --no-link \
+      "$flake#nixosConfigurations.$configuration.config.system.build.toplevel"
+  done
 fi
 
 echo "Building the installer from the current workspace snapshot..." >&2

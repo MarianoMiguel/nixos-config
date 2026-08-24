@@ -210,18 +210,8 @@ in
 
   xdg.terminal-exec = {
     enable = true;
-    settings = {
-      KDE = [ "com.mitchellh.ghostty.desktop" ];
-      default = [ "com.mitchellh.ghostty.desktop" ];
-    };
+    settings.default = [ "com.mitchellh.ghostty.desktop" ];
   };
-
-  environment.etc."xdg/kdeglobals".text = ''
-    [General]
-    BrowserApplication=${defaultBrowserDesktop}
-    TerminalApplication=ghostty
-    TerminalService=com.mitchellh.ghostty.desktop
-  '';
 
   # Chrome's local GenAI model is currently a 4 GiB component and can stall
   # browser startup while it is loaded. This browser-level policy prevents the
@@ -238,7 +228,6 @@ in
   };
 
   services.flatpak.enable = true;
-  services.packagekit.enable = true;
 
   environment.systemPackages =
     with pkgs;
@@ -261,7 +250,8 @@ in
       mpv
       qbittorrent
       onlyoffice-desktopeditors
-      kdePackages.discover
+      kdePackages.dolphin
+      kdePackages.kio-extras
       kdePackages.kdenlive
       handbrake
       krita

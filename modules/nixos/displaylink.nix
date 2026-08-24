@@ -1,4 +1,9 @@
-{ lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 let
   displaylinkPower = pkgs.writeShellScript "displaylink-power" ''
@@ -64,38 +69,46 @@ let
 in
 
 {
-  # The Elgato Prompter is a DisplayLink device rather than a plain USB-C
-  # display, so the kernel cannot drive it on its own. The evdi module exposes
-  # it as a virtual DRM output and the proprietary DisplayLinkManager daemon
-  # copies frames from that output to the device over USB. niri renders evdi
-  # outputs through the primary GPU since 25.11, so nothing is needed on the
-  # compositor side.
-  #
-  # Listing "displaylink" is what activates the upstream NixOS module; the
-  # remaining entries restate the default list that this definition would
-  # otherwise replace. DisplayLinkManager is socket-free and starts on demand
-  # from the udev rule matching the device, so it stays stopped while no
-  # DisplayLink hardware is attached.
-  services.xserver.videoDrivers = [
-    "displaylink"
-    "modesetting"
-    "fbdev"
-  ];
+  options.mariano.displaylink.enable = lib.mkOption {
+    type = lib.types.bool;
+    default = true;
+    description = "Enable the EULA-gated DisplayLink driver and power hooks.";
+  };
 
-  # The upstream DisplayLink hooks open these named pipes directly. A stale
-  # pipe with no DisplayLinkManager reader blocks during open, before the
-  # shell's read timeout can take effect, and holds sleep.target indefinitely.
-  powerManagement.powerDownCommands = lib.mkForce ''
-    ${displaylinkPower} suspend
-  '';
-  powerManagement.resumeCommands = lib.mkForce ''
-    ${displaylinkPower} resume
-  '';
+  config = lib.mkIf config.mariano.displaylink.enable {
+    # The Elgato Prompter is a DisplayLink device rather than a plain USB-C
+    # display, so the kernel cannot drive it on its own. The evdi module exposes
+    # it as a virtual DRM output and the proprietary DisplayLinkManager daemon
+    # copies frames from that output to the device over USB. niri renders evdi
+    # outputs through the primary GPU since 25.11, so nothing is needed on the
+    # compositor side.
+    #
+    # Listing "displaylink" is what activates the upstream NixOS module; the
+    # remaining entries restate the default list that this definition would
+    # otherwise replace. DisplayLinkManager is socket-free and starts on demand
+    # from the udev rule matching the device, so it stays stopped while no
+    # DisplayLink hardware is attached.
+    services.xserver.videoDrivers = [
+      "displaylink"
+      "modesetting"
+      "fbdev"
+    ];
 
-  # Bound the whole hook as a final guard against regressions in either the
-  # proprietary daemon or the wrapper above.
-  systemd.services.sleep-actions.serviceConfig = {
-    TimeoutStartSec = "20s";
-    TimeoutStopSec = "5s";
+    # The upstream DisplayLink hooks open these named pipes directly. A stale
+    # pipe with no DisplayLinkManager reader blocks during open, before the
+    # shell's read timeout can take effect, and holds sleep.target indefinitely.
+    powerManagement.powerDownCommands = lib.mkForce ''
+      ${displaylinkPower} suspend
+    '';
+    powerManagement.resumeCommands = lib.mkForce ''
+      ${displaylinkPower} resume
+    '';
+
+    # Bound the whole hook as a final guard against regressions in either the
+    # proprietary daemon or the wrapper above.
+    systemd.services.sleep-actions.serviceConfig = {
+      TimeoutStartSec = "20s";
+      TimeoutStopSec = "5s";
+    };
   };
 }

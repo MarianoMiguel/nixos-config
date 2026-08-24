@@ -242,6 +242,7 @@ in
       google-chrome
       spotify
       slack
+      telegram-desktop
       beeperDesktop
       lmstudio
       obsidian

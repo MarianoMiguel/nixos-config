@@ -372,7 +372,7 @@ select_install_payload() {
 }
 
 verify_install_payload() {
-  local path requisites_file="$state_dir/install-requisites"
+  local mutable_seed path requisite requisites_file="$state_dir/install-requisites"
 
   (( preview )) && return
 
@@ -390,6 +390,20 @@ verify_install_payload() {
     [[ -e $path ]] ||
       die "The installer USB is missing part of the offline payload. Recreate it before erasing a disk."
   done < "$requisites_file"
+
+  mutable_seed=$(awk '/-mariano-mutable-dotfile-seed$/ { print; exit }' "$requisites_file")
+  [[ -n $mutable_seed ]] ||
+    die "The bundled system is missing Mariano's Home Manager seed. Recreate the installer USB."
+  for requisite in \
+    dms/plugin-settings.json \
+    niri/dms/binds.kdl \
+    nvim/lazy-lock.json \
+    nvim/lua/plugins/dankcolors.lua
+  do
+    [[ -r $mutable_seed/$requisite ]] ||
+      die "The bundled Home Manager seed is incomplete. Recreate the installer USB."
+  done
+
   rm -f "$requisites_file"
 }
 

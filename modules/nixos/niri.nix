@@ -177,6 +177,18 @@ let
         --replace-fail \
           'const userUrl = Paths.toFileUrl(root.pluginDirectory);' \
           'const userUrl = "";'
+
+      # DMS's greeter does not consult NixOS's display-manager default and
+      # otherwise selects whichever desktop entry finishes loading first. Add
+      # a deterministic fallback while retaining its normal remembered-session
+      # behavior when that feature is enabled.
+      substituteInPlace "$out/share/quickshell/dms/Modules/Greetd/GreeterContent.qml" \
+        --replace-fail \
+          'const savedDesktopId = GreetdSettings.rememberLastSession ? (GreetdMemory.lastSessionDesktopId || desktopIdFromPath(GreetdMemory.lastSessionId)) : "";' \
+          'const savedDesktopId = (GreetdSettings.rememberLastSession ? (GreetdMemory.lastSessionDesktopId || desktopIdFromPath(GreetdMemory.lastSessionId)) : "") || Quickshell.env("DMS_GREET_DEFAULT_SESSION") || "";' \
+        --replace-fail \
+          'if ((savedSession || savedDesktopId) && GreetdSettings.rememberLastSession) {' \
+          'if (savedSession || savedDesktopId) {'
     '';
   });
 

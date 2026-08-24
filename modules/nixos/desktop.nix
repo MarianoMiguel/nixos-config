@@ -59,8 +59,18 @@ in
   services.greetd.settings.default_session.user = "greeter";
   security.pam.services.greetd.allowNullPassword = lib.mkForce false;
   systemd.services.greetd.environment = {
+    # DMS does not consume services.displayManager.defaultSession. Its greeter
+    # package uses this explicit fallback when session remembering is disabled.
+    DMS_GREET_DEFAULT_SESSION = "niri";
     DMS_GREET_REMEMBER_LAST_SESSION = "0";
     DMS_SAVE_SESSION = "false";
+  };
+
+  # Keep wheel/gesture direction conventional in GNOME. Niri has the matching
+  # compositor-level policy in dotfiles/niri/config.kdl.
+  home-manager.users.mariano.dconf.settings = {
+    "org/gnome/desktop/peripherals/mouse"."natural-scroll" = false;
+    "org/gnome/desktop/peripherals/touchpad"."natural-scroll" = false;
   };
 
   xdg.portal.config.niri = {

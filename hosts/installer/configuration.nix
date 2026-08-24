@@ -41,17 +41,9 @@ let
 
   systemDependencies =
     system:
-    let
-      systemPkgs = system.pkgs;
-    in
     [
       system.config.system.build.toplevel
       system.config.system.build.diskoScript
-      system.config.system.build.diskoScript.drvPath
-      systemPkgs.stdenv.drvPath
-      systemPkgs.perlPackages.ConfigIniFiles
-      systemPkgs.perlPackages.FileSlurp
-      (systemPkgs.closureInfo { rootPaths = [ ]; }).drvPath
     ];
 
   offlineDependencies = lib.unique (

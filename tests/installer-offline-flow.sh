@@ -21,7 +21,12 @@ rg -q 'INSTALLER_BALERION_DISKO_SCRIPT=' "$repo/hosts/installer/configuration.ni
 rg -q 'INSTALLER_BONHART_SYSTEM=' "$repo/hosts/installer/configuration.nix"
 rg -q 'INSTALLER_BONHART_DISKO_SCRIPT=' "$repo/hosts/installer/configuration.nix"
 
-mkdir -p "$scratch/state" "$scratch/system"
+mkdir -p \
+  "$scratch/state" \
+  "$scratch/system" \
+  "$scratch/test-mariano-mutable-dotfile-seed/dms" \
+  "$scratch/test-mariano-mutable-dotfile-seed/niri/dms" \
+  "$scratch/test-mariano-mutable-dotfile-seed/nvim/lua/plugins"
 : > "$scratch/state/install.log"
 printf '#!/usr/bin/env bash\n' > "$scratch/system/init"
 chmod +x "$scratch/system/init"
@@ -30,8 +35,37 @@ cat > "$scratch/disko-script" <<'EOF'
 exit 0
 EOF
 chmod +x "$scratch/disko-script"
-printf '%s\n' "$scratch/system" "$scratch/disko-script" > "$scratch/requisites"
+touch \
+  "$scratch/test-mariano-mutable-dotfile-seed/dms/plugin-settings.json" \
+  "$scratch/test-mariano-mutable-dotfile-seed/niri/dms/binds.kdl" \
+  "$scratch/test-mariano-mutable-dotfile-seed/nvim/lazy-lock.json" \
+  "$scratch/test-mariano-mutable-dotfile-seed/nvim/lua/plugins/dankcolors.lua"
+printf '%s\n' \
+  "$scratch/system" \
+  "$scratch/disko-script" \
+  "$scratch/test-mariano-mutable-dotfile-seed" \
+  > "$scratch/requisites"
+printf '%s\n' "$scratch/system" "$scratch/disko-script" > "$scratch/requisites-without-home-seed"
 printf '%s\n' 'Retry this step' > "$scratch/choices"
+
+if env \
+  PATH="$test_path" \
+  INSTALLER_NONINTERACTIVE=0 \
+  INSTALLER_STATE_DIR="$scratch/state" \
+  INSTALLER_NIX_STORE_REQUISITES="$scratch/requisites-without-home-seed" \
+  INSTALLER_BALERION_SYSTEM="$scratch/system" \
+  INSTALLER_BALERION_DISKO_SCRIPT="$scratch/disko-script" \
+  bash -c '
+    set -euo pipefail
+    source <(sed '\''/^main "\$@"$/d'\'' "$1/scripts/install-system.sh")
+    configuration=balerion
+    select_install_payload
+    verify_install_payload
+  ' _ "$repo"
+then
+  printf 'Installer accepted a payload without the Home Manager seed.\n' >&2
+  exit 1
+fi
 
 env \
   PATH="$test_path" \

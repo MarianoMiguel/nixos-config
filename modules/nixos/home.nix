@@ -21,10 +21,23 @@ let
     "niri/dms/wpblur.kdl"
     "niri/toggles/gaps.kdl"
     "niri/toggles/radius.kdl"
+    "nvim/lazy-lock.json"
     "nvim/lua/plugins/dankcolors.lua"
     "themeport"
     "vscode/User/settings.json"
   ];
+  # These files are copied by a Home Manager activation script rather than
+  # linked directly into the profile. Put their contents in a dedicated store
+  # output so prebuilt/offline installations retain them in the system closure;
+  # referring to the original flake source path here left fresh installs with
+  # a dangling activation-time path.
+  mutableDotfileSeed = pkgs.runCommandLocal "mariano-mutable-dotfile-seed" { } ''
+    mkdir -p "$out"
+    ${lib.concatMapStringsSep "\n" (path: ''
+      mkdir -p "$out/${builtins.dirOf path}"
+      cp -a ${dotfiles}/${path} "$out/${path}"
+    '') mutableDotfiles}
+  '';
 in
 {
   home-manager = {
@@ -40,6 +53,8 @@ in
           mkdir -p "$out"
           cp -a ${dotfiles}/nvim/. "$out/"
           chmod -R u+w "$out"
+          rm "$out/lazy-lock.json"
+          ln -s ${mutableState}/nvim/lazy-lock.json "$out/lazy-lock.json"
           rm "$out/lua/plugins/dankcolors.lua"
           ln -s ${mutableState}/nvim/lua/plugins/dankcolors.lua "$out/lua/plugins/dankcolors.lua"
         '';
@@ -84,7 +99,7 @@ in
 
           ${lib.concatMapStringsSep "\n" (path: ''
             seed_mutable ${
-              lib.escapeShellArg (toString (dotfiles + "/${path}"))
+              lib.escapeShellArg "${mutableDotfileSeed}/${path}"
             } ${lib.escapeShellArg "${mutableState}/${path}"}
           '') mutableDotfiles}
         '';
@@ -225,6 +240,7 @@ in
         programs.zsh = {
           enable = true;
           enableCompletion = true;
+          dotDir = config.home.homeDirectory;
           autosuggestion.enable = true;
           syntaxHighlighting.enable = true;
           oh-my-zsh = {
@@ -322,8 +338,9 @@ in
           ".face".source = config.lib.file.mkOutOfStoreSymlink "${home}/Pictures/profile.jpg";
           ".config/nvim" = {
             source = nvimConfig;
-            # Keep the configuration declarative while letting DMS rewrite its
-            # generated palette through the one out-of-store symlink above.
+            # Keep the configuration declarative while letting lazy.nvim update
+            # its lockfile and DMS rewrite the generated palette through the
+            # two out-of-store symlinks above.
             force = true;
           };
           ".local/state/DankMaterialShell/session.json".source = mutableDotfile "dms/session.json";

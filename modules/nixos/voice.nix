@@ -71,8 +71,9 @@ in
       after = [ "whisper-server.service" ];
       wants = [ "whisper-server.service" ];
       # No ConditionEnvironment, for the reason spelled out on whisper-server.
-      # niri, ghostty, ydotool and quickshell come from the system profile;
-      # the voiceagent wrapper adds ~/.local/bin for claude itself.
+      # niri, ghostty, ydotool, quickshell and Claude Code come from the system
+      # profile. The voiceagent wrapper retains ~/.local/bin only as a
+      # compatibility fallback for older user-managed installations.
       path = [
         "/run/current-system/sw"
         "/etc/profiles/per-user/mariano"

@@ -29,6 +29,7 @@
     python3Packages.pip
     uv
     mise
+    claude-code
     (writeShellScriptBin "opencode" ''
       exec /home/mariano/.opencode/bin/opencode "$@"
     '')

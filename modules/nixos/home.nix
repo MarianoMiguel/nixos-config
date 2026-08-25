@@ -21,7 +21,7 @@ let
     chmod u+w "$out"
 
     find ${omarchyThemes}/themes -mindepth 3 -maxdepth 3 \
-      -path '*/backgrounds/*' -type f \
+      -path '*/backgrounds/*' -type f ! -iname '*omarchy*' \
       \( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.webp' \) \
       -print | while IFS= read -r source; do
         theme_dir=$(dirname "$(dirname "$source")")
@@ -365,6 +365,18 @@ in
             migrate_wallpaper_key wallpaperPath
             migrate_wallpaper_key wallpaperPathLight
             migrate_wallpaper_key wallpaperPathDark
+          fi
+        '';
+
+        # Retire the upstream wordmark images copied by older generations.
+        # The flat catalog is declarative, but Themeport's former per-theme
+        # fallback directory is writable and therefore needs a one-time cleanup.
+        home.activation.removeOmarchyWordmarkWallpapers = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
+          legacy_root="$HOME/Pictures/Wallpapers/themeport"
+          if [ -d "$legacy_root" ]; then
+            $DRY_RUN_CMD ${pkgs.findutils}/bin/find "$legacy_root" \
+              -mindepth 2 -maxdepth 2 \( -type f -o -type l \) \
+              -iname '*omarchy*' -delete
           fi
         '';
 

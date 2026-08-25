@@ -116,7 +116,7 @@ nested menu. Important entries include:
   `Stay awake`, reminders, local dictation and Night Light;
 - immediate lock, lock-screen preview, and lock/screen-saver settings;
 - the 22 pinned official Omarchy themes (including Osaka Jade), their bundled
-  wallpapers, and window border/gap toggles;
+  non-wordmark wallpapers, and window border/gap toggles;
 - fingerprint enrollment on Bonhart; and
 - a fixed NixOS updater that updates only `nixpkgs`, Home Manager and Disko,
   rejects a writable or symlinked `/etc/nixos`, restores the old lock file on

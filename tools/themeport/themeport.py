@@ -279,13 +279,11 @@ class Theme:
             p.name
             for p in (src / "backgrounds").glob("*")
             if p.suffix.lower() in (".jpg", ".jpeg", ".png", ".webp")
+            and "omarchy" not in p.stem.lower()
         ) if (src / "backgrounds").is_dir() else []
-        # Omarchy themes use backgrounds/omarchy.* as their intentional
-        # default. Numbered images are gallery ordering, not preference.
-        self.default_background = next(
-            (name for name in self.backgrounds if Path(name).stem.lower() == "omarchy"),
-            self.backgrounds[0] if self.backgrounds else None,
-        )
+        # Upstream's *omarchy* images contain a visible wordmark. Keep them out
+        # of generated metadata and use the first unbranded gallery image.
+        self.default_background = self.backgrounds[0] if self.backgrounds else None
 
     @staticmethod
     def _read(p: Path) -> str | None:

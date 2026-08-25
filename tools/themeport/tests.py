@@ -157,8 +157,8 @@ def main() -> int:
         except Exception as exc:  # noqa: BLE001
             failures.append(f"[legacy] blew up: {exc}")
 
-        # Omarchy's named background is the theme default. Numbered filenames
-        # only control gallery ordering and must not win during a theme switch.
+        # Visible Omarchy wordmarks are excluded from both the gallery and the
+        # selected theme default.
         try:
             default_dir = tmpdir / "wallpaper-default"
             default_dir.mkdir()
@@ -171,10 +171,12 @@ def main() -> int:
             (backgrounds / "omarchy.webp").write_bytes(b"default")
             default_theme = themeport.load_theme(default_dir)
             default_meta = json.loads(themeport.render_all(default_theme, None)["meta.json"])
-            check(default_theme.default_background == "omarchy.webp",
-                  "[wallpaper-default] did not prefer backgrounds/omarchy.*")
-            check(default_meta["default_background"] == "omarchy.webp",
-                  "[wallpaper-default] metadata lost the selected default")
+            check(default_theme.backgrounds == ["0-gallery-first.jpg"],
+                  "[wallpaper-default] retained an Omarchy wordmark")
+            check(default_theme.default_background == "0-gallery-first.jpg",
+                  "[wallpaper-default] did not select the first unbranded image")
+            check(default_meta["default_background"] == "0-gallery-first.jpg",
+                  "[wallpaper-default] metadata lost the unbranded default")
         except Exception as exc:  # noqa: BLE001
             failures.append(f"[wallpaper-default] blew up: {exc}")
 

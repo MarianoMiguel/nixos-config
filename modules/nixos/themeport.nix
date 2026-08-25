@@ -10,7 +10,7 @@ let
   quickshellPackage = quickshell.packages.${system}.default;
 
   # Pin the official Omarchy catalog so every reviewed theme and its bundled
-  # wallpapers are available offline on both hosts and in the installer.
+  # non-wordmark wallpapers are available offline on both hosts and in the installer.
   omarchyThemes = pkgs.fetchFromGitHub {
     owner = "basecamp";
     repo = "omarchy";
@@ -33,6 +33,9 @@ let
       cp -R templates "$out/share/themeport/templates"
       mkdir -p "$out/share/themeport/themes"
       cp -R ${omarchyThemes}/themes/. "$out/share/themeport/themes/"
+      chmod -R u+w "$out/share/themeport/themes"
+      find "$out/share/themeport/themes" -path '*/backgrounds/*' -type f \
+        -iname '*omarchy*' -delete
       runHook postInstall
     '';
   };

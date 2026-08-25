@@ -111,6 +111,68 @@ let
     ];
     text = builtins.readFile ../../scripts/network-speedtest.sh;
   };
+  tailscaleConnect = pkgs.writeShellApplication {
+    name = "mariano-tailscale-connect";
+    runtimeInputs = with pkgs; [
+      coreutils
+      jq
+      libnotify
+      tailscale
+      xdg-utils
+    ];
+    text = ''
+      set -u
+
+      open_auth_url() {
+        payload=$1
+        auth_url=$(printf '%s' "$payload" | jq -er '
+          select(type == "object")
+          | .AuthURL
+          | select(type == "string")
+          | select(test("^https://login\\.tailscale\\.com/"))
+        ' 2>/dev/null) || return 1
+
+        if xdg-open "$auth_url"; then
+          notify-send "Tailscale" "Complete sign-in in your browser."
+          return 0
+        fi
+
+        notify-send --urgency=critical "Tailscale" "Could not open the sign-in page."
+        return 1
+      }
+
+      # A logged-out daemon normally already exposes its current authentication
+      # URL through `tailscale status`. Using it avoids spawning a command that
+      # waits for login before returning.
+      status_json=$(tailscale status --json 2>/dev/null || true)
+      if open_auth_url "$status_json"; then
+        exit 0
+      fi
+
+      output=$(mktemp)
+      errors=$(mktemp)
+      trap 'rm -f "$output" "$errors"' EXIT
+
+      if tailscale up --json --timeout=2s >"$output" 2>"$errors"; then
+        result=0
+      else
+        result=$?
+      fi
+      if open_auth_url "$(cat "$output")"; then
+        exit 0
+      fi
+
+      if [ "$result" -eq 0 ]; then
+        notify-send "Tailscale" "Connected."
+        exit 0
+      fi
+
+      backend_state=$(printf '%s' "$status_json" | jq -r '.BackendState // "unknown"' 2>/dev/null || printf unknown)
+      notify-send --urgency=critical "Tailscale" \
+        "Could not connect (state: $backend_state). Run tailscale up in a terminal for details."
+      exit "$result"
+    '';
+  };
   codexbarUnwrapped = pkgs.stdenvNoCC.mkDerivation {
     pname = "codexbar-unwrapped";
     version = "0.55.0";
@@ -207,6 +269,15 @@ EOF
         --replace-fail \
           'if ((savedSession || savedDesktopId) && GreetdSettings.rememberLastSession) {' \
           'if (savedSession || savedDesktopId) {'
+
+      # DMS's backend toggles WantRunning, which reconnects an enrolled node but
+      # cannot begin interactive authentication for a logged-out one. Delegate
+      # login states to a small helper that opens the LocalAPI-provided URL;
+      # retain DMS's native backend for ordinary reconnects.
+      substituteInPlace "$out/share/quickshell/dms/Services/TailscaleService.qml" \
+        --replace-fail \
+          '        sendAction("tailscale.connect", null, callback);' \
+          '        if (backendState === "NeedsLogin" || backendState === "NoState" || backendState === "NeedsMachineAuth") { Quickshell.execDetached(["${tailscaleConnect}/bin/mariano-tailscale-connect"]); return; } sendAction("tailscale.connect", null, callback);'
 
       # Tailscale advertises a DBusMenu-only tray item. Quickshell's generic
       # menu renderer intermittently fails to instantiate that menu, while DMS
@@ -461,6 +532,7 @@ in
     niriScratchpad
     niriStyleToggle
     networkSpeedtest
+    tailscaleConnect
     codexbar
     codexbarCookieImporter
     codexbarSslHelper

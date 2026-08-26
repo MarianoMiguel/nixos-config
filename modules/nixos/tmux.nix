@@ -29,8 +29,11 @@
 
       bind r source-file /etc/tmux.conf \; display-message "Reloaded tmux config"
 
-      # themeport colors (writable tier; -q tolerates a missing file)
-      source-file -q ~/.config/tmux/themeport.conf
+      # One fixed palette; no generated files or live theme hooks.
+      set -g status-style "bg=#1e1e2e,fg=#cdd6f4"
+      set -g message-style "bg=#313244,fg=#cdd6f4"
+      set -g pane-border-style "fg=#45475a"
+      set -g pane-active-border-style "fg=#cba6f7"
     '';
   };
 }

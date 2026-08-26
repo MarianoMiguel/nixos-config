@@ -1,61 +1,14 @@
-{ config, lib, pkgs, ... }:
+{ lib, pkgs, ... }:
 
 let
   home = "/home/mariano";
   dotfiles = ../../dotfiles;
   mutableState = "${home}/.local/state/nixos-config/dotfiles";
-  fingerprintEnabled = config.services.fprintd.enable;
-  # Keep one immutable wallpaper catalog for Themeport, the DMS settings page,
-  # DankDash and the visual picker. A flat directory is intentional: DMS shows
-  # siblings of the active wallpaper, so any selection keeps the whole catalog
-  # visible.
-  omarchyThemes = pkgs.fetchFromGitHub {
-    owner = "basecamp";
-    repo = "omarchy";
-    rev = "5d3299fb9426ae927b9fc7ef16c94bd334a90f01";
-    hash = "sha256-smjQlpZd7mzMrxV6PQFjXRwVm0s8xybBthcIrvrTYUA=";
-  };
-  wallpaperLibrary = pkgs.runCommandLocal "mariano-wallpaper-library" { } ''
-    mkdir -p "$out"
-    cp -a ${../../assets/wallpapers}/. "$out/"
-    chmod u+w "$out"
-
-    find ${omarchyThemes}/themes -mindepth 3 -maxdepth 3 \
-      -path '*/backgrounds/*' -type f ! -iname '*omarchy*' \
-      \( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.webp' \) \
-      -print | while IFS= read -r source; do
-        theme_dir=$(dirname "$(dirname "$source")")
-        theme=$(basename "$theme_dir")
-        filename=$(basename "$source")
-        ln -s "$source" "$out/$theme--$filename"
-      done
-  '';
+  jsoncPython = pkgs.python3.withPackages (pythonPackages: [ pythonPackages.commentjson ]);
   mutableDotfiles = [
-    "dms/plugin-settings.json"
-    "dms/session.json"
-    "dms/settings.json"
-    "dms/theme.json"
-    "dms/themes/dms-ayu/theme.json"
-    "niri/dms/alttab.kdl"
-    "niri/dms/binds.kdl"
-    "niri/dms/colors.kdl"
-    "niri/dms/cursor.kdl"
-    "niri/dms/layout.kdl"
-    "niri/dms/outputs.kdl"
-    "niri/dms/windowrules.kdl"
-    "niri/dms/wpblur.kdl"
-    "niri/toggles/gaps.kdl"
-    "niri/toggles/border.kdl"
-    "niri/toggles/radius.kdl"
     "nvim/lazy-lock.json"
-    "themeport"
     "vscode/User/settings.json"
   ];
-  # These files are copied by a Home Manager activation script rather than
-  # linked directly into the profile. Put their contents in a dedicated store
-  # output so prebuilt/offline installations retain them in the system closure;
-  # referring to the original flake source path here left fresh installs with
-  # a dangling activation-time path.
   mutableDotfileSeed = pkgs.runCommandLocal "mariano-mutable-dotfile-seed" { } ''
     mkdir -p "$out"
     ${lib.concatMapStringsSep "\n" (path: ''
@@ -71,7 +24,7 @@ in
     backupFileExtension = "before-nixos";
 
     users.mariano =
-      { config, lib, marianoCodexbar, ... }:
+      { config, lib, ... }:
       let
         mutableDotfile = path: config.lib.file.mkOutOfStoreSymlink "${mutableState}/${path}";
         nvimConfig = pkgs.runCommand "nvim-config" { } ''
@@ -80,11 +33,6 @@ in
           chmod -R u+w "$out"
           rm "$out/lazy-lock.json"
           ln -s ${mutableState}/nvim/lazy-lock.json "$out/lazy-lock.json"
-          rm "$out/lua/plugins/dankcolors.lua"
-          # Themeport renders this from the immutable, reviewed catalog. Link
-          # Neovim to that output directly instead of asking DMS to execute
-          # user Matugen templates merely to update an editor palette.
-          ln -s ${mutableState}/themeport/neovim/generated.lua "$out/lua/plugins/dankcolors.lua"
         '';
       in
       {
@@ -109,23 +57,18 @@ in
 
         programs.home-manager.enable = true;
 
-        # Seed writable application state once, then leave later live changes
-        # alone. This keeps the same initial configuration on a new host without
-        # tying either machine to the source checkout's absolute path.
+        # Seed writable application state once, then leave later application
+        # updates alone. This keeps the same starting point on fresh hosts.
         home.activation.seedMutableDotfiles = lib.hm.dag.entryBefore [ "linkGeneration" ] ''
           seed_mutable() {
             source=$1
             target=$2
             if [ -d "$source" ] && [ -d "$target" ]; then
-              # Preserve live rendered state, but merge newly introduced seed
-              # files into existing mutable directories on upgrades.
               $DRY_RUN_CMD ${pkgs.coreutils}/bin/cp -a -n "$source/." "$target/"
             elif [ ! -e "$target" ]; then
               $DRY_RUN_CMD ${pkgs.coreutils}/bin/mkdir -p "$(${pkgs.coreutils}/bin/dirname "$target")"
               $DRY_RUN_CMD ${pkgs.coreutils}/bin/cp -a "$source" "$target"
             fi
-            # Nix store sources are read-only. Repair both freshly seeded and
-            # previously seeded state so applications can update it in place.
             $DRY_RUN_CMD ${pkgs.coreutils}/bin/chmod -R u+rwX "$target"
           }
 
@@ -136,248 +79,92 @@ in
           '') mutableDotfiles}
         '';
 
-        # These settings are policy rather than user preferences: they keep one
-        # visual owner, enable Bonhart's biometric surfaces, and prevent mutable
-        # user Matugen templates or third-party launcher entries from executing
-        # as part of a theme switch. Preserve every unrelated DMS preference.
-        home.activation.enforceDmsConsistency = lib.hm.dag.entryAfter [ "seedMutableDotfiles" ] ''
-          settings=${lib.escapeShellArg "${mutableState}/dms/settings.json"}
-          if ${pkgs.jq}/bin/jq -e 'type == "object"' "$settings" >/dev/null 2>&1; then
+        # Replace the former live palette synchronization with one fixed theme.
+        # Every unrelated editor and launcher preference remains writable.
+        home.activation.setStaticApplicationThemes = lib.hm.dag.entryAfter [ "seedMutableDotfiles" ] ''
+          nvim_lock=${lib.escapeShellArg "${mutableState}/nvim/lazy-lock.json"}
+          if ${pkgs.jq}/bin/jq -e 'type == "object"' "$nvim_lock" >/dev/null 2>&1; then
             temporary="$(${pkgs.coreutils}/bin/mktemp)"
-            ${pkgs.jq}/bin/jq --argjson fingerprint ${builtins.toJSON fingerprintEnabled} '
-              .runUserMatugenTemplates = false
-              | .showThirdPartyPlugins = false
-              | .searchAppActions = true
-              | .launcherStyle = "full"
-              | .dankLauncherV2Size = "medium"
-              | .gtkThemingEnabled = true
-              | .qtThemingEnabled = false
-              | .matugenTemplateGtk = true
-              | .greeterEnableFprint = $fingerprint
-              | .enableFprint = $fingerprint
-              | .lockBeforeSuspend = true
-              | .animationSpeed = 4
-              | .customAnimationDuration = 40
-              | .syncComponentAnimationSpeeds = true
-              | .popoutAnimationSpeed = 4
-              | .popoutCustomAnimationDuration = 40
-              | .modalAnimationSpeed = 4
-              | .modalCustomAnimationDuration = 40
-              | .notificationAnimationSpeed = 4
-              | .notificationCustomAnimationDuration = 60
-              | .controlCenterShowIdleInhibitorIcon = false
-              | .controlCenterShowDoNotDisturbIcon = false
-              | .controlCenterWidgets = (
-                  (.controlCenterWidgets // []) as $widgets
-                  | if any($widgets[]?; .id == "builtin_tailscale") then
-                      [$widgets[] | if .id == "builtin_tailscale" then . + {enabled: true, width: 100} else . end]
-                    else
-                      $widgets + [{id: "builtin_tailscale", enabled: true, width: 100}]
-                    end
-                )
-              | .fadeToLockEnabled = false
-              | .fadeToLockGracePeriod = 0
-              | .lockScreenShowPowerActions = false
-              | .lockScreenShowSystemIcons = false
-              | .lockScreenShowTime = true
-              | .lockScreenShowDate = false
-              | .lockScreenShowProfileImage = false
-              | .lockScreenShowPasswordField = true
-              | .lockScreenShowMediaPlayer = false
-              | .lockScreenNotificationMode = 0
-              | .lockScreenVideoEnabled = false
-            ' "$settings" > "$temporary"
-            $DRY_RUN_CMD ${pkgs.coreutils}/bin/install -m 0600 "$temporary" "$settings"
-            ${pkgs.coreutils}/bin/rm -f "$temporary"
-          else
-            echo "DMS settings are not valid JSON: $settings" >&2
-            exit 1
-          fi
-
-          # System-wide plugin installation and mutable enablement are separate
-          # in DMS. Keep the three reviewed launcher providers active on both
-          # upgrades and fresh installs while preserving every other plugin's
-          # settings.
-          plugin_settings=${lib.escapeShellArg "${mutableState}/dms/plugin-settings.json"}
-          if ! ${pkgs.jq}/bin/jq -e 'type == "object"' "$plugin_settings" >/dev/null 2>&1; then
-            echo "DMS plugin settings are not valid JSON: $plugin_settings" >&2
-            exit 1
-          fi
-          temporary="$(${pkgs.coreutils}/bin/mktemp)"
-          ${pkgs.jq}/bin/jq \
-            --arg codexbar ${lib.escapeShellArg "${marianoCodexbar}/bin/codexbar"} '
-            .codexBar.enabled = true
-            | .codexBar.codexbarPath = $codexbar
-            | .codexBar.refreshInterval = "60000"
-            | .codexBar.sourceMode = "oauth"
-            | .systemMenu.enabled = true
-            | .themePicker.enabled = true
-            | .wallpaperPicker.enabled = true
-          ' "$plugin_settings" > "$temporary"
-          $DRY_RUN_CMD ${pkgs.coreutils}/bin/install -m 0600 "$temporary" "$plugin_settings"
-          ${pkgs.coreutils}/bin/rm -f "$temporary"
-
-          # Migrate installations whose seeded DMS policy left every automatic
-          # privacy action disabled. Apply this once so Power & Sleep remains a
-          # real user-facing settings surface after the secure defaults land.
-          idle_policy_marker=${lib.escapeShellArg "${mutableState}/dms/.secure-idle-v1"}
-          if [ ! -e "$idle_policy_marker" ]; then
-            temporary="$(${pkgs.coreutils}/bin/mktemp)"
-            ${pkgs.jq}/bin/jq '
-              .acLockTimeout = 600
-              | .acPostLockMonitorTimeout = 60
-              | .batteryLockTimeout = 300
-              | .batteryPostLockMonitorTimeout = 30
-            ' "$settings" > "$temporary"
-            $DRY_RUN_CMD ${pkgs.coreutils}/bin/install -m 0600 "$temporary" "$settings"
-            $DRY_RUN_CMD ${pkgs.coreutils}/bin/touch "$idle_policy_marker"
+            ${pkgs.jq}/bin/jq 'del(.ayu, .["base16-nvim"], .vesper)' "$nvim_lock" > "$temporary"
+            $DRY_RUN_CMD ${pkgs.coreutils}/bin/install -m 0600 "$temporary" "$nvim_lock"
             ${pkgs.coreutils}/bin/rm -f "$temporary"
           fi
 
-          # This is a one-time layout migration, not a permanent policy. It
-          # replaces the duplicate idle pill with the consolidated Focus panel
-          # and adds the explicit-run speed test while preserving every other
-          # bar choice and its order.
-          qol_bar_marker=${lib.escapeShellArg "${mutableState}/dms/.qol-bar-v1"}
-          if [ ! -e "$qol_bar_marker" ]; then
-            plugin_settings=${lib.escapeShellArg "${mutableState}/dms/plugin-settings.json"}
-            if ! ${pkgs.jq}/bin/jq -e 'type == "object"' "$plugin_settings" >/dev/null 2>&1; then
-              echo "DMS plugin settings are not valid JSON: $plugin_settings" >&2
-              exit 1
-            fi
+          vscode=${lib.escapeShellArg "${mutableState}/vscode/User/settings.json"}
+          vscode_json="$(${pkgs.coreutils}/bin/mktemp)"
+          if ${jsoncPython}/bin/python -c '
+import commentjson, json, sys
+with open(sys.argv[1], encoding="utf-8") as source:
+    document = commentjson.load(source)
+with open(sys.argv[2], "w", encoding="utf-8") as target:
+    json.dump(document, target)
+' "$vscode" "$vscode_json" 2>/dev/null \
+            && ${pkgs.jq}/bin/jq -e 'type == "object"' "$vscode_json" >/dev/null 2>&1; then
             temporary="$(${pkgs.coreutils}/bin/mktemp)"
             ${pkgs.jq}/bin/jq '
-              def widget_id: if type == "object" then .id else . end;
-              .barConfigs |= map(
-                .rightWidgets as $widgets
-                | .rightWidgets = (
-                    [$widgets[]? | select(widget_id == "codexBar")]
-                    + [
-                        {"id": "focus", "enabled": true},
-                        {"id": "networkSpeed", "enabled": true}
-                      ]
-                    + [$widgets[]? | select(
-                        widget_id != "codexBar"
-                        and widget_id != "focus"
-                        and widget_id != "networkSpeed"
-                        and widget_id != "idleInhibitor"
-                      )]
-                  )
+              del(
+                .["vscode_custom_css.imports"],
+                .["vscode_vibrancy.opacity"],
+                .["vscode_vibrancy.theme"],
+                .["window.autoDetectColorScheme"],
+                .["window.systemColorTheme"],
+                .["omarchyThemeSync.folderToVSCodeTheme"],
+                .["omarchyThemeSync.defaultVSCodeTheme"],
+                .["omarchyThemeSync.warnIfThemeMissing"],
+                .["workbench.preferredDarkColorTheme"]
               )
-            ' "$settings" > "$temporary"
-            $DRY_RUN_CMD ${pkgs.coreutils}/bin/install -m 0600 "$temporary" "$settings"
-            ${pkgs.jq}/bin/jq '
-              .focus.enabled = true
-              | .networkSpeed.enabled = true
-            ' "$plugin_settings" > "$temporary"
-            $DRY_RUN_CMD ${pkgs.coreutils}/bin/install -m 0600 "$temporary" "$plugin_settings"
-            $DRY_RUN_CMD ${pkgs.coreutils}/bin/touch "$qol_bar_marker"
+              | .["workbench.colorTheme"] = "Catppuccin Mocha"
+              | .["workbench.iconTheme"] = "catppuccin-mocha"
+            ' "$vscode_json" > "$temporary"
+            $DRY_RUN_CMD ${pkgs.coreutils}/bin/install -m 0600 "$temporary" "$vscode"
             ${pkgs.coreutils}/bin/rm -f "$temporary"
           fi
+          ${pkgs.coreutils}/bin/rm -f "$vscode_json"
 
-          # Keep Niri's DMS application launcher and dedicated system-menu
-          # bindings consistent even if an older generation seeded this
-          # mutable file. Vicinae is reserved for GNOME.
-          $DRY_RUN_CMD ${pkgs.coreutils}/bin/install -m 0600 \
-            ${dotfiles}/niri/dms/binds.kdl \
-            ${lib.escapeShellArg "${mutableState}/niri/dms/binds.kdl"}
+          vicinae="$HOME/.config/vicinae/settings.json"
+          $DRY_RUN_CMD ${pkgs.coreutils}/bin/mkdir -p "$HOME/.config/vicinae"
+          source_json="$(${pkgs.coreutils}/bin/mktemp)"
+          temporary="$(${pkgs.coreutils}/bin/mktemp)"
+          if [ -f "$vicinae" ]; then
+            ${pkgs.gnused}/bin/sed -n '/^[[:space:]]*{/,$p' "$vicinae" > "$source_json"
+          else
+            ${pkgs.jq}/bin/jq -n '{"$schema": "https://vicinae.com/schemas/config.json"}' > "$source_json"
+          fi
+          if ${pkgs.jq}/bin/jq -e 'type == "object"' "$source_json" >/dev/null 2>&1; then
+            ${pkgs.jq}/bin/jq '
+              .theme.light.name = "catppuccin-mocha"
+              | .theme.dark.name = "catppuccin-mocha"
+            ' "$source_json" > "$temporary"
+            $DRY_RUN_CMD ${pkgs.coreutils}/bin/install -m 0600 "$temporary" "$vicinae"
+          fi
+          ${pkgs.coreutils}/bin/rm -f "$source_json" "$temporary"
         '';
 
-        # KScreen/KWin output state cannot configure niri and used to compete
-        # with DMS's checked-in outputs.kdl. Archive the two known stores once
-        # instead of deleting user state.
-        home.activation.retireKdeDisplayState = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-          archive=${lib.escapeShellArg "${mutableState}/retired-kde-display"}
+        # Move the old compositor/shell/theme state out of active config paths.
+        # It remains recoverable under the NixOS state directory.
+        home.activation.retireDesktopCustomization = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
+          archive=${lib.escapeShellArg "${mutableState}/retired-desktop-customization"}
           $DRY_RUN_CMD ${pkgs.coreutils}/bin/mkdir -p "$archive"
 
-          retire_display_state() {
+          retire_path() {
             source=$1
-            destination=$2
-            if { [ -e "$source" ] || [ -L "$source" ]; } && [ ! -e "$destination" ]; then
-              $DRY_RUN_CMD ${pkgs.coreutils}/bin/mv "$source" "$destination"
+            name=$2
+            if { [ -e "$source" ] || [ -L "$source" ]; } && [ ! -e "$archive/$name" ]; then
+              $DRY_RUN_CMD ${pkgs.coreutils}/bin/mv "$source" "$archive/$name"
             fi
           }
 
-          retire_display_state "$HOME/.local/share/kscreen" "$archive/kscreen"
-          retire_display_state "$HOME/.config/kwinoutputconfig.json" "$archive/kwinoutputconfig.json"
-        '';
-
-        # Vicinae owns a writable settings file so its GUI can keep managing
-        # preferences. Merge only the two palette pointers instead of replacing
-        # that file with an immutable Home Manager link.
-        home.activation.enforceVicinaeTheme = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
-          settings="$HOME/.config/vicinae/settings.json"
-          $DRY_RUN_CMD ${pkgs.coreutils}/bin/mkdir -p "$HOME/.config/vicinae"
-          temporary="$(${pkgs.coreutils}/bin/mktemp)"
-          source_json="$(${pkgs.coreutils}/bin/mktemp)"
-          if [ -f "$settings" ]; then
-            # Vicinae prefixes its otherwise-valid JSON with documentation
-            # comments. Strip only that generated header before the merge.
-            ${pkgs.gnused}/bin/sed -n '/^[[:space:]]*{/,$p' "$settings" > "$source_json"
-          else
-            ${pkgs.jq}/bin/jq -n '{
-              "$schema": "https://vicinae.com/schemas/config.json",
-              theme: {}
-            }' > "$source_json"
-          fi
-          if ! ${pkgs.jq}/bin/jq -e 'type == "object"' "$source_json" >/dev/null 2>&1; then
-            echo "Vicinae settings are not valid JSON after the generated header: $settings" >&2
-            ${pkgs.coreutils}/bin/rm -f "$temporary" "$source_json"
-            exit 1
-          fi
-          ${pkgs.jq}/bin/jq '
-            .theme.light.name = "themeport"
-            | .theme.dark.name = "themeport"
-          ' "$source_json" > "$temporary"
-          $DRY_RUN_CMD ${pkgs.coreutils}/bin/install -m 0600 "$temporary" "$settings"
-          ${pkgs.coreutils}/bin/rm -f "$temporary" "$source_json"
-        '';
-
-        # Older Themeport generations stored the active image inside a
-        # per-theme subdirectory. Move DMS's three remembered wallpaper slots
-        # to their equivalent flat catalog paths so DankDash immediately sees
-        # every available image after an upgrade.
-        home.activation.migrateDmsWallpaperLibrary = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
-          session=${lib.escapeShellArg "${mutableState}/dms/session.json"}
-
-          migrate_wallpaper_key() {
-            key=$1
-            value=$(${pkgs.jq}/bin/jq -r --arg key "$key" '.[$key] // ""' "$session")
-            prefix="$HOME/Pictures/Wallpapers/themeport/"
-            case "$value" in
-              "$prefix"*/*)
-                relative=''${value#"$prefix"}
-                theme=''${relative%%/*}
-                filename=''${relative#*/}
-                canonical="$HOME/Pictures/Wallpapers/$theme--$filename"
-                if [ -f "$canonical" ]; then
-                  temporary="$(${pkgs.coreutils}/bin/mktemp)"
-                  ${pkgs.jq}/bin/jq --arg key "$key" --arg value "$canonical" \
-                    '.[$key] = $value' "$session" > "$temporary"
-                  $DRY_RUN_CMD ${pkgs.coreutils}/bin/install -m 0600 "$temporary" "$session"
-                  ${pkgs.coreutils}/bin/rm -f "$temporary"
-                fi
-                ;;
-            esac
-          }
-
-          if ${pkgs.jq}/bin/jq -e 'type == "object"' "$session" >/dev/null 2>&1; then
-            migrate_wallpaper_key wallpaperPath
-            migrate_wallpaper_key wallpaperPathLight
-            migrate_wallpaper_key wallpaperPathDark
-          fi
-        '';
-
-        # Retire the upstream wordmark images copied by older generations.
-        # The flat catalog is declarative, but Themeport's former per-theme
-        # fallback directory is writable and therefore needs a one-time cleanup.
-        home.activation.removeOmarchyWordmarkWallpapers = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
-          legacy_root="$HOME/Pictures/Wallpapers/themeport"
-          if [ -d "$legacy_root" ]; then
-            $DRY_RUN_CMD ${pkgs.findutils}/bin/find "$legacy_root" \
-              -mindepth 2 -maxdepth 2 \( -type f -o -type l \) \
-              -iname '*omarchy*' -delete
-          fi
+          retire_path ${lib.escapeShellArg "${mutableState}/dms"} mutable-dms
+          retire_path ${lib.escapeShellArg "${mutableState}/niri"} mutable-niri
+          retire_path ${lib.escapeShellArg "${mutableState}/themeport"} mutable-themeport
+          retire_path "$HOME/.config/DankMaterialShell" config-dms
+          retire_path "$HOME/.config/niri" config-niri
+          retire_path "$HOME/.config/matugen" config-matugen
+          retire_path "$HOME/.config/themeport" config-themeport
+          retire_path "$HOME/.config/omarchy" config-omarchy
+          retire_path "$HOME/.local/share/themeport" data-themeport
+          retire_path "$HOME/.cache/themeport" cache-themeport
+          retire_path "$HOME/Pictures/Wallpapers/themeport" wallpapers-themeport
         '';
 
         programs.zsh = {
@@ -415,43 +202,8 @@ in
           "ghostty/config.ghostty".source = ../../dotfiles/ghostty/config.ghostty;
           "alacritty/alacritty.toml".source = ../../dotfiles/alacritty/alacritty.toml;
 
-          "niri/config.kdl".source = ../../dotfiles/niri/config.kdl;
-          "niri/manifesto.kdl".source = ../../dotfiles/niri/manifesto.kdl;
-          "niri/style-toggles.kdl".source = ../../dotfiles/niri/style-toggles.kdl;
-          "niri/themeport.kdl".source = ../../dotfiles/niri/themeport.kdl;
-          "niri/voice.kdl".source = ../../dotfiles/niri/voice.kdl;
-          "niri/dms/alttab.kdl".source = mutableDotfile "niri/dms/alttab.kdl";
-          "niri/dms/binds.kdl".source = mutableDotfile "niri/dms/binds.kdl";
-          "niri/dms/colors.kdl".source = mutableDotfile "niri/dms/colors.kdl";
-          "niri/dms/cursor.kdl".source = mutableDotfile "niri/dms/cursor.kdl";
-          "niri/dms/layout.kdl".source = mutableDotfile "niri/dms/layout.kdl";
-          "niri/dms/outputs.kdl".source = mutableDotfile "niri/dms/outputs.kdl";
-          "niri/dms/windowrules.kdl".source = mutableDotfile "niri/dms/windowrules.kdl";
-          "niri/dms/wpblur.kdl".source = mutableDotfile "niri/dms/wpblur.kdl";
-          "niri/toggles/gaps.kdl".source = mutableDotfile "niri/toggles/gaps.kdl";
-          "niri/toggles/border.kdl".source = mutableDotfile "niri/toggles/border.kdl";
-          "niri/toggles/radius.kdl".source = mutableDotfile "niri/toggles/radius.kdl";
-
-          "matugen/config.toml".source = ../../dotfiles/matugen/config.toml;
-          "matugen/templates/neovim-dankcolors.lua".source =
-            ../../dotfiles/matugen/templates/neovim-dankcolors.lua;
-
-          "DankMaterialShell/theme.json".source = mutableDotfile "dms/theme.json";
-          "DankMaterialShell/themes/dms-ayu/theme.json".source =
-            mutableDotfile "dms/themes/dms-ayu/theme.json";
-          "DankMaterialShell/themes/themeport/theme.json".source = mutableDotfile "themeport/dms/theme.json";
-          "DankMaterialShell/settings.json".source = mutableDotfile "dms/settings.json";
-          "DankMaterialShell/plugin_settings.json".source = mutableDotfile "dms/plugin-settings.json";
-
-          # AirPods need WirePlumber's AVRCP player so their stem gestures can
-          # control MPRIS-aware players. Do not also enable mpris-proxy; upstream
-          # warns that the two implementations conflict.
           "wireplumber/wireplumber.conf.d/51-bluez-avrcp.conf".source =
             ../../dotfiles/wireplumber/51-bluez-avrcp.conf;
-
-          # Never restore a stored "off" profile for Bluetooth cards, or the
-          # headset reconnects as a device with no sink and vanishes from the
-          # output pickers.
           "wireplumber/wireplumber.conf.d/52-bluez-no-off-profile.conf".source =
             ../../dotfiles/wireplumber/52-bluez-no-off-profile.conf;
 
@@ -463,46 +215,24 @@ in
           "input-remapper-2/presets/vicinae-snippet-virtual-keyboard/new preset.json".source =
             dotfiles + "/input-remapper-2/presets/vicinae-snippet-virtual-keyboard/new preset.json";
 
-          # settings.json is writable so Themeport and VS Code can edit
-          # workbench.colorTheme without mutating the source checkout.
           "Code/User/settings.json".source = mutableDotfile "vscode/User/settings.json";
           "Code/User/keybindings.json".source = ../../dotfiles/vscode/User/keybindings.json;
-
-          # Themeport rendered state is writable and host-local.
-          "ghostty/themes/themeport".source = mutableDotfile "themeport/ghostty/themes/themeport";
-          "alacritty/themeport.toml".source = mutableDotfile "themeport/alacritty/themeport.toml";
-          "btop/themes/themeport.theme".source = mutableDotfile "themeport/btop/themes/themeport.theme";
-          "tmux/themeport.conf".source = mutableDotfile "themeport/tmux/themeport.conf";
-          # ChatGPT Community's omarchy-theme feature watches this conventional
-          # path and reloads the generated palette in open windows.
-          "omarchy/current/theme/codex-desktop.css".source =
-            mutableDotfile "themeport/codex-desktop.css";
         }
         // lib.optionalAttrs (builtins.pathExists ../../dotfiles/vscode/User/prompts) {
           "Code/User/prompts".source = ../../dotfiles/vscode/User/prompts;
         };
 
-        # Vicinae 0.23 discovers TOML themes from XDG_DATA_HOME. The target is
-        # writable state, so Themeport can update it live on every switch.
-        xdg.dataFile."vicinae/themes/themeport.toml".source =
-          mutableDotfile "themeport/vicinae/themeport.toml";
+        xdg.dataFile."vicinae/themes/catppuccin-mocha.toml".source =
+          ../../dotfiles/vicinae/catppuccin-mocha.toml;
 
         home.file = {
           ".face".source = config.lib.file.mkOutOfStoreSymlink "${home}/Pictures/profile.jpg";
           ".config/nvim" = {
             source = nvimConfig;
-            # Keep the configuration declarative while letting lazy.nvim update
-            # its lockfile and Themeport rewrite the generated palette through
-            # the two out-of-store symlinks above.
             force = true;
           };
-          ".local/state/DankMaterialShell/session.json".source = mutableDotfile "dms/session.json";
           "Fonts/.keep".text = "";
           ".local/share/fonts/.keep".text = "";
-          "Pictures/Wallpapers" = {
-            source = wallpaperLibrary;
-            recursive = true;
-          };
         };
       };
   };

@@ -11,12 +11,6 @@ let
       --method org.gnome.Shell.Extensions.VicinaeWindowManagement.Execute \
       "$1"
   '';
-  systemMenuCommand = pkgs.writeShellScript "open-mariano-system-menu" ''
-    exec ${pkgs.ghostty}/bin/ghostty \
-      --class=system.actions \
-      --title="System Actions" \
-      -e /run/current-system/sw/bin/mariano-system-menu --terminal
-  '';
 in
 {
   # gdbus is the deliberately small bridge between the Vicinae command
@@ -55,8 +49,7 @@ in
       ];
     };
 
-    # Vicinae is the GNOME launcher. Niri uses DMS for both its general app
-    # launcher and the curated system-actions surface.
+    # Vicinae is the GNOME launcher and starts only with the GNOME session.
     systemd.user.services.vicinae.Unit.ConditionEnvironment =
       "XDG_CURRENT_DESKTOP=GNOME";
 
@@ -66,7 +59,6 @@ in
     programs.gnome-shell = {
       enable = true;
       extensions = [
-        { package = pkgs.gnomeExtensions.dash-to-dock; }
         { package = pkgs.gnomeExtensions.vicinae; }
         { package = gnomeWindowManagementExtension; }
       ];
@@ -90,7 +82,6 @@ in
           "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/vicinae-center/"
           "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/vicinae-almost-maximize/"
           "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/vicinae-hide-others/"
-          "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/system-actions/"
         ];
       };
 
@@ -118,11 +109,6 @@ in
         name = "Hide Other Applications";
       };
 
-      "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/system-actions" = {
-        binding = "<Super>space";
-        command = "${systemMenuCommand}";
-        name = "System Actions";
-      };
     };
   };
 }

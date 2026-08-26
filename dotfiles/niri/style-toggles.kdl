@@ -1,8 +1,0 @@
-binds {
-    Mod+Ctrl+G repeat=false hotkey-overlay-title="Toggle Window Gaps" {
-        spawn "niri-style-toggle" "gaps";
-    }
-    Mod+Ctrl+B repeat=false hotkey-overlay-title="Toggle Window Borders" {
-        spawn "niri-style-toggle" "border";
-    }
-}

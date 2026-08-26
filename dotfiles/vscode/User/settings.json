@@ -1,24 +1,24 @@
 {
   "[blade]": {
-    "editor.defaultFormatter": "shufo.vscode-blade-formatter",
+    "editor.defaultFormatter": "shufo.vscode-blade-formatter"
   },
   "[javascript]": {
-    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
   "[json]": {
-    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
   "[jsonc]": {
-    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
   "[php]": {
-    "editor.defaultFormatter": "bmewburn.vscode-intelephense-client",
+    "editor.defaultFormatter": "bmewburn.vscode-intelephense-client"
   },
   "[typescript]": {
-    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
   "[typescriptreact]": {
-    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
   "database-client.autoSync": true,
   "editor.accessibilitySupport": "off",
@@ -41,10 +41,10 @@
   "editor.wordWrapColumn": 120,
   "emmet.includeLanguages": {
     "erb": "html",
-    "ruby": "ruby",
+    "ruby": "ruby"
   },
   "extensions.experimental.affinity": {
-    "asvetliakov.vscode-neovim": 1,
+    "asvetliakov.vscode-neovim": 1
   },
   "git.autofetch": true,
   "git.blame.editorDecoration.enabled": true,
@@ -55,7 +55,7 @@
     "*": true,
     "plaintext": false,
     "markdown": false,
-    "scminput": false,
+    "scminput": false
   },
   "scm.inputFontFamily": "CaskaydiaMono Nerd Font Mono",
   "security.workspace.trust.untrustedFiles": "open",
@@ -63,29 +63,12 @@
   "terminal.integrated.defaultProfile.linux": "zsh",
   "terminal.integrated.gpuAcceleration": "off",
   "typescript.updateImportsOnFileMove.enabled": "always",
-  "vscode_custom_css.imports": [
-    "file://C:/Users/maria/.config/vscode/theme.css",
-    "file:///home/mariano/.config/vscode/theme.css",
-    "file:///Users/marianomiguel/.config/vscode/theme.css",
-  ],
-  "vscode_vibrancy.opacity": 0,
-  "vscode_vibrancy.theme": "Catppuccin Mocha",
-  "window.autoDetectColorScheme": false,
-  "window.systemColorTheme": "dark",
   "window.titleBarStyle": "custom",
   "workbench.editor.empty.hint": "hidden",
-  "workbench.iconTheme": "catppuccin-perfect-dark",
+  "workbench.iconTheme": "catppuccin-mocha",
   "workbench.statusBar.visible": false,
   "workbench.tips.enabled": false,
   "terminal.integrated.fontFamily": "CaskaydiaMono Nerd Font Mono",
-  "omarchyThemeSync.folderToVSCodeTheme": {
-    "osaka-jade": "Gruvbox Glass",
-    "catppuccin": "Catppuccin Mocha",
-    "kanagawa": "Kanagawa",
-    "tokyo-night": "Tokyo Night Horizon",
-  },
-  "omarchyThemeSync.defaultVSCodeTheme": "Gruvbox Glass",
-  "omarchyThemeSync.warnIfThemeMissing": true,
   "traycer.additionalAgents": ["Claude Code"],
   "traycer.enableAutoAnalysis": false,
   "traycer.alwaysAllowPayToRun": true,
@@ -104,14 +87,13 @@
     ".claude/rules": true,
     "~/.copilot/instructions": true,
     "~/.claude/rules": true,
-    "C:\\Users\\mariano\\.aitk\\instructions\\": true,
+    "C:\\Users\\mariano\\.aitk\\instructions\\": true
   },
   "workbench.editorAssociations": {
-    "git-rebase-todo": "default",
+    "git-rebase-todo": "default"
   },
   "chat.useAgentSkills": true,
-  "workbench.preferredDarkColorTheme": "Vesper",
   "chat.mcp.gallery.enabled": true,
-  "workbench.colorTheme": "Tokyo Night",
-  "workbench.startupEditor": "none",
+  "workbench.colorTheme": "Catppuccin Mocha",
+  "workbench.startupEditor": "none"
 }

@@ -21,8 +21,7 @@ let
         render_width="$columns"
       fi
 
-      # Glow provides a calm, readable Markdown treatment; Ghostty supplies
-      # the active ThemePort palette, translucency, padding, and backdrop.
+      # Glow provides a calm, readable Markdown treatment inside Ghostty.
       export PAGER="less -R -F -X"
       exec glow \
         --style dark \

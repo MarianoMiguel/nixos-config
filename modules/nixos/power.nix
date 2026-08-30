@@ -32,12 +32,13 @@
 
   # In a GNOME session gnome-settings-daemon, not logind, owns the power key
   # and idle policy, so the logind rules above do not apply there. Mirror
-  # them: replayed power-key events must not act, idle sleep happens only on
-  # battery, and a closed lid on external power keeps this docked agent host
-  # awake.
+  # them: replayed power-key events must not act, closing the lid sleeps the
+  # machine on either power source (GNOME itself keeps it awake while an
+  # external display is attached), and idle sleep happens only on battery so
+  # long plugged-in builds are never interrupted.
   home-manager.users.mariano.dconf.settings."org/gnome/settings-daemon/plugins/power" = {
     power-button-action = "nothing";
-    lid-close-ac-action = "nothing";
+    lid-close-ac-action = "suspend";
     lid-close-battery-action = "suspend";
     sleep-inactive-ac-type = "nothing";
     sleep-inactive-battery-type = "suspend";

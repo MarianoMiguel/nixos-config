@@ -84,14 +84,8 @@ in
   networking.networkmanager.wifi.powersave = false;
   hardware.enableRedistributableFirmware = true;
 
-  # This machine is also used unattended as a remote agent host. Keep it awake
-  # when plugged in with the lid closed; on battery the lid still sleeps via
-  # the suspend-then-hibernate policy in modules/nixos/power.nix.
-  services.logind.settings.Login.HandleLidSwitchExternalPower = lib.mkForce "ignore";
-
-  # This workstation spends most of its time docked as a remote development
-  # host. Use the full CPU profile on AC and a still-responsive balanced profile
-  # on battery; plugging or unplugging the adapter reapplies the policy.
+  # Use the full CPU profile on AC and a still-responsive balanced profile on
+  # battery; plugging or unplugging the adapter reapplies the policy.
   systemd.services.power-profile-auto = {
     description = "Select a responsive power profile for the current power source";
     wantedBy = [ "graphical.target" ];
@@ -106,8 +100,9 @@ in
     SUBSYSTEM=="power_supply", KERNEL=="AC", ACTION=="change", TAG+="systemd", ENV{SYSTEMD_WANTS}+="power-profile-auto.service"
   '';
 
-  # Recover automatically if a remaining kernel lockup makes the host
-  # unreachable. The SP5100 hardware watchdog is present on this machine.
+  # If a kernel lockup ever freezes the machine, reboot automatically instead
+  # of requiring a long power-button hold. The SP5100 hardware watchdog is
+  # present on this machine.
   systemd.settings.Manager.RuntimeWatchdogSec = "60s";
   boot.kernel.sysctl = {
     "kernel.softlockup_panic" = 1;

@@ -20,5 +20,6 @@
     ../modules/nixos/vicinae.nix
     ../modules/nixos/voice.nix
     ../modules/nixos/virtualisation.nix
+    ../modules/nixos/workspace-modes.nix
   ];
 }

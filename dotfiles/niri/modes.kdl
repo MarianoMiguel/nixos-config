@@ -1,0 +1,30 @@
+// Per-workspace window modes (tile / float / focus), served by the
+// niri-modes daemon in modules/nixos/workspace-modes.nix. The DMS bar
+// widget offers the same switches per monitor.
+//
+// Mod+Alt is used because DMS regenerates dms/binds.kdl with niri's default
+// scheme, which occupies most bare Mod and Mod+Ctrl combinations. Everything
+// here acts on the currently focused workspace only.
+binds {
+    Mod+Alt+Space repeat=false hotkey-overlay-title="Cycle workspace mode (tile → float → focus)" {
+        spawn "niri-modes" "cycle-mode";
+    }
+    Mod+Alt+T repeat=false hotkey-overlay-title="Workspace mode: tile" {
+        spawn "niri-modes" "set" "tile";
+    }
+    Mod+Alt+F repeat=false hotkey-overlay-title="Workspace mode: float" {
+        spawn "niri-modes" "set" "float";
+    }
+    Mod+Alt+Return repeat=false hotkey-overlay-title="Workspace mode: focus (one app at a time)" {
+        spawn "niri-modes" "set" "focus";
+    }
+
+    // One scroll step = one app. In focus mode this walks the tabbed column;
+    // in tile mode it walks columns.
+    Mod+Alt+WheelScrollDown cooldown-ms=150 {
+        spawn "niri-modes" "cycle" "next";
+    }
+    Mod+Alt+WheelScrollUp cooldown-ms=150 {
+        spawn "niri-modes" "cycle" "prev";
+    }
+}

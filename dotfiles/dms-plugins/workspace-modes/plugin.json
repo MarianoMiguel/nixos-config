@@ -1,0 +1,17 @@
+{
+  "id": "workspaceModes",
+  "name": "Workspace Modes",
+  "description": "Per-monitor switcher for the current workspace's window mode: tile, float, or one-app-at-a-time focus",
+  "version": "1.0.0",
+  "author": "Mariano Miguel",
+  "type": "composite",
+  "capabilities": ["daemon", "dankbar-widget"],
+  "icon": "space_dashboard",
+  "components": {
+    "daemon": "./ModesDaemon.qml",
+    "widget": "./ModesWidget.qml"
+  },
+  "requires_dms": ">=1.5.0",
+  "permissions": ["process"],
+  "dependencies": ["niri-modes"]
+}

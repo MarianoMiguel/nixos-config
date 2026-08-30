@@ -248,6 +248,29 @@ of each display only when first used, preserving the existing numbered
 workspace positions at login. Niri does not yet support truly hidden
 workspaces, so that storage workspace remains visible in the overview.
 
+### Niri workspace modes
+
+Every workspace has one of three window modes, switched per monitor from the
+`Workspace Modes` widget at the right of the DankBar or with `Mod+Alt+Space`
+(cycle), `Mod+Alt+T` (tile), `Mod+Alt+F` (float) and `Mod+Alt+Return` (focus):
+
+- **Tile** is Niri's native scrollable tiling and the passive default: with a
+  workspace in tile mode the daemon changes nothing.
+- **Float** floats every window on the workspace, including ones that open
+  later. `Super+drag` moves a window, `Super+right-drag` resizes it.
+- **Focus** merges the workspace into a single centered tabbed column at 80%
+  width (`mariano.workspaceModes.focusWidth`), so exactly one app is visible
+  with wallpaper on both sides and zero neighbor peek. `Mod+Alt+Scroll` (or
+  the usual in-column focus keys) steps one app per notch.
+
+Modes apply to exactly one workspace. The `niri-modes` daemon holds the state
+per workspace ID and enforces it with per-window IPC actions, so switching the
+mode on one monitor can never restyle the workspace showing on another. Shell
+surfaces, portals and Picture-in-Picture windows are exempt from enforcement.
+Mode state is in-memory and resets with the session; the daemon is Niri-only
+and talks solely to Niri's local IPC socket plus its own private Unix socket
+(in the per-login runtime directory) for the widget and CLI.
+
 ### Theme security and Omarchy lessons
 
 Themeport exposes a closed catalog copied into the immutable Nix store. It no

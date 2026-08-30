@@ -479,6 +479,13 @@ in
         src = ../../dotfiles/dms-plugins/network-speed;
         settings.enabled = true;
       };
+      # Per-monitor switcher for the current workspace's window mode. The
+      # niri-modes daemon in modules/nixos/workspace-modes.nix owns the state;
+      # this widget is a view and a remote control.
+      workspaceModes = {
+        src = ../../dotfiles/dms-plugins/workspace-modes;
+        settings.enabled = true;
+      };
       # Niri uses DMS for its app launcher and theme-aware system surface:
       # a searchable control palette plus image-first theme and wallpaper
       # browsers. Vicinae remains the GNOME launcher.

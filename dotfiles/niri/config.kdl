@@ -308,6 +308,9 @@ include "manifesto.kdl"
 // voice dictation and the live voice agent (Alt+A / Alt+S)
 include "voice.kdl"
 
+// per-workspace tile/float/focus modes (Mod+Alt+Space and friends)
+include "modes.kdl"
+
 // niri-pip is the single owner for browser PiP detection, floating, geometry
 // and workspace following. Its daemon writes only this optional opacity rule.
 include optional=true "niri-pip-runtime.kdl"

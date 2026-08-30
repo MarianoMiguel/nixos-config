@@ -417,6 +417,7 @@ in
 
           "niri/config.kdl".source = ../../dotfiles/niri/config.kdl;
           "niri/manifesto.kdl".source = ../../dotfiles/niri/manifesto.kdl;
+          "niri/modes.kdl".source = ../../dotfiles/niri/modes.kdl;
           "niri/style-toggles.kdl".source = ../../dotfiles/niri/style-toggles.kdl;
           "niri/themeport.kdl".source = ../../dotfiles/niri/themeport.kdl;
           "niri/voice.kdl".source = ../../dotfiles/niri/voice.kdl;

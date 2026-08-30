@@ -38,6 +38,10 @@
     ],
     "rightWidgets": [
       {
+        "id": "workspaceModes",
+        "enabled": true
+      },
+      {
         "id": "codexBar",
         "enabled": true
       },

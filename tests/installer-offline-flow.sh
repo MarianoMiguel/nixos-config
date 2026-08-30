@@ -16,10 +16,44 @@ if rg -q '(^|[[:space:]])disko-install([[:space:]\\]|$)|--option offline true' \
   exit 1
 fi
 
-rg -q 'INSTALLER_BALERION_SYSTEM=' "$repo/hosts/installer/configuration.nix"
-rg -q 'INSTALLER_BALERION_DISKO_SCRIPT=' "$repo/hosts/installer/configuration.nix"
-rg -q 'INSTALLER_BONHART_SYSTEM=' "$repo/hosts/installer/configuration.nix"
-rg -q 'INSTALLER_BONHART_DISKO_SCRIPT=' "$repo/hosts/installer/configuration.nix"
+# The installer wrapper pins the offline system and disko store paths for
+# every host the image embeds, and tells the wizard which hosts those are.
+rg -q 'INSTALLER_AVAILABLE_HOSTS=' "$repo/hosts/installer/configuration.nix"
+rg -q 'INSTALLER_\$\{upper\}_SYSTEM=' "$repo/hosts/installer/configuration.nix"
+rg -q 'INSTALLER_\$\{upper\}_DISKO_SCRIPT=' "$repo/hosts/installer/configuration.nix"
+rg -q 'INSTALLER_BALERION_SYSTEM' "$repo/scripts/install-system.sh"
+rg -q 'INSTALLER_BONHART_SYSTEM' "$repo/scripts/install-system.sh"
+
+# A single-host image selects its only configuration without asking, and a
+# noninteractive request for a host the image does not contain must fail.
+env \
+  PATH="$test_path" \
+  INSTALLER_NONINTERACTIVE=0 \
+  INSTALLER_STATE_DIR="$scratch/state" \
+  INSTALLER_AVAILABLE_HOSTS=bonhart \
+  bash -c '
+    set -euo pipefail
+    source <(sed '\''/^main "\$@"$/d'\'' "$1/scripts/install-system.sh")
+    choose_configuration >/dev/null
+    printf "%s\n" "$configuration" > "$2"
+  ' _ "$repo" "$scratch/single-host"
+[[ $(< "$scratch/single-host") == bonhart ]]
+
+if env \
+  PATH="$test_path" \
+  INSTALLER_NONINTERACTIVE=1 \
+  INSTALLER_STATE_DIR="$scratch/state" \
+  INSTALLER_AVAILABLE_HOSTS=balerion \
+  INSTALLER_CONFIGURATION=bonhart \
+  bash -c '
+    set -euo pipefail
+    source <(sed '\''/^main "\$@"$/d'\'' "$1/scripts/install-system.sh")
+    choose_configuration >/dev/null 2>&1
+  ' _ "$repo"
+then
+  printf 'Installer accepted a configuration its image does not contain.\n' >&2
+  exit 1
+fi
 
 mkdir -p \
   "$scratch/state" \

@@ -19,17 +19,24 @@ the installer also saves the selected encrypted layout as that machine's local
 ## Build The Installer
 
 ```sh
-./scripts/build-installer-iso.sh
+./scripts/build-installer-iso.sh                 # dual image, installs either machine
+./scripts/build-installer-iso.sh --host bonhart  # single-machine image, ~half the time
 ```
 
-The script evaluates the complete flake, builds both existing machine outputs and
-both encrypted install outputs, then builds from the literal current workspace
+The script evaluates the complete flake, builds the encrypted install outputs
+the image will embed, then builds from the literal current workspace
 (including new files not committed yet). It prints the finished ISO path under
 `result-installer/iso/`. Set `SKIP_VALIDATION=1` only for an intentional ISO-only
 rebuild.
 
-The build refuses to start without roughly 40 GiB of free disk space, since the
-ISO embeds both complete workstation closures, and prints the final ISO size.
+When the target machine is known, prefer `--host balerion` or `--host bonhart`:
+the image embeds only that machine's closure, roughly halving build time, ISO
+size and USB write time, and the wizard skips the machine question. Build on
+Balerion when possible; it is by far the faster builder.
+
+The build refuses to start without roughly 40 GiB of free disk space (25 GiB
+for a single-host image), since the ISO embeds complete workstation closures,
+and prints the final ISO size.
 
 To write the ISO to a USB drive, pick the drive interactively and use the
 newest built ISO:
@@ -67,9 +74,10 @@ The selected disk is completely erased. Balerion receives a 1 GiB UEFI partition
 and an encrypted ext4 root. Bonhart receives the same UEFI partition plus one
 encrypted LVM container with a 64 GiB hibernation swap volume and an ext4 root.
 
-The ISO includes the pinned flake inputs, Disko scripts, and both complete target
-system closures. Installation therefore runs with Nix offline and does not depend
-on a binary-cache download. Generated NixOS documentation and the man-page cache
+The ISO includes the pinned flake inputs, Disko scripts, and the complete
+closure of every machine it was built for (both machines on the dual image, one
+on a `--host` image). Installation therefore runs with Nix offline and does not
+depend on a binary-cache download. Generated NixOS documentation and the man-page cache
 are disabled in workstation builds to avoid the documentation derivation that
 previously made recovery installs fragile.
 

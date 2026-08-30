@@ -76,6 +76,12 @@
           inherit system specialArgs;
           modules = sharedModules ++ modules;
         };
+      mkInstaller =
+        hosts:
+        mkSystem [
+          ./hosts/installer/configuration.nix
+          { _module.args.installerHosts = hosts; }
+        ];
       standardSystem = mkSystem [
         ./hosts/standard/configuration.nix
       ];
@@ -108,9 +114,15 @@
         nixos = nixosDevSystem;
         "nixos-dev" = nixosDevSystem;
 
-        installer = mkSystem [
-          ./hosts/installer/configuration.nix
+        installer = mkInstaller [
+          "balerion"
+          "bonhart"
         ];
+
+        # Single-machine images: half the closure, half the squashfs time,
+        # half the USB. Use these when the target machine is known.
+        "installer-balerion" = mkInstaller [ "balerion" ];
+        "installer-bonhart" = mkInstaller [ "bonhart" ];
       };
 
       nixosModules.workstation = {
@@ -132,6 +144,10 @@
             ./packages/mt76-mt7925.nix
             { };
         installerIso = self.nixosConfigurations.installer.config.system.build.isoImage;
+        installerIsoBalerion =
+          self.nixosConfigurations."installer-balerion".config.system.build.isoImage;
+        installerIsoBonhart =
+          self.nixosConfigurations."installer-bonhart".config.system.build.isoImage;
       };
     };
 }

@@ -3,6 +3,13 @@
   modulesPath,
   pkgs,
   self,
+  # Which machines this image can install. The flake instantiates a dual-host
+  # image plus one single-host image per machine; a single-host image halves
+  # the embedded closure and the time it takes to build and write.
+  installerHosts ? [
+    "balerion"
+    "bonhart"
+  ],
   ...
 }:
 
@@ -22,7 +29,7 @@ let
       ];
   };
 
-  targetSystems = {
+  targetSystems = lib.getAttrs installerHosts {
     balerion = self.nixosConfigurations."balerion-install";
     bonhart = self.nixosConfigurations."bonhart-install";
   };
@@ -71,14 +78,25 @@ let
       shadow
       util-linux
     ];
-    text = ''
-      export INSTALLER_CONFIG_SOURCE=${lib.escapeShellArg repoSource}
-      export INSTALLER_BALERION_SYSTEM=${lib.escapeShellArg targetSystems.balerion.config.system.build.toplevel}
-      export INSTALLER_BALERION_DISKO_SCRIPT=${lib.escapeShellArg targetSystems.balerion.config.system.build.diskoScript}
-      export INSTALLER_BONHART_SYSTEM=${lib.escapeShellArg targetSystems.bonhart.config.system.build.toplevel}
-      export INSTALLER_BONHART_DISKO_SCRIPT=${lib.escapeShellArg targetSystems.bonhart.config.system.build.diskoScript}
-      exec ${repoSource}/scripts/install-system.sh "$@"
-    '';
+    text =
+      ''
+        export INSTALLER_CONFIG_SOURCE=${lib.escapeShellArg repoSource}
+        export INSTALLER_AVAILABLE_HOSTS=${lib.escapeShellArg (lib.concatStringsSep " " installerHosts)}
+      ''
+      + lib.concatMapStrings (
+        name:
+        let
+          upper = lib.toUpper name;
+          system = targetSystems.${name}.config.system.build;
+        in
+        ''
+          export INSTALLER_${upper}_SYSTEM=${lib.escapeShellArg system.toplevel}
+          export INSTALLER_${upper}_DISKO_SCRIPT=${lib.escapeShellArg system.diskoScript}
+        ''
+      ) (lib.attrNames targetSystems)
+      + ''
+        exec ${repoSource}/scripts/install-system.sh "$@"
+      '';
   };
 
   installerDesktop = pkgs.writeText "mariano-nixos-installer.desktop" ''
@@ -100,7 +118,10 @@ in
 
   networking.hostName = "mariano-nixos-installer";
 
-  image.baseName = lib.mkForce "mariano-nixos-installer";
+  image.baseName = lib.mkForce (
+    "mariano-nixos-installer"
+    + lib.optionalString (lib.length installerHosts == 1) "-${lib.head installerHosts}"
+  );
   isoImage.squashfsCompression = "zstd -Xcompression-level 6";
   isoImage.contents = [
     {

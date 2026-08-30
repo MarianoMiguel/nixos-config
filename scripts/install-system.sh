@@ -217,17 +217,30 @@ target_partition() {
 
 choose_configuration() {
   local choice
+  local available=" ${INSTALLER_AVAILABLE_HOSTS:-balerion bonhart} "
+  local -a options=()
+
+  # Single-host images embed only one machine's closure; offer only what this
+  # image can actually install offline.
+  [[ $available == *" balerion "* ]] && options+=("Balerion  · Intel 13900KF + RTX 3080 Ti")
+  [[ $available == *" bonhart "* ]] && options+=("Bonhart   · AMD laptop + 64 GiB hibernation swap")
+  (( ${#options[@]} > 0 )) || die "This installer image contains no machine configurations."
 
   if (( noninteractive )); then
     configuration=${INSTALLER_CONFIGURATION:?INSTALLER_CONFIGURATION is required in noninteractive mode}
+  elif (( ${#options[@]} == 1 )); then
+    case ${options[0]} in
+      Balerion*) configuration=balerion ;;
+      *) configuration=bonhart ;;
+    esac
+    render_header
+    notice "This image installs a single configuration: ${options[0]}"
   else
     render_header
     notice "Choose the hardware configuration for this machine."
     printf '\n'
     choice=$(
-      printf '%s\n' \
-        "Balerion  · Intel 13900KF + RTX 3080 Ti" \
-        "Bonhart   · AMD laptop + 64 GiB hibernation swap" |
+      printf '%s\n' "${options[@]}" |
         gum choose --header "Machine configuration" --cursor.foreground 212
     ) || die "No configuration selected."
 
@@ -237,6 +250,9 @@ choose_configuration() {
       *) die "Unknown configuration selection." ;;
     esac
   fi
+
+  [[ $available == *" $configuration "* ]] ||
+    die "This installer image does not include $configuration. Rebuild it with that host or use the dual image."
 
   case $configuration in
     balerion)

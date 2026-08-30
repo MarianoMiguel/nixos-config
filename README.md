@@ -28,7 +28,18 @@ both encrypted install outputs, then builds from the literal current workspace
 `result-installer/iso/`. Set `SKIP_VALIDATION=1` only for an intentional ISO-only
 rebuild.
 
-To write the ISO to a USB drive and use the remaining space for payload files:
+The build refuses to start without roughly 40 GiB of free disk space, since the
+ISO embeds both complete workstation closures, and prints the final ISO size.
+
+To write the ISO to a USB drive, pick the drive interactively and use the
+newest built ISO:
+
+```sh
+sudo ./scripts/write-installer-usb.sh
+```
+
+Everything can also be passed explicitly, including payload files for the
+remaining USB space:
 
 ```sh
 sudo ./scripts/write-installer-usb.sh /dev/disk/by-id/<usb-disk> result-installer/iso/mariano-nixos-installer.iso /path/to/mariano-personal-payload.tar.zst

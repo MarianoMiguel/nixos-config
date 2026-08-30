@@ -10,8 +10,10 @@ Validates both current machines and their encrypted install targets, then builds
 a graphical installer ISO containing the literal current workspace snapshot.
 
 Environment:
-  SKIP_VALIDATION=1  Build only the ISO.
-  OUT_LINK=path      Use a result link other than result-installer.
+  SKIP_VALIDATION=1      Build only the ISO.
+  SKIP_SPACE_CHECK=1     Skip the free-disk-space preflight.
+  REQUIRED_FREE_GIB=n    Free space required by the preflight (default 40).
+  OUT_LINK=path          Use a result link other than result-installer.
 USAGE
 }
 
@@ -36,6 +38,23 @@ fi
 flake="path:$repo"
 out_link=${OUT_LINK:-result-installer}
 
+# The ISO embeds both complete workstation closures, so the build needs tens
+# of gibibytes in the store and for the squashfs scratch space. Running out
+# mid-build wastes an hour and leaves confusing partial state; fail up front
+# instead.
+if [[ ${SKIP_SPACE_CHECK:-0} != 1 ]]; then
+  required_gib=${REQUIRED_FREE_GIB:-40}
+  for location in /nix/store "${TMPDIR:-/tmp}"; do
+    [[ -d $location ]] || continue
+    available_bytes=$(df --output=avail --block-size=1 "$location" | tail -n 1)
+    if (( available_bytes < required_gib * 1024 * 1024 * 1024 )); then
+      echo "Only $(numfmt --to=iec-i --suffix=B "$available_bytes") is free at $location; the ISO build needs about ${required_gib}GiB." >&2
+      echo "Free up space, or set SKIP_SPACE_CHECK=1 / REQUIRED_FREE_GIB=n to override." >&2
+      exit 1
+    fi
+  done
+fi
+
 if [[ ${SKIP_VALIDATION:-0} != 1 ]]; then
   echo "Evaluating every flake output..." >&2
   nix flake check --no-build "$flake"
@@ -56,4 +75,5 @@ if [[ -z "${iso:-}" ]]; then
   exit 1
 fi
 
+echo "ISO size: $(numfmt --to=iec-i --suffix=B "$(stat -c '%s' "$iso")")" >&2
 realpath "$iso"

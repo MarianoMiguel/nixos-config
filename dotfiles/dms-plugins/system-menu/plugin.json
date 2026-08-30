@@ -1,0 +1,14 @@
+{
+  "id": "systemMenu",
+  "name": "System Menu",
+  "description": "A cohesive, searchable control palette for the Mariano desktop",
+  "version": "1.0.0",
+  "author": "Mariano Miguel",
+  "type": "launcher",
+  "trigger": "sys",
+  "viewMode": "list",
+  "viewModeEnforced": true,
+  "icon": "tune",
+  "component": "./SystemMenu.qml",
+  "permissions": ["process"]
+}

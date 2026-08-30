@@ -1,17 +1,5 @@
 { pkgs, ... }:
 
-let
-  networkSpeedtest = pkgs.writeShellApplication {
-    name = "mariano-network-speedtest";
-    runtimeInputs = with pkgs; [
-      coreutils
-      jq
-      librespeed-cli
-      util-linux
-    ];
-    text = builtins.readFile ../../scripts/network-speedtest.sh;
-  };
-in
 {
   networking.networkmanager.enable = true;
 
@@ -73,6 +61,5 @@ in
     tailscale
     opensnitch-ui
     proton-vpn
-    networkSpeedtest
   ];
 }

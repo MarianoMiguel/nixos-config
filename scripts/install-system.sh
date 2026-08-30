@@ -395,8 +395,10 @@ verify_install_payload() {
   [[ -n $mutable_seed ]] ||
     die "The bundled system is missing Mariano's Home Manager seed. Recreate the installer USB."
   for requisite in \
+    dms/plugin-settings.json \
+    niri/dms/binds.kdl \
     nvim/lazy-lock.json \
-    vscode/User/settings.json
+    themeport/neovim/generated.lua
   do
     [[ -r $mutable_seed/$requisite ]] ||
       die "The bundled Home Manager seed is incomplete. Recreate the installer USB."

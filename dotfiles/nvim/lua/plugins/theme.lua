@@ -1,21 +1,38 @@
 return {
   {
-    "LazyVim/LazyVim",
+    "Shatur/neovim-ayu",
+    name = "ayu",
+    priority = 1000,
     opts = {
-      colorscheme = "catppuccin",
+      mirage = true,
+      terminal = true,
+    },
+    config = function(_, opts)
+      require("ayu").setup(opts)
+    end,
+  },
+  {
+    "datsfilipe/vesper.nvim",
+    name = "vesper",
+    opts = {
+      transparent = true,
     },
   },
   {
     "catppuccin/nvim",
     name = "catppuccin",
-    priority = 1000,
     opts = {
-      flavour = "mocha",
-      background = {
-        dark = "mocha",
-        light = "mocha",
+      flavour = "latte",
+    },
+  },
+  {
+    "folke/tokyonight.nvim",
+    opts = {
+      transparent = true,
+      styles = {
+        sidebars = "transparent",
+        floats = "transparent",
       },
-      transparent_background = false,
     },
   },
 }

@@ -1,0 +1,17 @@
+{
+  "codexBar": {
+    "enabled": true
+  },
+  "catWidget": {
+    "enabled": true
+  },
+  "voice": {
+    "enabled": true
+  },
+  "focus": {
+    "enabled": true
+  },
+  "networkSpeed": {
+    "enabled": true
+  }
+}

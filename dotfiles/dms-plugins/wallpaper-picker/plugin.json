@@ -1,0 +1,14 @@
+{
+  "id": "wallpaperPicker",
+  "name": "Wallpaper Preview",
+  "description": "Preview and apply every wallpaper in the shared library",
+  "version": "1.0.0",
+  "author": "Mariano Miguel",
+  "type": "launcher",
+  "trigger": "wall",
+  "viewMode": "tile",
+  "viewModeEnforced": true,
+  "icon": "wallpaper",
+  "component": "./WallpaperPicker.qml",
+  "permissions": ["process"]
+}

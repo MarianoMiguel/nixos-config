@@ -24,8 +24,10 @@ rg -q 'INSTALLER_BONHART_DISKO_SCRIPT=' "$repo/hosts/installer/configuration.nix
 mkdir -p \
   "$scratch/state" \
   "$scratch/system" \
+  "$scratch/test-mariano-mutable-dotfile-seed/dms" \
+  "$scratch/test-mariano-mutable-dotfile-seed/niri/dms" \
   "$scratch/test-mariano-mutable-dotfile-seed/nvim" \
-  "$scratch/test-mariano-mutable-dotfile-seed/vscode/User"
+  "$scratch/test-mariano-mutable-dotfile-seed/themeport/neovim"
 : > "$scratch/state/install.log"
 printf '#!/usr/bin/env bash\n' > "$scratch/system/init"
 chmod +x "$scratch/system/init"
@@ -35,8 +37,10 @@ exit 0
 EOF
 chmod +x "$scratch/disko-script"
 touch \
+  "$scratch/test-mariano-mutable-dotfile-seed/dms/plugin-settings.json" \
+  "$scratch/test-mariano-mutable-dotfile-seed/niri/dms/binds.kdl" \
   "$scratch/test-mariano-mutable-dotfile-seed/nvim/lazy-lock.json" \
-  "$scratch/test-mariano-mutable-dotfile-seed/vscode/User/settings.json"
+  "$scratch/test-mariano-mutable-dotfile-seed/themeport/neovim/generated.lua"
 printf '%s\n' \
   "$scratch/system" \
   "$scratch/disko-script" \

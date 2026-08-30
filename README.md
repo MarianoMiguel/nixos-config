@@ -93,32 +93,168 @@ After installation, remove the USB drive and reboot. The firmware will ask for
 the LUKS password; the desktop uses Mariano's password; `sudo` uses the separate
 administrator password.
 
-## GNOME Desktop
+## Consistent Desktop And System Actions
 
-GNOME on Wayland is the only installed workstation session and GDM is the only
-display manager. GNOME owns networking, Bluetooth, audio, displays, power,
-wallpaper, notifications, screenshots, screen recording, locking, and login.
-KDE applications such as Dolphin, Krita, and Kdenlive remain installed without
-installing a second desktop environment.
+Niri and Dank Material Shell are the primary desktop. DMS owns networking,
+Bluetooth, audio, displays, wallpaper, notifications and quick settings. GNOME
+remains a stock fallback session, but Plasma, Blueman, NetworkManager's tray
+applet, Discover and PackageKit are deliberately not installed as competing
+control surfaces. KDE applications such as Dolphin, Krita and Kdenlive remain
+available and follow the same GTK-derived light/dark appearance.
 
-`Alt+Space` opens Vicinae. Its GNOME bridge and local companion retain the
-window-centering, almost-maximize, and hide-other-apps commands. The AppIndicator
-bridge keeps the Tailscale and LibrePods tray integrations available, and the
-GNOME CodexBar extension remains installed.
+`Alt+Space` opens the Vicinae application launcher in Niri and GNOME;
+`Super+Period` is a second Niri spelling. `Super+Space` opens the separate,
+searchable System Actions menu in both sessions. System actions are not
+exported as fake applications, so they no longer crowd Vicinae's results.
+`mariano-system-menu --categories` offers the same commands as a browsable
+nested menu. Important entries include:
 
-There is no live theme engine or coordinated theme switching. Themeable developer
-applications use one fixed Catppuccin Mocha palette: Ghostty (fully opaque),
-Alacritty, Neovim, VS Code, tmux, Vicinae, and legacy GTK applications. GNOME
-Shell itself remains stock and dark. The Impatience extension applies a 0.25×
-animation duration factor, keeping common Shell transitions around 50–75 ms.
+- safe laptop-display toggle, which refuses to turn off the only active screen;
+- DMS display/network settings, Wi-Fi and Bluetooth toggles, and Proton VPN;
+- full, region and video capture plus a remembered system-audio toggle;
+- DMS Power & Sleep settings plus a Focus menu for notification silence,
+  `Stay awake`, reminders, local dictation and Night Light;
+- immediate lock, lock-screen preview, and lock/screen-saver settings;
+- the 22 pinned official Omarchy themes (including Osaka Jade), their bundled
+  non-wordmark wallpapers, and window border/gap toggles;
+- fingerprint enrollment on Bonhart; and
+- a fixed NixOS updater that updates only `nixpkgs`, Home Manager and Disko,
+  rejects a writable or symlinked `/etc/nixos`, restores the old lock file on
+  failure, and leaves third-party inputs pinned.
 
-Bonhart enables `fprintd`; GDM runs password and fingerprint authentication as
-separate conversations so either method remains available. Fingerprints can be
-managed from GNOME Settings. Local reminders remain available through
-`mariano-reminder interactive` and are delivered by the persistent user timer.
+The guided installer already installs Steam and Proton VPN as part of the
+workstation closure.
 
-The guided installer installs this same GNOME-only workstation closure,
-including Steam, Proton VPN, development tools, and the full application set.
+### Fast motion and focus controls
+
+Niri transitions use fixed 40–70 ms timings instead of open-ended springs.
+DMS uses a 40 ms custom base, so its largest expressive transition is 80 ms;
+notification and AI-quota feedback use 60 ms. Long-running spinners and active
+recording/dictation indicators keep their slower cycles because they describe
+ongoing work rather than delaying an interaction.
+
+Search `Focus` with `Super+Space` for notification silence (toggle, one hour, or
+until 08:00 tomorrow), resume notifications, `Stay awake`, reminders,
+dictation and Night Light. DMS shows active Do Not Disturb and idle-inhibitor
+state in the control center. Reminders are stored in a private local queue and
+delivered by a persistent user timer, so locking, sleeping or rebooting does
+not discard them.
+
+For dictation, focus any text field, tap `Alt+A`, speak, then tap `Alt+A` again
+to stop; a short silence also ends the recording automatically. Speech is
+transcribed by the pinned local Whisper model and typed into the window that
+was focused when dictation began. `Alt+S` is the separate spoken-agent mode,
+which opens a visible Claude Code terminal instead of typing a transcription.
+
+The CodexBar panel keeps its reviewed OAuth-only quota source, but now presents
+Claude, Codex and any other provider through a compact provider switch and one
+focused quota card at a time. It does not crawl AI transcripts or provide an
+agent launcher.
+
+### Screenshots and screen recording
+
+The Niri session has one consistent capture workflow:
+
+- `Alt+Shift+3` captures all displays;
+- `Alt+Shift+4` selects and captures a region; and
+- `Alt+Shift+5` selects a region and starts recording. Press it again to stop
+  and finalize the video.
+
+Screenshots are saved privately in `~/Pictures/Screenshots` and copied to the
+clipboard. Recordings are saved privately in `~/Videos/Recordings`. System
+audio defaults to off for privacy. Search for `System · Capture · Toggle system
+audio in recordings` with `Super+Space` to enable or disable it for future
+recordings; that preference survives reboot. The recorder follows the current
+default audio output, so it continues to work when switching between speakers,
+headphones and a dock.
+
+Recording runs only while a capture is active, without root privileges, KMS
+capabilities, a plugin loader or network access. The persistent notification
+shows whether audio is included and reminds you how to stop. The same
+notification is replaced with the saved file path after the recorder has
+finished writing the MP4.
+
+DMS remains the single idle-policy owner. Fresh installs lock after ten minutes
+on AC or five minutes on battery, then power off the displays after another
+minute or thirty seconds respectively. Existing installations receive that
+baseline once and can subsequently change it in DMS Power & Sleep. Automatic
+suspend stays disabled, matching Bonhart's fail-closed hibernation policy and
+avoiding a second Wayland idle daemon with competing state.
+
+The lock screen is intentionally minimal: time and authentication stay visible;
+power actions, system icons, date, profile image, media controls and notification
+content are hidden. The old five-second fade is disabled. Search for `Preview
+lock screen` or `Lock screen & screensaver settings` to inspect it and configure
+DMS's optional video screensaver without creating a second idle daemon.
+
+### Bonhart fingerprint enrollment
+
+Bonhart enables `fprintd` for greetd login, DMS unlock, `polkit` authorization
+and `sudo`. Open `Super+Space`, then `Security · Set up fingerprints` to list,
+enroll or delete prints. Mariano's account owns login and unlock fingerprints.
+Because `sudo` intentionally authenticates against the separate root account,
+its submenu uses NixOS's root-owned security wrapper and should enroll a
+different finger for administrator authentication.
+
+The DMS lock screen exposes password and fingerprint as independent parallel
+methods: typing Mariano's password never waits for or consumes a fingerprint
+attempt, and touching the enrolled finger does not require opening the password
+field first.
+
+Passwords remain available as the fallback. Enrollment still needs to be
+performed on the physical ThinkPad because the reader must capture the finger.
+
+### Niri Picture-in-Picture
+
+Browser Picture-in-Picture windows are managed by the pinned niri-pip v0.2.1
+daemon. It recognizes Firefox and Chromium-family PiP windows, floats them
+without taking keyboard focus, remembers their geometry and follows the active
+Niri workspace. Search for
+`System · Windows · Picture-in-Picture controls` with `Super+Space` to resize,
+position, lock or change the follow behavior. `System · Windows · Toggle
+pin focused window` makes any focused window follow you until it is unpinned.
+
+The package and user service are fully declarative. The upstream installer,
+updater and config mutation scripts are not used; the service is Niri-only,
+rootless, limited to Unix sockets and sandboxed to its geometry state plus its
+generated opacity rule. Multi-monitor follow modes other than the default
+`follow-workspace` remain opt-in because they need testing on the physical
+display layout.
+
+### Niri scratchpads
+
+Press `Super+Shift+S` to move the focused window into the scratchpad for the
+current display. Press `Super+S` to summon it as a centered floating window;
+press the same shortcut while it is focused to hide it again. Each display has
+an independent stack, so moving a window on the laptop panel never replaces the
+scratchpad on an external monitor. When a stack contains several windows,
+hiding the current one rotates to the next window for the following summon.
+
+The controller talks only to Niri's local IPC socket and stores window IDs in a
+private per-login runtime directory. It has no daemon, network access, plugin
+loader or elevated privileges. Its storage workspace is created at the bottom
+of each display only when first used, preserving the existing numbered
+workspace positions at login. Niri does not yet support truly hidden
+workspaces, so that storage workspace remains visible in the overview.
+
+### Theme security and Omarchy lessons
+
+Themeport exposes a closed catalog copied into the immutable Nix store. It no
+longer registers `aether://` browser links, downloads themes, consumes runtime
+plugin catalogs, installs VS Code extensions declared by a theme, or links
+user-writable color files into Chromium managed-policy directories. DMS may run
+its built-in Matugen templates, but mutable user templates and third-party
+launcher results are forced off. Existing DMS integrations are flake-pinned
+source inputs built with the OS, not marketplace-installed runtime plugins.
+
+The useful parts borrowed from Omarchy are one shell owning common controls,
+grouped searchable actions, a single theme switcher and a visible update path.
+The runtime plugin registry, executable theme hooks and unreviewed package/theme
+sources are intentionally excluded. See Omarchy's official documentation for
+its [menu and command model](https://github.com/basecamp/omarchy/blob/quattro/default/omarchy-skill/SKILL.md),
+[themes](https://github.com/basecamp/omarchy/blob/quattro/manual/06-themes.md),
+[top bar](https://github.com/basecamp/omarchy/blob/quattro/manual/05-the-top-bar.md),
+and [updates](https://github.com/basecamp/omarchy/blob/quattro/manual/30-updates.md).
 
 ## Personal Payload
 

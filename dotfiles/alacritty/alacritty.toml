@@ -9,8 +9,9 @@ args = ["-l"]
 [window]
 dynamic_padding = true
 decorations = "full"
-title = "Alacritty"
-opacity = 1.0
+title = "Alacritty@CachyOS"
+opacity = 0.8
+decorations_theme_variant = "Dark"
 
 [window.dimensions]
 columns = 100
@@ -24,37 +25,9 @@ general = "Alacritty"
 history = 10000
 multiplier = 3
 
-[colors.primary]
-background = "#1e1e2e"
-foreground = "#cdd6f4"
-
-[colors.cursor]
-cursor = "#f5e0dc"
-text = "#1e1e2e"
-
-[colors.selection]
-background = "#f5e0dc"
-text = "#1e1e2e"
-
-[colors.normal]
-black = "#45475a"
-red = "#f38ba8"
-green = "#a6e3a1"
-yellow = "#f9e2af"
-blue = "#89b4fa"
-magenta = "#f5c2e7"
-cyan = "#94e2d5"
-white = "#bac2de"
-
-[colors.bright]
-black = "#585b70"
-red = "#f38ba8"
-green = "#a6e3a1"
-yellow = "#f9e2af"
-blue = "#89b4fa"
-magenta = "#f5c2e7"
-cyan = "#94e2d5"
-white = "#a6adc8"
+# Colors come from the themeport import below (writable tier, live-reloaded).
+[colors]
+draw_bold_text_with_bright_colors = true
 
 [font]
 size = 12
@@ -170,3 +143,4 @@ action = "ResetFontSize"
 [general]
 live_config_reload = true
 working_directory = "None"
+import = ["~/.config/alacritty/themeport.toml"]

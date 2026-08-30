@@ -1,0 +1,23 @@
+{
+  "name": "tokyo-night",
+  "mode": "dark",
+  "icons": "Yaru-magenta",
+  "vscode": {
+    "name": "Tokyo Night",
+    "extension": "enkia.tokyo-night"
+  },
+  "has_theme_neovim": true,
+  "backgrounds": [
+    "0-winding-road.jpg",
+    "1-quattro.jpg",
+    "2-swirl-buck.jpg",
+    "3-sunset-lake.png",
+    "4-omakub.jpg",
+    "5-oma-cityscape.jpg",
+    "6-oma.jpg"
+  ],
+  "default_background": "0-winding-road.jpg",
+  "paired_with": null,
+  "accent": "#7aa2f7",
+  "background": "#1a1b26"
+}

@@ -11,8 +11,31 @@
       url = "github:nix-community/disko";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
+    dms.url = "github:AvengeMedia/DankMaterialShell";
+    nixpkgs-unstable.follows = "dms/nixpkgs";
+    quickshell = {
+      url = "github:quickshell-mirror/quickshell";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     codex-desktop-linux.url = "github:ilysenko/codex-desktop-linux";
+    dms-codexbar = {
+      url = "github:zakstam/dms-codexbar";
+      flake = false;
+    };
+    cat-dms = {
+      url = "github:xi-ve/cat-dms";
+      flake = false;
+    };
+    codeIsland-dms = {
+      url = "github:payprays/codeIsland-dms";
+      flake = false;
+    };
+    niri-pip = {
+      # Keep the reviewed v0.2.1 source immutable. This is intentionally not a
+      # moving tag because the daemon controls compositor windows at runtime.
+      url = "github:t1ktakdev/niri-pip/4f2075ce35697169e43889aadd55f0900f1d4710";
+      flake = false;
+    };
     librepods-rust = {
       url = "github:librepods-org/librepods?ref=linux/rust";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -25,7 +48,12 @@
       nixpkgs,
       nixpkgs-unstable,
       home-manager,
+      dms,
+      quickshell,
       codex-desktop-linux,
+      dms-codexbar,
+      cat-dms,
+      codeIsland-dms,
       ...
     }:
     let
@@ -39,6 +67,8 @@
       };
       sharedModules = [
         home-manager.nixosModules.home-manager
+        dms.nixosModules.dank-material-shell
+        dms.nixosModules.greeter
       ];
       mkSystem =
         modules:
@@ -94,6 +124,9 @@
       packages.${system} = {
         granola = self.nixosConfigurations.bonhart.pkgs.callPackage ./packages/granola-linux { };
         librepods = inputs.librepods-rust.packages.${system}.default;
+        niri-pip = self.nixosConfigurations.bonhart.pkgs.callPackage ./packages/niri-pip.nix {
+          src = inputs.niri-pip;
+        };
         mt76-mt7925 =
           self.nixosConfigurations.bonhart.config.boot.kernelPackages.callPackage
             ./packages/mt76-mt7925.nix

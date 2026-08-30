@@ -1,0 +1,78 @@
+[meta]
+version = 1
+name = "Themeport · Osaka Jade"
+description = "Generated from the active Themeport palette"
+variant = "dark"
+inherits = "vicinae-dark"
+
+[colors.core]
+accent = "#509475"
+accent_foreground = "#F7E8B2"
+background = "#111c18"
+foreground = "#C1C497"
+secondary_background = "#23372B"
+border = "#32473B"
+
+[colors.main_window]
+border = "#32473B"
+footer = { background = "colors.core.secondary_background" }
+
+[colors.settings_window]
+border = "#32473B"
+
+[colors.accents]
+blue = "#509475"
+green = "#549e6a"
+magenta = "#D2689C"
+orange = "#a2734b"
+red = "#FF5345"
+yellow = "#459451"
+cyan = "#2DD5B7"
+purple = "#D2689C"
+
+[colors.shortcut]
+border = "colors.core.border"
+
+[colors.text]
+default = "colors.core.foreground"
+muted = "#81B8A8"
+danger = "#FF5345"
+success = "#549e6a"
+placeholder = "#53685B"
+selection = { background = "#509475", foreground = "#F7E8B2" }
+
+[colors.text.links]
+default = "#509475"
+visited = "#D2689C"
+
+[colors.input]
+border = "#32473B"
+border_focus = "#509475"
+border_error = "#FF5345"
+
+[colors.button.primary]
+background = "#23372B"
+foreground = "#C1C497"
+focus = { outline = "colors.core.accent" }
+
+[colors.list.item.hover]
+foreground = "#F7E8B2"
+secondary_foreground = "#C1C497"
+
+[colors.list.item.selection]
+background = "#32473B"
+foreground = "#F7E8B2"
+secondary_background = "#23372B"
+secondary_foreground = "#C1C497"
+
+[colors.grid.item]
+background = "#23372B"
+hover = { outline = "#509475" }
+selection = { outline = "#F7E8B2" }
+
+[colors.scrollbars]
+background = "#32473B"
+
+[colors.loading]
+bar = "#509475"
+spinner = "#C1C497"

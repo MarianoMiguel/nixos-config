@@ -9,15 +9,36 @@
 
 let
   system = pkgs.stdenv.hostPlatform.system;
-  codexDesktop = codex-desktop-linux.packages.${system}.codex-desktop.override {
-    linuxFeatureIds = [ "computer-use-linux" ];
-  };
-  vscodeWithExtensions = pkgs.vscode-with-extensions.override {
-    vscodeExtensions = with pkgs.vscode-extensions; [
-      catppuccin.catppuccin-vsc
-      catppuccin.catppuccin-vsc-icons
-    ];
-  };
+  codexDesktopSource = pkgs.runCommand "codex-desktop-linux-themeport-source" { } ''
+    cp -R ${codex-desktop-linux.outPath}/. "$out/"
+    chmod -R u+w "$out"
+    install -m 0644 \
+      ${../../packages/codex-desktop/omarchy-theme-patch.js} \
+      "$out/linux-features/omarchy-theme/patch.js"
+  '';
+  codexDesktopBase =
+    (codex-desktop-linux.packages.${system}.codex-desktop.override {
+      linuxFeatureIds = [
+        "computer-use-linux"
+        "omarchy-theme"
+      ];
+    }).overrideAttrs
+      (_: {
+        # Electron's app:// renderer cannot load file:// stylesheets. Replace
+        # the upstream link tag with main-process insertCSS, which crosses that
+        # boundary without relaxing the renderer's CSP or sandbox.
+        src = codexDesktopSource;
+      });
+  codexDesktop = codexDesktopBase.overrideAttrs (old: {
+    postInstall = (old.postInstall or "") + ''
+      # The upstream feature hook expects this directory but start.sh does not
+      # currently export it. Pin both inputs so the Omarchy loader works on a
+      # clean installation and follows Themeport's live-generated stylesheet.
+      wrapProgram "$out/bin/codex-desktop" \
+        --set-default CODEX_LINUX_FEATURES_DIR "$out/opt/codex-desktop/.codex-linux/features" \
+        --set-default CODEX_LINUX_OMARCHY_STYLESHEET "/home/mariano/.config/omarchy/current/theme/codex-desktop.css"
+    '';
+  });
   defaultBrowserDesktop = "google-chrome.desktop";
   browserMimeTypes = [
     "text/html"
@@ -252,7 +273,7 @@ in
       fluent-reader
       obsbotCameraControl
       figmaDesktop
-      vscodeWithExtensions
+      vscode
       gearlever
       font-manager
       zedEditorWithCli

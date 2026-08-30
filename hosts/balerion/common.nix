@@ -31,7 +31,7 @@ in
   };
 
   # The 13900KF has no integrated GPU, so Balerion uses the RTX 3080 Ti as its
-  # only display device. DRM modesetting is required by GNOME Wayland.
+  # only display device. DRM modesetting is required by Niri and GNOME Wayland.
   services.xserver.videoDrivers = [ "nvidia" ];
   hardware.nvidia = {
     modesetting.enable = true;

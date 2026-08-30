@@ -61,6 +61,11 @@ in
   # Keep the multi-boot menu available without adding the default five-second
   # pause to every normal startup.
   boot.loader.timeout = 2;
+  # Track the newest stable kernel, matching how Fedora runs this machine.
+  # The Strix Point s2idle and amdgpu paths receive fixes in nearly every
+  # kernel release, and the sleep failures seen here never reproduced on
+  # Fedora's current kernel.
+  boot.kernelPackages = pkgs.linuxPackages_latest;
   boot.extraModulePackages = [ mt76Mt7925 ];
   boot.extraModprobeConfig = ''
     options cfg80211 ieee80211_regdom=AR
@@ -80,7 +85,8 @@ in
   hardware.enableRedistributableFirmware = true;
 
   # This machine is also used unattended as a remote agent host. Keep it awake
-  # when plugged in with the lid closed, while retaining battery hibernation.
+  # when plugged in with the lid closed; on battery the lid still sleeps via
+  # the suspend-then-hibernate policy in modules/nixos/power.nix.
   services.logind.settings.Login.HandleLidSwitchExternalPower = lib.mkForce "ignore";
 
   # This workstation spends most of its time docked as a remote development

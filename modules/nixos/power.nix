@@ -3,23 +3,43 @@
 {
   services.logind.settings.Login = {
     # Some ThinkPad wake paths replay the wake event as a short power-key press
-    # after resume. Let lid close drive hibernation; ignore software power-key
+    # after resume. Let lid close drive sleep; ignore software power-key
     # actions so bogus resume events cannot immediately hibernate or power off.
     HandlePowerKey = "ignore";
     HandlePowerKeyLongPress = "ignore";
-    HandleSuspendKey = "hibernate";
+    HandleSuspendKey = "suspend-then-hibernate";
 
-    HandleLidSwitch = "hibernate";
-    HandleLidSwitchExternalPower = "hibernate";
+    HandleLidSwitch = "suspend-then-hibernate";
+    HandleLidSwitchExternalPower = "suspend-then-hibernate";
     HandleLidSwitchDocked = "ignore";
     HoldoffTimeoutSec = "30s";
   };
 
-  # This hardware exposes only s2idle, which has repeatedly entered sleep but
-  # failed to reach a usable low-power state or resume. Fail closed: use the
-  # dedicated encrypted swap partition for hibernation instead.
+  # Older kernels repeatedly entered s2idle but failed to reach a usable
+  # low-power state or resume, so suspend used to be disabled outright in
+  # favor of hibernation. With boot.kernelPackages tracking the newest stable
+  # kernel this hardware sleeps the way it does on Fedora, so s2idle is
+  # trusted again: suspend-then-hibernate wakes instantly from short lid
+  # closes and falls back to the encrypted swap partition after the delay
+  # below. If s2idle regresses, set AllowSuspend = false to return to pure
+  # hibernation.
   systemd.sleep.settings.Sleep = {
-    AllowSuspend = false;
+    AllowSuspend = true;
+    AllowSuspendThenHibernate = true;
     AllowHibernation = true;
+    HibernateDelaySec = "2h";
+  };
+
+  # In a GNOME session gnome-settings-daemon, not logind, owns the power key
+  # and idle policy, so the logind rules above do not apply there. Mirror
+  # them: replayed power-key events must not act, idle sleep happens only on
+  # battery, and a closed lid on external power keeps this docked agent host
+  # awake.
+  home-manager.users.mariano.dconf.settings."org/gnome/settings-daemon/plugins/power" = {
+    power-button-action = "nothing";
+    lid-close-ac-action = "nothing";
+    lid-close-battery-action = "suspend";
+    sleep-inactive-ac-type = "nothing";
+    sleep-inactive-battery-type = "suspend";
   };
 }

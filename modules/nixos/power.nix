@@ -1,6 +1,17 @@
-{ ... }:
+{ pkgs, ... }:
 
 {
+  # The MT7925 radio does not re-initialise when the kernel restores a
+  # hibernation image onto cold hardware: WiFi comes back dead after a
+  # hibernate/resume cycle. Reload the in-tree driver on resume to force a
+  # fresh PCI probe; NetworkManager then reconnects on the reappearing device.
+  # post-resume.target is reached after suspend and hibernate alike, so this
+  # also covers the suspend-then-hibernate fallback if it is ever re-enabled.
+  powerManagement.resumeCommands = ''
+    ${pkgs.kmod}/bin/modprobe -r mt7925e || true
+    ${pkgs.kmod}/bin/modprobe mt7925e || true
+  '';
+
   services.logind.settings.Login = {
     # Some ThinkPad wake paths replay the wake event as a short power-key press
     # after resume. Let lid close drive hibernation; ignore software power-key

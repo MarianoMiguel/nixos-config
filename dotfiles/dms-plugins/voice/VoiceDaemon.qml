@@ -19,34 +19,48 @@ PluginComponent {
     readonly property string agentSocket: runtimeDir ? runtimeDir + "/voiceagent.sock" : ""
     readonly property string dictationState: runtimeDir ? runtimeDir + "/voxtype/state" : ""
 
-    PluginGlobalVar {
-        id: agentState
-        varName: "agentState"
-        defaultValue: "offline"
+    // Local shadow of the plugin-global state. Kept here so we can read our own
+    // values back in the IpcHandler and re-publish everything once pluginService
+    // is injected (the daemon host assigns it after Component.onCompleted).
+    property string agentState: "offline"
+    property bool agentRunning: false
+    property var agentPending: null
+    property var agentTranscript: []
+    property string dictating: "idle"
+
+    function _publish(varName, value) {
+        if (root.pluginService && root.pluginId)
+            root.pluginService.setGlobalVar(root.pluginId, varName, value);
     }
 
-    PluginGlobalVar {
-        id: agentRunning
-        varName: "agentRunning"
-        defaultValue: false
+    function _setAgentState(value) {
+        root.agentState = value;
+        root._publish("agentState", value);
+    }
+    function _setAgentRunning(value) {
+        root.agentRunning = value;
+        root._publish("agentRunning", value);
+    }
+    function _setAgentPending(value) {
+        root.agentPending = value;
+        root._publish("agentPending", value);
+    }
+    function _setAgentTranscript(value) {
+        root.agentTranscript = value;
+        root._publish("agentTranscript", value);
+    }
+    function _setDictating(value) {
+        root.dictating = value;
+        root._publish("dictating", value);
     }
 
-    PluginGlobalVar {
-        id: agentPending
-        varName: "agentPending"
-        defaultValue: null
-    }
-
-    PluginGlobalVar {
-        id: agentTranscript
-        varName: "agentTranscript"
-        defaultValue: []
-    }
-
-    PluginGlobalVar {
-        id: dictating
-        varName: "dictating"
-        defaultValue: "idle"
+    onPluginServiceChanged: {
+        // Push whatever we already know as soon as the shell wires us up.
+        root._publish("agentState", root.agentState);
+        root._publish("agentRunning", root.agentRunning);
+        root._publish("agentPending", root.agentPending);
+        root._publish("agentTranscript", root.agentTranscript);
+        root._publish("dictating", root.dictating);
     }
 
     DankSocket {
@@ -57,9 +71,9 @@ PluginComponent {
 
         onConnectionStateChanged: {
             if (!linkUp) {
-                agentState.set("offline");
-                agentRunning.set(false);
-                agentPending.set(null);
+                root._setAgentState("offline");
+                root._setAgentRunning(false);
+                root._setAgentPending(null);
             }
         }
 
@@ -80,11 +94,11 @@ PluginComponent {
         if (message.type !== "state")
             return;
 
-        const previous = agentPending.value;
-        agentState.set(message.state || "idle");
-        agentRunning.set(message.running === true);
-        agentPending.set(message.pending || null);
-        agentTranscript.set(message.transcript || []);
+        const previous = root.agentPending;
+        root._setAgentState(message.state || "idle");
+        root._setAgentRunning(message.running === true);
+        root._setAgentPending(message.pending || null);
+        root._setAgentTranscript(message.transcript || []);
 
         // A tool call waiting on an answer is the one thing worth interrupting
         // the user for: nothing happens until it is answered.
@@ -103,9 +117,9 @@ PluginComponent {
         onFileChanged: reload()
         onLoaded: {
             const raw = (text() || "").trim();
-            dictating.set(raw || "idle");
+            root._setDictating(raw || "idle");
         }
-        onLoadFailed: dictating.set("idle")
+        onLoadFailed: root._setDictating("idle")
     }
 
     IpcHandler {
@@ -137,10 +151,10 @@ PluginComponent {
 
         function status(): string {
             return JSON.stringify({
-                agent: agentState.value,
-                running: agentRunning.value,
-                pending: agentPending.value,
-                dictation: dictating.value
+                agent: root.agentState,
+                running: root.agentRunning,
+                pending: root.agentPending,
+                dictation: root.dictating
             });
         }
 

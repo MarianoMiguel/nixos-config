@@ -278,11 +278,13 @@ window-rule {
     open-floating true
 }
 // Blur behind every window: invisible on opaque windows, gives transparent
-// ones (ghostty at 0.9 etc.) a frosted backdrop. Uses the default xray mode,
-// which blurs the wallpaper once instead of the windows beneath — cheap.
+// ones (ghostty at 0.9 etc.) a frosted backdrop. xray=false opts out of the
+// cheap default that blurs only the wallpaper backdrop once, so blur samples
+// the actual windows stacked beneath — real, more expensive per-frame blur.
 window-rule {
     background-effect {
         blur true
+        xray false
     }
 }
 debug {

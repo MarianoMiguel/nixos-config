@@ -8,7 +8,7 @@
   "runUserMatugenTemplates": false,
   "matugenTargetMonitor": "",
   "popupTransparency": 0.9,
-  "dockTransparency": 0,
+  "dockTransparency": 0.8,
   "widgetBackgroundColor": "sch",
   "widgetBackgroundCustomColor": "#6750A4",
   "widgetBackgroundCustomStrength": 0.5,
@@ -153,6 +153,11 @@
       "id": "darkMode",
       "enabled": true,
       "width": 50
+    },
+    {
+      "id": "builtin_tailscale",
+      "enabled": true,
+      "width": 100
     }
   ],
   "showWorkspaceIndex": false,
@@ -260,7 +265,7 @@
   "spotlightSectionViewModes": {},
   "appDrawerSectionViewModes": {},
   "niriOverviewOverlayEnabled": true,
-  "dankLauncherV2Size": "compact",
+  "dankLauncherV2Size": "medium",
   "dankLauncherV2ShowSourceBadges": true,
   "dankLauncherV2BorderEnabled": false,
   "dankLauncherV2BorderThickness": 2,
@@ -270,7 +275,7 @@
   "dankLauncherV2IncludeFilesInAll": false,
   "dankLauncherV2IncludeFoldersInAll": false,
   "launcherUseOverlayLayer": false,
-  "launcherStyle": "spotlight",
+  "launcherStyle": "full",
   "spotlightBarShowModeChips": false,
   "keybindsFloatingWindow": false,
   "useAutoLocation": false,
@@ -436,7 +441,7 @@
     }
   },
   "matugenTemplateNeovimSetBackground": true,
-  "showDock": false,
+  "showDock": true,
   "dockAutoHide": false,
   "dockSmartAutoHide": false,
   "dockUseOverlayLayer": false,
@@ -444,10 +449,10 @@
   "dockRestoreSpecialWorkspaceOnClick": false,
   "dockOpenOnOverview": false,
   "dockPosition": 1,
-  "dockSpacing": 11,
+  "dockSpacing": 12,
   "dockBottomGap": 0,
   "dockMargin": 0,
-  "dockIconSize": 32,
+  "dockIconSize": 40,
   "dockIndicatorStyle": "circle",
   "dockBorderEnabled": false,
   "dockBorderColor": "surfaceText",
@@ -567,7 +572,7 @@
       "id": "default",
       "name": "Main Bar",
       "enabled": true,
-      "position": 1,
+      "position": 0,
       "screenPreferences": [
         "all"
       ],
@@ -584,10 +589,6 @@
       ],
       "rightWidgets": [
         {
-          "id": "workspaceModes",
-          "enabled": true
-        },
-        {
           "id": "codexBar",
           "enabled": true
         },
@@ -597,6 +598,10 @@
         },
         {
           "id": "networkSpeed",
+          "enabled": true
+        },
+        {
+          "id": "workspaceModes",
           "enabled": true
         },
         "systemTray",

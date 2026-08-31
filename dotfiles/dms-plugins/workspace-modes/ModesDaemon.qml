@@ -16,16 +16,30 @@ PluginComponent {
     readonly property string runtimeDir: Quickshell.env("XDG_RUNTIME_DIR") || ""
     readonly property string modesSocket: runtimeDir ? runtimeDir + "/niri-modes.sock" : ""
 
-    PluginGlobalVar {
-        id: modesOutputs
-        varName: "modesOutputs"
-        defaultValue: ({})
+    // Last published state, kept locally so we can re-emit once pluginService
+    // is injected (the daemon host assigns it after Component.onCompleted).
+    property var _outputs: ({})
+    property bool _connected: false
+
+    function _publish(varName, value) {
+        if (root.pluginService && root.pluginId)
+            root.pluginService.setGlobalVar(root.pluginId, varName, value);
     }
 
-    PluginGlobalVar {
-        id: modesConnected
-        varName: "modesConnected"
-        defaultValue: false
+    function _setOutputs(value) {
+        root._outputs = value;
+        root._publish("modesOutputs", value);
+    }
+
+    function _setConnected(value) {
+        root._connected = value;
+        root._publish("modesConnected", value);
+    }
+
+    onPluginServiceChanged: {
+        // Push whatever we already know as soon as the shell wires us up.
+        root._publish("modesConnected", root._connected);
+        root._publish("modesOutputs", root._outputs);
     }
 
     DankSocket {
@@ -35,13 +49,13 @@ PluginComponent {
         connected: root.modesSocket !== ""
 
         onConnectionStateChanged: {
-            modesConnected.set(linkUp);
+            root._setConnected(linkUp);
             if (linkUp) {
                 modes.send({
                     op: "watch"
                 });
             } else {
-                modesOutputs.set({});
+                root._setOutputs({});
             }
         }
 
@@ -61,7 +75,7 @@ PluginComponent {
         }
         if (message.type !== "state")
             return;
-        modesOutputs.set(message.outputs || {});
+        root._setOutputs(message.outputs || {});
     }
 
     Component.onCompleted: console.info("WorkspaceModes: watching", root.modesSocket)

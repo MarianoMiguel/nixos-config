@@ -18,16 +18,30 @@ PluginComponent {
 
     property string outputName: ""
 
-    PluginGlobalVar {
-        id: modesOutputs
-        varName: "modesOutputs"
-        defaultValue: ({})
+    // Mirror the daemon's plugin-global state. getGlobalVar is read on demand
+    // and refreshed whenever the daemon publishes via globalVarChanged.
+    property var modesOutputs: ({})
+    property bool modesConnected: false
+
+    function _refreshGlobals() {
+        if (!root.pluginService || !root.pluginId) {
+            root.modesOutputs = ({});
+            root.modesConnected = false;
+            return;
+        }
+        root.modesOutputs = root.pluginService.getGlobalVar(root.pluginId, "modesOutputs", ({}));
+        root.modesConnected = root.pluginService.getGlobalVar(root.pluginId, "modesConnected", false);
     }
 
-    PluginGlobalVar {
-        id: modesConnected
-        varName: "modesConnected"
-        defaultValue: false
+    onPluginServiceChanged: root._refreshGlobals()
+    Component.onCompleted: root._refreshGlobals()
+
+    Connections {
+        target: root.pluginService
+        function onGlobalVarChanged(changedPluginId, varName) {
+            if (changedPluginId === root.pluginId)
+                root._refreshGlobals();
+        }
     }
 
     readonly property var modeOptions: [
@@ -52,7 +66,7 @@ PluginComponent {
     ]
 
     readonly property var outputState: {
-        const all = modesOutputs.value;
+        const all = root.modesOutputs;
         if (!all || !root.outputName)
             return null;
         return all[root.outputName] || null;
@@ -69,7 +83,7 @@ PluginComponent {
     }
 
     readonly property color pillColor: {
-        if (!modesConnected.value)
+        if (!root.modesConnected)
             return Theme.surfaceVariantText;
         return currentMode === "tile" ? Theme.surfaceText : Theme.primary;
     }
@@ -124,7 +138,7 @@ PluginComponent {
             id: popout
 
             headerText: "Workspace mode"
-            detailsText: root.modesConnected.value
+            detailsText: root.modesConnected
                 ? "Applies only to this monitor's current workspace"
                 : "niri-modes is not running"
             showCloseButton: true

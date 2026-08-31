@@ -35,11 +35,12 @@ in
 
   networking.hostName = "bonhart";
 
-  # Bonhart keeps the EULA-gated DisplayLink driver off. This used to live only
-  # in the machine-local storage.nix, which a flake checkout outside /etc/nixos
-  # cannot see (it is gitignored), so keep it here as a tracked default. Plain
-  # mkDefault lets storage.nix still override it when present.
-  mariano.displaylink.enable = lib.mkDefault false;
+  # The Elgato Prompter teleprompter is a DisplayLink device (USB 17e9:ff1a),
+  # so it only comes up as a display with the EULA-gated DisplayLink stack
+  # (evdi + the proprietary DisplayLinkManager). Enable it here as a tracked
+  # setting: a flake checkout outside /etc/nixos cannot see the gitignored
+  # storage.nix, so the choice must live in a committed file.
+  mariano.displaylink.enable = true;
 
   services.localWebHosting = {
     enable = true;

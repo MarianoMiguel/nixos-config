@@ -1,13 +1,17 @@
-{ pkgs, ... }:
+{ lib, pkgs, ... }:
 
 {
   # The MT7925 radio does not re-initialise when the kernel restores a
   # hibernation image onto cold hardware: WiFi comes back dead after a
   # hibernate/resume cycle. Reload the in-tree driver on resume to force a
   # fresh PCI probe; NetworkManager then reconnects on the reappearing device.
-  # post-resume.target is reached after suspend and hibernate alike, so this
-  # also covers the suspend-then-hibernate fallback if it is ever re-enabled.
-  powerManagement.resumeCommands = ''
+  #
+  # mkForce so this survives alongside displaylink.nix, which also claims
+  # resumeCommands with mkForce (its DisplayLinkManager pipe handling). Two
+  # forced definitions of this lines-typed option concatenate, so both the
+  # WiFi reload and the DisplayLink resume run; a plain definition here would
+  # instead be dropped the moment DisplayLink is enabled.
+  powerManagement.resumeCommands = lib.mkForce ''
     ${pkgs.kmod}/bin/modprobe -r mt7925e || true
     ${pkgs.kmod}/bin/modprobe mt7925e || true
   '';

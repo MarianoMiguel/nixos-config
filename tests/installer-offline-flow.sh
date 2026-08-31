@@ -84,9 +84,14 @@ touch \
   "$scratch/test-mariano-mutable-dotfile-seed/niri/dms/binds.kdl" \
   "$scratch/test-mariano-mutable-dotfile-seed/nvim/lazy-lock.json" \
   "$scratch/test-mariano-mutable-dotfile-seed/themeport/neovim/generated.lua"
+# Mutable dotfiles are out-of-store symlinks into the installed user's home
+# state; in the live installer session they dangle by design and must still
+# count as present payload.
+ln -s /nonexistent/mutable-state-target "$scratch/dangling-mutable-dotfile"
 printf '%s\n' \
   "$scratch/system" \
   "$scratch/disko-script" \
+  "$scratch/dangling-mutable-dotfile" \
   "$scratch/test-mariano-mutable-dotfile-seed" \
   > "$scratch/requisites"
 printf '%s\n' "$scratch/system" "$scratch/disko-script" > "$scratch/requisites-without-home-seed"

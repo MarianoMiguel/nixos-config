@@ -403,7 +403,11 @@ verify_install_payload() {
   fi
 
   while IFS= read -r path; do
-    [[ -e $path ]] ||
+    # -e follows symlinks, and the mutable-dotfile store paths are
+    # out-of-store symlinks into Mariano's home state, which does not exist
+    # in the live session. They dangle here by design; the store object that
+    # matters is the symlink itself, so accept -L as present.
+    [[ -e $path || -L $path ]] ||
       die "The installer USB is missing part of the offline payload. Recreate it before erasing a disk."
   done < "$requisites_file"
 

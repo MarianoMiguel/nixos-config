@@ -311,6 +311,9 @@ include "voice.kdl"
 // per-workspace tile/float/focus modes (Mod+Alt+Space and friends)
 include "modes.kdl"
 
+// trackpad-friendly resize: Mod+Shift+click cycles width, Mod+Alt+Shift+scroll fine-tunes
+include "resize.kdl"
+
 // niri-pip is the single owner for browser PiP detection, floating, geometry
 // and workspace following. Its daemon writes only this optional opacity rule.
 include optional=true "niri-pip-runtime.kdl"

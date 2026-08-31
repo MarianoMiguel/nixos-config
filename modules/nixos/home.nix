@@ -213,6 +213,7 @@ in
             | .systemMenu.enabled = true
             | .themePicker.enabled = true
             | .wallpaperPicker.enabled = true
+            | .workspaceModes.enabled = true
           ' "$plugin_settings" > "$temporary"
           $DRY_RUN_CMD ${pkgs.coreutils}/bin/install -m 0600 "$temporary" "$plugin_settings"
           ${pkgs.coreutils}/bin/rm -f "$temporary"
@@ -386,6 +387,9 @@ in
           dotDir = config.home.homeDirectory;
           autosuggestion.enable = true;
           syntaxHighlighting.enable = true;
+          # Run the Claude Code CLI with permission prompts skipped by default.
+          # Escape with `command claude` or `\claude` for a prompted session.
+          shellAliases.claude = "claude --dangerously-skip-permissions";
           oh-my-zsh = {
             enable = true;
             theme = "robbyrussell";
@@ -418,6 +422,7 @@ in
           "niri/config.kdl".source = ../../dotfiles/niri/config.kdl;
           "niri/manifesto.kdl".source = ../../dotfiles/niri/manifesto.kdl;
           "niri/modes.kdl".source = ../../dotfiles/niri/modes.kdl;
+          "niri/resize.kdl".source = ../../dotfiles/niri/resize.kdl;
           "niri/style-toggles.kdl".source = ../../dotfiles/niri/style-toggles.kdl;
           "niri/themeport.kdl".source = ../../dotfiles/niri/themeport.kdl;
           "niri/voice.kdl".source = ../../dotfiles/niri/voice.kdl;

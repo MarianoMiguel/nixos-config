@@ -1,0 +1,20 @@
+// Trackpad-friendly window resizing. niri hardcodes interactive drag-resize
+// to Mod+right-mouse-drag, which is awkward on a ThinkPad trackpad, so these
+// binds resize the focused window without ever needing the right button.
+binds {
+    // One click steps the focused column through the preset widths
+    // (1/3 -> 1/2 -> 2/3, see preset-column-widths). Click = resize.
+    Mod+Shift+MouseLeft repeat=false hotkey-overlay-title="Resize: cycle column width preset" {
+        switch-preset-column-width;
+    }
+
+    // Hold Mod+Alt+Shift and two-finger scroll for fine 10% width steps.
+    // Plain Mod+scroll stays the workspace switcher, and Mod+Shift / Mod+Ctrl
+    // scroll stay column navigation, so nothing existing is displaced.
+    Mod+Alt+Shift+WheelScrollUp cooldown-ms=50 {
+        set-column-width "+10%";
+    }
+    Mod+Alt+Shift+WheelScrollDown cooldown-ms=50 {
+        set-column-width "-10%";
+    }
+}

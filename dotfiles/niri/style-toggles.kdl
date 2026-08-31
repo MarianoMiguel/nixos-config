@@ -2,7 +2,12 @@ binds {
     Mod+Ctrl+G repeat=false hotkey-overlay-title="Toggle Window Gaps" {
         spawn "niri-style-toggle" "gaps";
     }
-    Mod+Ctrl+B repeat=false hotkey-overlay-title="Toggle Window Borders" {
+    // Mod+Ctrl+B is the squared-off (corner radius) toggle, matching the
+    // voiceagent overlay's expectation. Borders moved to Mod+Ctrl+Shift+B.
+    Mod+Ctrl+B repeat=false hotkey-overlay-title="Toggle Window Corner Radius" {
+        spawn "niri-style-toggle" "radius";
+    }
+    Mod+Ctrl+Shift+B repeat=false hotkey-overlay-title="Toggle Window Borders" {
         spawn "niri-style-toggle" "border";
     }
 }

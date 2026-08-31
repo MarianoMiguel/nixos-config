@@ -104,7 +104,7 @@ let
     Type=Application
     Name=Install Mariano NixOS
     Comment=Install the encrypted Balerion or Bonhart configuration
-    Exec=${pkgs.kdePackages.konsole}/bin/konsole --fullscreen --hold -e ${pkgs.sudo}/bin/sudo ${guidedInstaller}/bin/install-mariano-nixos
+    Exec=${pkgs.kdePackages.konsole}/bin/konsole --fullscreen --hold -e /run/wrappers/bin/sudo ${guidedInstaller}/bin/install-mariano-nixos
     Icon=drive-harddisk
     Terminal=false
     Categories=System;

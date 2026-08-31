@@ -16,6 +16,15 @@ if rg -q '(^|[[:space:]])disko-install([[:space:]\\]|$)|--option offline true' \
   exit 1
 fi
 
+# Setuid binaries only work through the wrapper directory on NixOS. A nix
+# store sudo path in the autostart entry aborts with "must be owned by uid 0
+# and have the setuid bit set" on every boot of the ISO.
+if rg -q '\$\{pkgs\.sudo\}' "$repo/hosts/installer/configuration.nix"; then
+  printf 'Installer desktop entry must use /run/wrappers/bin/sudo, not store sudo.\n' >&2
+  exit 1
+fi
+rg -q '/run/wrappers/bin/sudo' "$repo/hosts/installer/configuration.nix"
+
 # The installer wrapper pins the offline system and disko store paths for
 # every host the image embeds, and tells the wizard which hosts those are.
 rg -q 'INSTALLER_AVAILABLE_HOSTS=' "$repo/hosts/installer/configuration.nix"

@@ -90,10 +90,15 @@ PluginComponent {
 
     function setMode(mode) {
         const command = ["niri-modes", "set", mode];
-        if (root.outputName !== "") {
-            command.push("--output");
-            command.push(root.outputName);
-        }
+        // Only scope the switch to this monitor when the daemon actually reports
+        // an output by this name. A stale or mismatched Screen.name would
+        // otherwise pass --output <unknown>, which niri-modes rejects, turning
+        // the click into a silent no-op; falling back to the focused output is
+        // always correct on a single monitor.
+        const outputs = root.modesOutputs;
+        if (root.outputName !== "" && outputs && outputs[root.outputName])
+            command.push("--output", root.outputName);
+        console.info("WorkspaceModes: setMode", mode, "output=" + root.outputName, "scoped=" + (command.length > 3));
         Quickshell.execDetached(command);
     }
 

@@ -110,6 +110,22 @@ while IFS= read -r mountpoint; do
 done < <(lsblk -nrpo MOUNTPOINTS "$disk" | tr ' ' '\n' | sort -r)
 
 dd if="$iso" of="$disk" bs=4M status=progress conv=fsync
+
+# Read the image back and compare before touching the partition table. A
+# truncated copy or a failing/fake-capacity stick otherwise boots into an
+# installer whose offline payload is silently incomplete, which the wizard
+# only catches at the last gate before erasing a disk. Drop the page cache
+# first so the comparison reads the device, not the bytes cached during dd.
+if [[ ${SKIP_VERIFY:-} != 1 ]]; then
+  echo "Verifying the written image ($(numfmt --to=iec-i --suffix=B "$iso_size_bytes") read back)..."
+  sync
+  echo 3 > /proc/sys/vm/drop_caches
+  if ! cmp -n "$iso_size_bytes" "$iso" "$disk"; then
+    echo "The USB contents do not match the ISO. The drive may be failing or lying about its capacity; try another stick or port, or rerun with SKIP_VERIFY=1 to accept the risk." >&2
+    exit 1
+  fi
+fi
+
 partprobe "$disk" || true
 udevadm settle
 

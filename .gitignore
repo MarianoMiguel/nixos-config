@@ -8,3 +8,4 @@ payload/
 __pycache__/
 .omo/
 hosts/*/storage.nix
+*.iso

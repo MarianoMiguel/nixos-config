@@ -9,7 +9,6 @@ let
   brotherHL1210W = pkgs.callPackage ../../packages/cups-brother-hl1210w.nix {
     inherit pkgs;
   };
-  mt76Mt7925 = config.boot.kernelPackages.callPackage ../../packages/mt76-mt7925.nix { };
   setPowerProfileForPowerSource = pkgs.writeShellScript "set-power-profile-for-power-source" ''
     profile=balanced
     if [ -r /sys/class/power_supply/AC/online ] \
@@ -66,7 +65,6 @@ in
   # kernel release, and the sleep failures seen here never reproduced on
   # Fedora's current kernel.
   boot.kernelPackages = pkgs.linuxPackages_latest;
-  boot.extraModulePackages = [ mt76Mt7925 ];
   boot.extraModprobeConfig = ''
     options cfg80211 ieee80211_regdom=AR
     options mt7925e disable_aspm=Y
@@ -78,9 +76,11 @@ in
   # 0x800 = DC_DISABLE_IPS, 0x10 = DC_DISABLE_PSR.
   boot.kernelParams = [ "amdgpu.dcdebugmask=0x810" ];
 
-  # Keep the MT7925 on conservative runtime settings. The patched mt76 modules
-  # above replace only the Wi-Fi driver, so the stock NixOS kernel remains
-  # binary-cacheable.
+  # Keep the MT7925 on conservative runtime settings. The Wi-Fi driver is the
+  # kernel's own mt7925e: the out-of-tree patch set this used to carry stopped
+  # compiling once the ieee80211_mgmt layout changed, and upstream has not
+  # tracked a kernel this new. The modprobe options above apply to the in-tree
+  # module unchanged.
   networking.networkmanager.wifi.powersave = false;
   hardware.enableRedistributableFirmware = true;
 

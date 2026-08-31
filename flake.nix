@@ -139,10 +139,6 @@
         niri-pip = self.nixosConfigurations.bonhart.pkgs.callPackage ./packages/niri-pip.nix {
           src = inputs.niri-pip;
         };
-        mt76-mt7925 =
-          self.nixosConfigurations.bonhart.config.boot.kernelPackages.callPackage
-            ./packages/mt76-mt7925.nix
-            { };
         installerIso = self.nixosConfigurations.installer.config.system.build.isoImage;
         installerIsoBalerion =
           self.nixosConfigurations."installer-balerion".config.system.build.isoImage;

@@ -101,6 +101,15 @@ let
     ];
     text = builtins.readFile ../../scripts/niri-scratchpad.sh;
   };
+  # Backs the bottom-edge wallpaper click surface (dotfiles/quickshell/desktop-click).
+  niriFocusEmpty = pkgs.writeShellApplication {
+    name = "niri-focus-empty";
+    runtimeInputs = with pkgs; [
+      jq
+      niri
+    ];
+    text = builtins.readFile ../../scripts/niri-focus-empty.sh;
+  };
   networkSpeedtest = pkgs.writeShellApplication {
     name = "mariano-network-speedtest";
     runtimeInputs = with pkgs; [
@@ -538,6 +547,7 @@ in
     xwayland-satellite
     niriScratchpad
     niriStyleToggle
+    niriFocusEmpty
     networkSpeedtest
     tailscaleConnect
     codexbar

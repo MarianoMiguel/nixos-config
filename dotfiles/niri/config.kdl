@@ -178,6 +178,9 @@ environment {
 spawn-at-startup "systemctl" "--user" "start" "dms.service"
 // LibrePods exposes AirPods battery and Apple-only controls through DMS's tray.
 spawn-at-startup "systemctl" "--user" "start" "librepods.service"
+// Bottom-edge wallpaper strip (its own Quickshell instance on the Bottom layer):
+// click empty wallpaper beside the dock to jump to the empty workspace.
+spawn-at-startup "qs" "-c" "desktop-click"
 hotkey-overlay {
     skip-at-startup
 }

@@ -438,6 +438,12 @@ in
           "niri/toggles/border.kdl".source = mutableDotfile "niri/toggles/border.kdl";
           "niri/toggles/radius.kdl".source = mutableDotfile "niri/toggles/radius.kdl";
 
+          # Standalone Quickshell instance (qs -c desktop-click), spawned by the
+          # niri config: a bottom-edge wallpaper strip that jumps to the empty
+          # workspace on click. See dotfiles/quickshell/desktop-click/shell.qml.
+          "quickshell/desktop-click/shell.qml".source =
+            ../../dotfiles/quickshell/desktop-click/shell.qml;
+
           "matugen/config.toml".source = ../../dotfiles/matugen/config.toml;
           "matugen/templates/neovim-dankcolors.lua".source =
             ../../dotfiles/matugen/templates/neovim-dankcolors.lua;

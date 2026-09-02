@@ -477,6 +477,13 @@ in
         src = ../../dotfiles/dms-plugins/network-speed;
         settings.enabled = true;
       };
+      # Globe icon left of the clock: Campana, New York, Los Angeles and
+      # Sydney times in a popout, converted by `date` because the QML JS
+      # engine has no timezone database.
+      worldClock = {
+        src = ../../dotfiles/dms-plugins/world-clock;
+        settings.enabled = true;
+      };
       # Per-monitor switcher for the current workspace's window mode. The
       # niri-modes daemon in modules/nixos/workspace-modes.nix owns the state;
       # this widget is a view and a remote control.

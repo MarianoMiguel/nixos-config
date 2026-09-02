@@ -215,6 +215,7 @@ in
             | .themePicker.enabled = true
             | .wallpaperPicker.enabled = true
             | .workspaceModes.enabled = true
+            | .worldClock.enabled = true
           ' "$plugin_settings" > "$temporary"
           $DRY_RUN_CMD ${pkgs.coreutils}/bin/install -m 0600 "$temporary" "$plugin_settings"
           ${pkgs.coreutils}/bin/rm -f "$temporary"
@@ -274,6 +275,29 @@ in
             ' "$plugin_settings" > "$temporary"
             $DRY_RUN_CMD ${pkgs.coreutils}/bin/install -m 0600 "$temporary" "$plugin_settings"
             $DRY_RUN_CMD ${pkgs.coreutils}/bin/touch "$qol_bar_marker"
+            ${pkgs.coreutils}/bin/rm -f "$temporary"
+          fi
+
+          # One-time placement: the world clock globe sits immediately left
+          # of the clock. A marker rather than a standing rule, so moving it
+          # later in the bar editor sticks.
+          world_clock_marker=${lib.escapeShellArg "${mutableState}/dms/.world-clock-bar-v1"}
+          if [ ! -e "$world_clock_marker" ]; then
+            temporary="$(${pkgs.coreutils}/bin/mktemp)"
+            ${pkgs.jq}/bin/jq '
+              def widget_id: if type == "object" then .id else . end;
+              .barConfigs |= map(
+                .centerWidgets = (
+                  [.centerWidgets[]? | select(widget_id != "worldClock")]
+                  | map(if widget_id == "clock"
+                        then [{"id": "worldClock", "enabled": true}, .]
+                        else [.] end)
+                  | add // []
+                )
+              )
+            ' "$settings" > "$temporary"
+            $DRY_RUN_CMD ${pkgs.coreutils}/bin/install -m 0600 "$temporary" "$settings"
+            $DRY_RUN_CMD ${pkgs.coreutils}/bin/touch "$world_clock_marker"
             ${pkgs.coreutils}/bin/rm -f "$temporary"
           fi
 

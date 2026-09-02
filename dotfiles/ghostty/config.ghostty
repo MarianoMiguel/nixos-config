@@ -1,7 +1,7 @@
 # Managed by themeport; `themeport set <name>` rewrites the theme file this
 # name resolves to (~/.config/ghostty/themes/themeport).
 theme = themeport
-background-opacity = 0.9
+background-opacity = 0.95
 window-padding-x = 12
 window-padding-y = 12
 window-padding-balance = true

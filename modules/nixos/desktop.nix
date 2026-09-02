@@ -155,7 +155,9 @@ in
   services.xserver.xkb = {
     layout = "us,es";
     variant = ",";
-    options = "grp:shift_caps_toggle";
+    # compose:ralt: Right Alt then two keys types accents and symbols on the
+    # US layout without switching to the Spanish one.
+    options = "grp:shift_caps_toggle,compose:ralt";
   };
 
   services.pulseaudio.enable = false;

@@ -22,15 +22,16 @@ PluginComponent {
     // relative to the first place, the home zone.
     property var times: []
 
-    // The bar shows one away place while it is inside business hours
-    // (09:00 to 18:00 local), in list order: New York through the morning,
-    // Sydney in the evening. Outside those hours the pill is just the globe.
+    // The bar pill surfaces one away place, and only while it is inside
+    // business hours (09:00 to 18:00 local); outside those hours the pill is
+    // just the globe. New York is the one worth glancing at, so the pill
+    // tracks it rather than whichever city happens to be awake.
+    readonly property string pillZone: "America/New_York"
     readonly property var awayNow: {
-        for (let i = 1; i < root.places.length; i++) {
-            const entry = root.times[i];
-            if (entry && entry.hour >= 9 && entry.hour < 18)
-                return { short: root.places[i].short, time: entry.time };
-        }
+        const i = root.places.findIndex(p => p.zone === root.pillZone);
+        const entry = i > 0 ? root.times[i] : null;
+        if (entry && entry.hour >= 9 && entry.hour < 18)
+            return { short: root.places[i].short, time: entry.time };
         return null;
     }
 

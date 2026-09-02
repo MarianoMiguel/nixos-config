@@ -1,16 +1,13 @@
 // Trackpad-friendly window resizing. niri hardcodes interactive drag-resize
-// to Mod+right-mouse-drag, which is awkward on a ThinkPad trackpad, so these
-// binds resize the focused window without ever needing a right-button drag.
-// (Configurable drag buttons are upstream niri issue #372; until then there
-// is no way to bind real resize handles to another gesture.)
+// to Mod+right-mouse-drag, which is awkward on a ThinkPad trackpad, so our
+// niri is patched (overlays/niri-mod-shift-drag-resize.nix) to start the
+// same resize on Mod+Shift+left-drag: real handles, no right button.
+// Mod+Shift+MouseLeft must stay UNBOUND here — a bind would consume the
+// press before the drag gesture is considered.
 // All width/height actions here also apply to floating windows.
 binds {
-    // One click steps the focused window through the preset widths; a
-    // two-finger click steps through the preset heights (see
-    // preset-column-widths / preset-window-heights). Click = resize.
-    Mod+Shift+MouseLeft repeat=false hotkey-overlay-title="Resize: cycle width preset" {
-        switch-preset-column-width;
-    }
+    // Two-finger click steps through the preset heights
+    // (see preset-window-heights). Click = resize.
     Mod+Shift+MouseRight repeat=false hotkey-overlay-title="Resize: cycle height preset" {
         switch-preset-window-height;
     }

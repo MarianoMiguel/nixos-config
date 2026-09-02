@@ -30,6 +30,7 @@
   # this rebuilds nothing.
   nixpkgs.overlays = [
     (import ../../overlays/crates-io-static-mirror.nix)
+    (import ../../overlays/niri-mod-shift-drag-resize.nix)
   ];
 
   # Keep workstation builds independent of the generated NixOS manual. The

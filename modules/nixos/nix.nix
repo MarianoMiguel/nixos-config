@@ -4,10 +4,11 @@
       "nix-command"
       "flakes"
     ];
-    trusted-users = [
-      "root"
-      "@wheel"
-    ];
+    # A Nix trusted user is root-equivalent: it can hand the daemon its own
+    # substituters and signing keys. Keeping wheel out of it preserves the
+    # separate administrator password; the system updater already runs the
+    # rebuild through sudo.
+    trusted-users = [ "root" ];
   };
 
   nix.gc = {

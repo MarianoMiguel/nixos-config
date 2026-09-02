@@ -672,8 +672,48 @@ ${lib.optionalString fingerprintEnabled ''          "Security · Set up fingerpr
     '';
   };
 
+  updateNudge = pkgs.writeShellApplication {
+    name = "mariano-update-nudge";
+    runtimeInputs = with pkgs; [
+      coreutils
+      jq
+      libnotify
+    ];
+    text = ''
+      set -eu
+
+      lock=/etc/nixos/flake.lock
+      [ -r "$lock" ] || exit 0
+      locked=$(jq -r '.nodes[.nodes[.root].inputs.nixpkgs].locked.lastModified // empty' "$lock")
+      [ -n "$locked" ] || exit 0
+      age_days=$(( ( $(date +%s) - locked ) / 86400 ))
+      [ "$age_days" -ge 14 ] || exit 0
+      notify-send --app-name="NixOS" --icon=system-software-update \
+        "NixOS inputs are $age_days days old" \
+        "Open System Actions › Update NixOS when convenient."
+    '';
+  };
 in
 {
+  # Nudge, never auto-update: twice a week, if the locked nixpkgs is older
+  # than two weeks, one notification points at System Actions › Update NixOS.
+  systemd.user.services.nixos-update-nudge = {
+    description = "Remind about stale NixOS inputs";
+    serviceConfig = {
+      Type = "oneshot";
+      ExecStart = "${updateNudge}/bin/mariano-update-nudge";
+    };
+  };
+  systemd.user.timers.nixos-update-nudge = {
+    description = "Check the age of the locked NixOS inputs";
+    wantedBy = [ "timers.target" ];
+    timerConfig = {
+      OnCalendar = "Mon,Thu 10:00";
+      Persistent = true;
+      RandomizedDelaySec = "20m";
+    };
+  };
+
   environment.systemPackages = [
     actionRunner
     dmsPicker

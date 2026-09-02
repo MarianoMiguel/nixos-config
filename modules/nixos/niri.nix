@@ -560,12 +560,19 @@ in
   systemd.user.services = {
     dms = {
       overrideStrategy = "asDropin";
-      # No `path` here on purpose. A non-empty path makes NixOS emit
-      # Environment=PATH for the unit, replacing the session manager's PATH
-      # (wrappers, ~/.local/bin, the system profile) with a restricted one
-      # that every app DMS launches inherits; terminals started from the
-      # launcher then resolved sudo to the non-setuid store binary. With PATH
-      # unset the unit inherits the manager environment, which is complete.
+      # A user service does NOT inherit the manager's show-environment PATH:
+      # with no path it gets systemd's minimal built-in PATH and cannot find
+      # `qs`, so DMS never starts. So set an explicit, COMPLETE path. It must
+      # stay complete because DMS's launcher hands this same PATH to the apps
+      # it starts: /run/wrappers first so a launched terminal resolves the
+      # setuid sudo, then ~/.local/bin for native CLIs, the per-user profile,
+      # and the system profile for qs and the rest.
+      path = [
+        "/run/wrappers"
+        "%h/.local"
+        "/etc/profiles/per-user/mariano"
+        "/run/current-system/sw"
+      ];
       serviceConfig.CPUWeight = 150;
     };
 

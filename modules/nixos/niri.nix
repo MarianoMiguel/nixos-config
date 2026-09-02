@@ -560,10 +560,12 @@ in
   systemd.user.services = {
     dms = {
       overrideStrategy = "asDropin";
-      # Defining a NixOS-managed drop-in gives the service a restricted PATH.
-      # DMS launches Quickshell and helper tools by executable name, so retain
-      # the active system path that was available before this override.
-      path = [ "/run/current-system/sw" ];
+      # No `path` here on purpose. A non-empty path makes NixOS emit
+      # Environment=PATH for the unit, replacing the session manager's PATH
+      # (wrappers, ~/.local/bin, the system profile) with a restricted one
+      # that every app DMS launches inherits; terminals started from the
+      # launcher then resolved sudo to the non-setuid store binary. With PATH
+      # unset the unit inherits the manager environment, which is complete.
       serviceConfig.CPUWeight = 150;
     };
 

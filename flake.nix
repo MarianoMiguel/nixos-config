@@ -12,7 +12,10 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     dms.url = "github:AvengeMedia/DankMaterialShell";
-    nixpkgs-unstable.follows = "dms/nixpkgs";
+    # A real unstable pin. Following DMS's nixpkgs made "unstable" whatever DMS
+    # last locked, which trailed the stable pin by months. Only DaVinci Resolve
+    # (21, newer than the stable channel's 20.x) comes from here.
+    nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
     quickshell = {
       url = "github:quickshell-mirror/quickshell";
       inputs.nixpkgs.follows = "nixpkgs";

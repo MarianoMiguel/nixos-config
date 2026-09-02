@@ -90,17 +90,6 @@ let
       esac
     '';
   };
-  niriScratchpad = pkgs.writeShellApplication {
-    name = "niri-scratchpad";
-    runtimeInputs = with pkgs; [
-      coreutils
-      jq
-      libnotify
-      niri
-      util-linux
-    ];
-    text = builtins.readFile ../../scripts/niri-scratchpad.sh;
-  };
   # Backs the bottom-edge wallpaper click surface (dotfiles/quickshell/desktop-click).
   niriFocusEmpty = pkgs.writeShellApplication {
     name = "niri-focus-empty";
@@ -545,7 +534,6 @@ in
     wl-mirror
     wtype
     xwayland-satellite
-    niriScratchpad
     niriStyleToggle
     niriFocusEmpty
     networkSpeedtest

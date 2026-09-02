@@ -32,8 +32,6 @@ QtObject {
 
         { name: "Picture-in-Picture Controls", icon: "picture_in_picture_alt", section: "Windows", detail: "Open the pinned-window control palette", action: "pip-controls", keywords: "floating pin" },
         { name: "Toggle Pin Focused Window", icon: "push_pin", section: "Windows", detail: "Keep the focused window visible across workspaces", action: "pip-toggle-pin", keywords: "floating picture" },
-        { name: "Toggle Scratchpad", icon: "inventory_2", section: "Windows", detail: "Show or hide this display's scratchpad", action: "scratchpad-toggle", keywords: "hide workspace" },
-        { name: "Send Window to Scratchpad", icon: "move_to_inbox", section: "Windows", detail: "Move the focused window into the scratchpad", action: "scratchpad-send", keywords: "hide workspace" },
 
         { name: "Power & Sleep Settings", icon: "bedtime", section: "Power", detail: "Configure suspend, locking and screen timeouts", action: "power-settings", keywords: "battery idle suspend" },
 

@@ -240,7 +240,7 @@ let
       action="''${1:-}"
       if [ "''${MARIANO_ACTION_DRY_RUN:-0}" = 1 ]; then
         case "$action" in
-          settings|display-settings|display-toggle-internal|capture-full|capture-region|capture-video|capture-audio-toggle|network-settings|network-speed|bluetooth-toggle|wifi-toggle|power-settings|keep-awake-toggle|notifications-toggle|notifications-1h|notifications-morning|notifications-resume|night-light-toggle|dictate|reminders|lock-settings|lock-preview|lock-now|pip-controls|pip-toggle-pin|scratchpad-toggle|scratchpad-send|style-gaps|style-border|theme|wallpaper|proton-vpn|fingerprint|update)
+          settings|display-settings|display-toggle-internal|capture-full|capture-region|capture-video|capture-audio-toggle|network-settings|network-speed|bluetooth-toggle|wifi-toggle|power-settings|keep-awake-toggle|notifications-toggle|notifications-1h|notifications-morning|notifications-resume|night-light-toggle|dictate|reminders|lock-settings|lock-preview|lock-now|pip-controls|pip-toggle-pin|style-gaps|style-border|theme|wallpaper|proton-vpn|fingerprint|update)
             printf '%s\n' "$action"
             exit 0
             ;;
@@ -430,20 +430,6 @@ let
             exit 1
           fi
           ;;
-        scratchpad-toggle)
-          if [ "''${XDG_CURRENT_DESKTOP:-}" != niri ]; then
-            notify-send "Scratchpad" "Scratchpads are available in the Niri session."
-            exit 1
-          fi
-          exec /run/current-system/sw/bin/niri-scratchpad toggle
-          ;;
-        scratchpad-send)
-          if [ "''${XDG_CURRENT_DESKTOP:-}" != niri ]; then
-            notify-send "Scratchpad" "Scratchpads are available in the Niri session."
-            exit 1
-          fi
-          exec /run/current-system/sw/bin/niri-scratchpad send
-          ;;
         style-gaps)
           if [ "''${XDG_CURRENT_DESKTOP:-}" != niri ]; then
             notify-send "Window gaps" "Window gap toggling is available in the Niri session."
@@ -526,8 +512,6 @@ Capture · Start or stop region recording
 Capture · Toggle system audio in recordings
 Windows · Picture-in-Picture controls
 Windows · Toggle pin focused window
-Windows · Toggle scratchpad for this display
-Windows · Move focused window to scratchpad
 Power · Power & Sleep settings
 Focus · Silence notifications
 Focus · Silence notifications for 1 hour
@@ -565,8 +549,6 @@ CATALOG
           "Capture · Toggle system audio in recordings"|"Toggle system audio in recordings") action=capture-audio-toggle ;;
           "Windows · Picture-in-Picture controls"|"Picture-in-Picture controls") action=pip-controls ;;
           "Windows · Toggle pin focused window"|"Toggle pin focused window") action=pip-toggle-pin ;;
-          "Windows · Toggle scratchpad for this display"|"Toggle scratchpad for this display") action=scratchpad-toggle ;;
-          "Windows · Move focused window to scratchpad"|"Move focused window to scratchpad") action=scratchpad-send ;;
           "Power · Power & Sleep settings"|"Power & Sleep settings") action=power-settings ;;
           "Focus · Silence notifications"|"Silence notifications") action=notifications-toggle ;;
           "Focus · Silence notifications for 1 hour"|"Silence notifications for 1 hour") action=notifications-1h ;;
@@ -611,8 +593,7 @@ ${lib.optionalString fingerprintEnabled ''          "Security · Set up fingerpr
             ;;
           Windows)
             choice=$(gum filter --height 9 --header "Windows · type to filter · esc/back to categories" \
-              "Picture-in-Picture controls" "Toggle pin focused window" \
-              "Toggle scratchpad for this display" "Move focused window to scratchpad" "Back") || return 0
+              "Picture-in-Picture controls" "Toggle pin focused window" "Back") || return 0
             ;;
           Power)
             choice=$(gum filter --height 9 --header "Power · type to filter · esc/back to categories" \

@@ -87,12 +87,6 @@ binds {
     }
 
     // === Window Management ===
-    Super+S repeat=false hotkey-overlay-title="Toggle Scratchpad for This Display" {
-        spawn "niri-scratchpad" "toggle";
-    }
-    Super+Shift+S repeat=false hotkey-overlay-title="Move Window to This Display's Scratchpad" {
-        spawn "niri-scratchpad" "send";
-    }
     Mod+Q repeat=false { close-window; }
     Mod+F { maximize-column; }
     Mod+Shift+F { fullscreen-window; }

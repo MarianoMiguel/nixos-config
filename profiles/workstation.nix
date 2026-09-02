@@ -1,6 +1,7 @@
 {
   imports = [
     ../modules/nixos/apps.nix
+    ../modules/nixos/backups.nix
     ../modules/nixos/capture.nix
     ../modules/nixos/desktop.nix
     ../modules/nixos/development.nix

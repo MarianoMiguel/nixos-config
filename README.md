@@ -49,7 +49,7 @@ Everything can also be passed explicitly, including payload files for the
 remaining USB space:
 
 ```sh
-sudo ./scripts/write-installer-usb.sh /dev/disk/by-id/<usb-disk> result-installer/iso/mariano-nixos-installer.iso /path/to/mariano-personal-payload.tar.zst
+sudo ./scripts/write-installer-usb.sh /dev/disk/by-id/<usb-disk> result-installer/iso/mariano-nixos-installer.iso /path/to/mariano-personal-payload.tar.zst.age
 ```
 
 ## Install A Machine
@@ -289,7 +289,9 @@ and [updates](https://github.com/basecamp/omarchy/blob/quattro/manual/30-updates
 ## Personal Payload
 
 Secrets and large personal data are not stored in Nix or committed to git.
-Create a payload archive separately:
+Create a payload archive separately. It is encrypted with a passphrase you
+choose (age), because the installer USB's payload partition is exFAT and
+cannot protect the SSH keys and tokens inside with file permissions:
 
 ```sh
 ./scripts/create-personal-payload.sh /path/to/usb-or-backup
@@ -298,14 +300,37 @@ Create a payload archive separately:
 If no destination is passed, the script writes to `~/nixos-usb-payload` so it
 does not accidentally archive its own output inside `~/Development`.
 
-Restore it after install:
+Restore it after install; the script asks for the passphrase:
 
 ```sh
-sudo ./scripts/restore-personal-payload.sh /path/to/mariano-personal-payload.tar.zst /home/mariano
+sudo ./scripts/restore-personal-payload.sh /path/to/mariano-personal-payload.tar.zst.age /home/mariano
 ```
 
 The payload includes `~/Development`, SSH keys, nvm/npm state, and selected
-developer app auth/config directories when they exist.
+developer app auth/config directories when they exist. Archives made before
+payloads were encrypted (`.tar.zst`) still restore.
+
+## Backups
+
+`modules/nixos/backups.nix` snapshots `/home/mariano` with restic every night
+at 03:00 plus up to an hour of jitter, catching up after sleep, and keeps 7
+daily, 4 weekly and 6 monthly snapshots. Caches, package stores, container
+images, game libraries and model weights are excluded. The destination and its
+credentials live outside the repository, so the job stays inert until both
+files below exist:
+
+```sh
+# Any restic repository: a mounted disk path, sftp:, rest:, s3:, b2:, ...
+echo 's3:https://s3.us-west-004.backblazeb2.com/my-bucket/bonhart' | sudo tee /var/lib/restic/repository
+# Credentials the repository needs, as KEY=value lines (leave empty for paths).
+sudo install -m 0600 /dev/null /var/lib/restic/environment
+# The repository password. Save it in the password manager first: without it
+# every snapshot is unreadable, and it must survive losing this disk.
+sudo sh -c 'umask 077; printf %s "$(openssl rand -base64 32)" > /var/lib/restic/password'
+
+sudo systemctl start restic-backups-home   # first run initialises the repository
+sudo restic-home snapshots                 # wrapper preloaded with the same settings
+```
 
 ## Validate
 

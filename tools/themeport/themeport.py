@@ -613,6 +613,115 @@ TPL_OUTPUTS = {
 }
 
 
+# Fonts match the DMS settings policy (fontFamily / monoFontFamily) so Qt
+# and KDE applications type-set like everything else on the desktop.
+KDE_FONT_FAMILY = "Inter"
+KDE_MONO_FAMILY = "JetBrainsMonoNL NFM"
+
+
+def _kde_rgb(hexstr: str) -> str:
+    r, g, b = _rgb(hexstr)
+    return f"{r},{g},{b}"
+
+
+def _kde_font(family: str, size: int) -> str:
+    # Qt 6 QFont::toString: family, pointsize, pixelsize, styleHint, weight,
+    # style, underline, strikeout, fixedPitch, then the capitalisation and
+    # stretch defaults.
+    return f"{family},{size},-1,5,400,0,0,0,0,0,0,0,0,0,0,1"
+
+
+def render_kdeglobals(theme: Theme) -> str:
+    """KDE colour scheme, fonts and icon theme for Qt and KDE applications.
+
+    The KDE platform theme (plasma-integration) reads this for every Qt app,
+    and KColorScheme reads it in KDE apps such as Dolphin and Kate, so they
+    follow the theme's palette instead of falling back to Breeze Light. The
+    palette roles follow Breeze: View is the page, Window and Button are the
+    raised chrome around it, Tooltip and Complementary sit deepest.
+    """
+    c = theme.colors
+    mode = theme.mode
+    page = c["background"]
+    raised = c["lighter_background"] if mode == "dark" else c["dark_background"]
+    deep = c["darker_background"]
+    fg = c["foreground"]
+    muted = c["muted"]
+    accent = c["accent"]
+    on_accent = _on_color(accent, c, mode)
+    link = c.get("blue") or accent
+    visited = c.get("purple") or c.get("magenta") or muted
+    negative = c.get("red") or accent
+    neutral = c.get("orange") or c.get("yellow") or accent
+    positive = c.get("green") or accent
+
+    def group(name: str, normal: str, alternate: str, text: str, inactive: str = muted) -> str:
+        return "\n".join([
+            f"[Colors:{name}]",
+            f"BackgroundNormal={_kde_rgb(normal)}",
+            f"BackgroundAlternate={_kde_rgb(alternate)}",
+            f"ForegroundNormal={_kde_rgb(text)}",
+            f"ForegroundInactive={_kde_rgb(inactive)}",
+            f"ForegroundActive={_kde_rgb(accent)}",
+            f"ForegroundLink={_kde_rgb(link)}",
+            f"ForegroundVisited={_kde_rgb(visited)}",
+            f"ForegroundNegative={_kde_rgb(negative)}",
+            f"ForegroundNeutral={_kde_rgb(neutral)}",
+            f"ForegroundPositive={_kde_rgb(positive)}",
+            f"DecorationFocus={_kde_rgb(accent)}",
+            f"DecorationHover={_kde_rgb(accent)}",
+            "",
+        ])
+
+    sections = [
+        "[General]",
+        "ColorScheme=Themeport",
+        "Name=Themeport",
+        "shadeSortColumn=true",
+        f"font={_kde_font(KDE_FONT_FAMILY, 10)}",
+        f"fixed={_kde_font(KDE_MONO_FAMILY, 10)}",
+        f"menuFont={_kde_font(KDE_FONT_FAMILY, 10)}",
+        f"toolBarFont={_kde_font(KDE_FONT_FAMILY, 10)}",
+        f"smallestReadableFont={_kde_font(KDE_FONT_FAMILY, 8)}",
+        "",
+        "[Icons]",
+        f"Theme={theme.icons or 'breeze-dark' if mode == 'dark' else theme.icons or 'breeze'}",
+        "",
+        "[KDE]",
+        "widgetStyle=Breeze",
+        "SingleClick=false",
+        "ShowIconsOnPushButtons=true",
+        "",
+        group("View", page, raised, fg),
+        group("Window", raised, page, fg),
+        group("Button", raised, deep, fg),
+        group("Selection", accent, accent, on_accent, on_accent),
+        group("Tooltip", deep, raised, fg),
+        group("Complementary", deep, raised, fg),
+        group("Header", raised, page, fg),
+        "[WM]",
+        f"activeBackground={_kde_rgb(raised)}",
+        f"activeForeground={_kde_rgb(fg)}",
+        f"inactiveBackground={_kde_rgb(deep)}",
+        f"inactiveForeground={_kde_rgb(muted)}",
+        f"activeBlend={_kde_rgb(raised)}",
+        f"inactiveBlend={_kde_rgb(deep)}",
+        "",
+        "[ColorEffects:Inactive]",
+        "Enable=false",
+        "",
+        "[ColorEffects:Disabled]",
+        f"Color={_kde_rgb(muted)}",
+        "ColorAmount=0",
+        "ColorEffect=0",
+        "ContrastAmount=0.65",
+        "ContrastEffect=1",
+        "IntensityAmount=0.1",
+        "IntensityEffect=2",
+    ]
+    return "\n".join(sections) + "\n"
+
+
 def render_all(theme: Theme, other: Theme | None) -> dict[str, str]:
     out: dict[str, str] = {}
     out["dms/theme.json"] = json.dumps(build_dms_theme(theme, other), indent=2) + "\n"
@@ -624,6 +733,7 @@ def render_all(theme: Theme, other: Theme | None) -> dict[str, str]:
         out[rel] = render_template(tpl_path.read_text(), theme.colors)
 
     out["chrome/color.json"] = render_browser_policy(theme.colors)
+    out["kdeglobals"] = render_kdeglobals(theme)
     out["tmux/themeport.conf"] = render_tmux(theme.colors)
     out["vicinae/themeport.toml"] = render_vicinae_theme(theme)
 

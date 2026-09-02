@@ -398,6 +398,10 @@ in
           "alacritty/themeport.toml".source = mutableDotfile "themeport/alacritty/themeport.toml";
           "btop/themes/themeport.theme".source = mutableDotfile "themeport/btop/themes/themeport.theme";
           "tmux/themeport.conf".source = mutableDotfile "themeport/tmux/themeport.conf";
+          # Qt and KDE applications (Dolphin, Kate, Kdenlive, Krita) read their
+          # palette, fonts and icon theme from here through the KDE platform
+          # theme, so they follow Themeport like GTK does.
+          "kdeglobals".source = mutableDotfile "themeport/kdeglobals";
           # ChatGPT Community's omarchy-theme feature watches this conventional
           # path and reloads the generated palette in open windows.
           "omarchy/current/theme/codex-desktop.css".source =

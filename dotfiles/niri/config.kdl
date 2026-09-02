@@ -181,8 +181,8 @@ environment {
   XDG_CURRENT_DESKTOP "niri"
   XDG_SESSION_DESKTOP "niri"
   XDG_CONFIG_DIRS "/etc/xdg"
-  QT_QPA_PLATFORMTHEME "gtk3"
-  QT_QPA_PLATFORMTHEME_QT6 "gtk3"
+  QT_QPA_PLATFORMTHEME "kde"
+  QT_QPA_PLATFORMTHEME_QT6 "kde"
 }
 spawn-at-startup "systemctl" "--user" "start" "dms.service"
 // LibrePods exposes AirPods battery and Apple-only controls through DMS's tray.

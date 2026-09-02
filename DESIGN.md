@@ -19,7 +19,7 @@ The desktop follows the active DMS theme; extensions never introduce fixed color
 | Warning | `Theme.warning` | Quota at 60 percent or more |
 | Error | `Theme.error` | Quota at 80 percent or more and errors |
 
-Color communicates state only. Themeport and DMS remain the only palette owners.
+Color communicates state only. Themeport and DMS remain the only palette owners; Qt and KDE applications follow Themeport through its rendered `kdeglobals` and the KDE platform theme.
 
 ## 3. Typography
 

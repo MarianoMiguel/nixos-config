@@ -160,6 +160,16 @@ in
     options = "grp:shift_caps_toggle,compose:ralt";
   };
 
+  # Qt applications use the KDE platform theme and Breeze so they read
+  # Themeport's rendered ~/.config/kdeglobals for colours, fonts and icons.
+  # The former gtk3 platform theme only carried GTK's base palette, which is
+  # why KDE apps stayed light while the desktop was dark.
+  qt = {
+    enable = true;
+    platformTheme = "kde";
+    style = "breeze";
+  };
+
   services.pulseaudio.enable = false;
   security.rtkit.enable = true;
   services.pipewire = {

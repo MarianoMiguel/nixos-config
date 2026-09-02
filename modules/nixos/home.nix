@@ -110,6 +110,13 @@ in
 
         programs.home-manager.enable = true;
 
+        # systemd --user reads environment.d before the graphical session
+        # starts, so this is the one place a PATH entry reaches everything:
+        # units, the compositor, apps DMS launches and their terminals.
+        # home.sessionPath above only reaches login shells, behind a guard
+        # the graphical session inherits without the PATH it came with.
+        systemd.user.sessionVariables.PATH = "$HOME/.opencode/bin:$HOME/.local/bin:$HOME/.lmstudio/bin:$PATH";
+
         # Seed writable application state once, then leave later live changes
         # alone. This keeps the same initial configuration on a new host without
         # tying either machine to the source checkout's absolute path.
@@ -231,108 +238,12 @@ in
           $DRY_RUN_CMD ${pkgs.coreutils}/bin/install -m 0600 "$temporary" "$plugin_settings"
           ${pkgs.coreutils}/bin/rm -f "$temporary"
 
-          # Migrate installations whose seeded DMS policy left every automatic
-          # privacy action disabled. Apply this once so Power & Sleep remains a
-          # real user-facing settings surface after the secure defaults land.
-          idle_policy_marker=${lib.escapeShellArg "${mutableState}/dms/.secure-idle-v1"}
-          if [ ! -e "$idle_policy_marker" ]; then
-            temporary="$(${pkgs.coreutils}/bin/mktemp)"
-            ${pkgs.jq}/bin/jq '
-              .acLockTimeout = 600
-              | .acPostLockMonitorTimeout = 60
-              | .batteryLockTimeout = 300
-              | .batteryPostLockMonitorTimeout = 30
-            ' "$settings" > "$temporary"
-            $DRY_RUN_CMD ${pkgs.coreutils}/bin/install -m 0600 "$temporary" "$settings"
-            $DRY_RUN_CMD ${pkgs.coreutils}/bin/touch "$idle_policy_marker"
-            ${pkgs.coreutils}/bin/rm -f "$temporary"
-          fi
-
-          # This is a one-time layout migration, not a permanent policy. It
-          # replaces the duplicate idle pill with the consolidated Focus panel
-          # and adds the explicit-run speed test while preserving every other
-          # bar choice and its order.
-          qol_bar_marker=${lib.escapeShellArg "${mutableState}/dms/.qol-bar-v1"}
-          if [ ! -e "$qol_bar_marker" ]; then
-            plugin_settings=${lib.escapeShellArg "${mutableState}/dms/plugin-settings.json"}
-            temporary="$(${pkgs.coreutils}/bin/mktemp)"
-            ${pkgs.jq}/bin/jq '
-              def widget_id: if type == "object" then .id else . end;
-              .barConfigs |= map(
-                .rightWidgets as $widgets
-                | .rightWidgets = (
-                    [$widgets[]? | select(widget_id == "codexBar")]
-                    + [
-                        {"id": "focus", "enabled": true},
-                        {"id": "networkSpeed", "enabled": true}
-                      ]
-                    + [$widgets[]? | select(
-                        widget_id != "codexBar"
-                        and widget_id != "focus"
-                        and widget_id != "networkSpeed"
-                        and widget_id != "idleInhibitor"
-                      )]
-                  )
-              )
-            ' "$settings" > "$temporary"
-            $DRY_RUN_CMD ${pkgs.coreutils}/bin/install -m 0600 "$temporary" "$settings"
-            ${pkgs.jq}/bin/jq '
-              .focus.enabled = true
-              | .networkSpeed.enabled = true
-            ' "$plugin_settings" > "$temporary"
-            $DRY_RUN_CMD ${pkgs.coreutils}/bin/install -m 0600 "$temporary" "$plugin_settings"
-            $DRY_RUN_CMD ${pkgs.coreutils}/bin/touch "$qol_bar_marker"
-            ${pkgs.coreutils}/bin/rm -f "$temporary"
-          fi
-
-          # One-time placement: the world clock globe sits immediately left
-          # of the clock. A marker rather than a standing rule, so moving it
-          # later in the bar editor sticks.
-          world_clock_marker=${lib.escapeShellArg "${mutableState}/dms/.world-clock-bar-v1"}
-          if [ ! -e "$world_clock_marker" ]; then
-            temporary="$(${pkgs.coreutils}/bin/mktemp)"
-            ${pkgs.jq}/bin/jq '
-              def widget_id: if type == "object" then .id else . end;
-              .barConfigs |= map(
-                .centerWidgets = (
-                  [.centerWidgets[]? | select(widget_id != "worldClock")]
-                  | map(if widget_id == "clock"
-                        then [{"id": "worldClock", "enabled": true}, .]
-                        else [.] end)
-                  | add // []
-                )
-              )
-            ' "$settings" > "$temporary"
-            $DRY_RUN_CMD ${pkgs.coreutils}/bin/install -m 0600 "$temporary" "$settings"
-            $DRY_RUN_CMD ${pkgs.coreutils}/bin/touch "$world_clock_marker"
-            ${pkgs.coreutils}/bin/rm -f "$temporary"
-          fi
-
           # Keep Niri's DMS application launcher and dedicated system-menu
           # bindings consistent even if an older generation seeded this
           # mutable file. Vicinae is reserved for GNOME.
           $DRY_RUN_CMD ${pkgs.coreutils}/bin/install -m 0600 \
             ${dotfiles}/niri/dms/binds.kdl \
             ${lib.escapeShellArg "${mutableState}/niri/dms/binds.kdl"}
-        '';
-
-        # KScreen/KWin output state cannot configure niri and used to compete
-        # with DMS's checked-in outputs.kdl. Archive the two known stores once
-        # instead of deleting user state.
-        home.activation.retireKdeDisplayState = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-          archive=${lib.escapeShellArg "${mutableState}/retired-kde-display"}
-          $DRY_RUN_CMD ${pkgs.coreutils}/bin/mkdir -p "$archive"
-
-          retire_display_state() {
-            source=$1
-            destination=$2
-            if { [ -e "$source" ] || [ -L "$source" ]; } && [ ! -e "$destination" ]; then
-              $DRY_RUN_CMD ${pkgs.coreutils}/bin/mv "$source" "$destination"
-            fi
-          }
-
-          retire_display_state "$HOME/.local/share/kscreen" "$archive/kscreen"
-          retire_display_state "$HOME/.config/kwinoutputconfig.json" "$archive/kwinoutputconfig.json"
         '';
 
         # Vicinae owns a writable settings file so its GUI can keep managing
@@ -366,52 +277,22 @@ in
           ${pkgs.coreutils}/bin/rm -f "$temporary" "$source_json"
         '';
 
-        # Older Themeport generations stored the active image inside a
-        # per-theme subdirectory. Move DMS's three remembered wallpaper slots
-        # to their equivalent flat catalog paths so DankDash immediately sees
-        # every available image after an upgrade.
-        home.activation.migrateDmsWallpaperLibrary = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
-          session=${lib.escapeShellArg "${mutableState}/dms/session.json"}
-
-          migrate_wallpaper_key() {
-            key=$1
-            value=$(${pkgs.jq}/bin/jq -r --arg key "$key" '.[$key] // ""' "$session")
-            prefix="$HOME/Pictures/Wallpapers/themeport/"
-            case "$value" in
-              "$prefix"*/*)
-                relative=''${value#"$prefix"}
-                theme=''${relative%%/*}
-                filename=''${relative#*/}
-                canonical="$HOME/Pictures/Wallpapers/$theme--$filename"
-                if [ -f "$canonical" ]; then
-                  temporary="$(${pkgs.coreutils}/bin/mktemp)"
-                  ${pkgs.jq}/bin/jq --arg key "$key" --arg value "$canonical" \
-                    '.[$key] = $value' "$session" > "$temporary"
-                  $DRY_RUN_CMD ${pkgs.coreutils}/bin/install -m 0600 "$temporary" "$session"
-                  ${pkgs.coreutils}/bin/rm -f "$temporary"
-                fi
-                ;;
-            esac
-          }
-
-          if ${pkgs.jq}/bin/jq -e 'type == "object"' "$session" >/dev/null 2>&1; then
-            migrate_wallpaper_key wallpaperPath
-            migrate_wallpaper_key wallpaperPathLight
-            migrate_wallpaper_key wallpaperPathDark
-          fi
-        '';
-
-        # Retire the upstream wordmark images copied by older generations.
-        # The flat catalog is declarative, but Themeport's former per-theme
-        # fallback directory is writable and therefore needs a one-time cleanup.
-        home.activation.removeOmarchyWordmarkWallpapers = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
-          legacy_root="$HOME/Pictures/Wallpapers/themeport"
-          if [ -d "$legacy_root" ]; then
-            $DRY_RUN_CMD ${pkgs.findutils}/bin/find "$legacy_root" \
-              -mindepth 2 -maxdepth 2 \( -type f -o -type l \) \
-              -iname '*omarchy*' -delete
-          fi
-        '';
+        # Shell memory: atuin makes history searchable (Ctrl+R) and keeps the
+        # up arrow plain; zoxide learns directories from use (z, zi).
+        programs.atuin = {
+          enable = true;
+          enableZshIntegration = true;
+          flags = [ "--disable-up-arrow" ];
+          settings = {
+            update_check = false;
+            # Local only until an account is registered with `atuin login`.
+            auto_sync = false;
+          };
+        };
+        programs.zoxide = {
+          enable = true;
+          enableZshIntegration = true;
+        };
 
         programs.zsh = {
           enable = true;

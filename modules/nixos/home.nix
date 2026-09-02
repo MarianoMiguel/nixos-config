@@ -99,7 +99,8 @@ in
             "$HOME/.nvm/versions/node/v24.16.0/bin"
           ];
           sessionVariables = {
-            BROWSER = "google-chrome-stable";
+            # BROWSER stays unset; see the note in apps.nix, it breaks
+            # xdg-settings' default-browser detection.
             DEFAULT_BROWSER = "google-chrome.desktop";
             EDITOR = "nvim";
             SHELL = "/run/current-system/sw/bin/zsh";

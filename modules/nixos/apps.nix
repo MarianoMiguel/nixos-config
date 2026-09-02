@@ -252,8 +252,13 @@ in
         GenAILocalFoundationalModelSettings = 1;
       };
 
+  # BROWSER must stay unset: xdg-settings gives it precedence over the
+  # xdg.mime defaults above and reverse-maps the binary to a desktop file,
+  # matching whichever Chrome PWA launcher it finds first. Chrome then sees
+  # the wrong desktop file, nags to become the default, and its fix-it
+  # button is also refused while BROWSER is set. Consumers that used it
+  # (tailscale-systray) fall back to xdg-open, which follows xdg.mime.
   environment.sessionVariables = {
-    BROWSER = "google-chrome-stable";
     DEFAULT_BROWSER = defaultBrowserDesktop;
   };
 

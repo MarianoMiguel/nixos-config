@@ -240,22 +240,6 @@ generated opacity rule. Multi-monitor follow modes other than the default
 `follow-workspace` remain opt-in because they need testing on the physical
 display layout.
 
-### Niri scratchpads
-
-Press `Super+Shift+S` to move the focused window into the scratchpad for the
-current display. Press `Super+S` to summon it as a centered floating window;
-press the same shortcut while it is focused to hide it again. Each display has
-an independent stack, so moving a window on the laptop panel never replaces the
-scratchpad on an external monitor. When a stack contains several windows,
-hiding the current one rotates to the next window for the following summon.
-
-The controller talks only to Niri's local IPC socket and stores window IDs in a
-private per-login runtime directory. It has no daemon, network access, plugin
-loader or elevated privileges. Its storage workspace is created at the bottom
-of each display only when first used, preserving the existing numbered
-workspace positions at login. Niri does not yet support truly hidden
-workspaces, so that storage workspace remains visible in the overview.
-
 ### Niri workspace modes
 
 Every workspace has one of three window modes, switched per monitor from the

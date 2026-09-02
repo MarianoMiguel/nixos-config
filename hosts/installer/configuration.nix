@@ -162,6 +162,8 @@ in
     vim
     wget
     zstd
+    # Decrypts the personal payload during restore.
+    age
   ];
 
   system.activationScripts.guidedInstallerDesktop = ''

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-payload=${1:?Usage: restore-personal-payload.sh PAYLOAD.tar.zst [target-home]}
+payload=${1:?Usage: restore-personal-payload.sh PAYLOAD.tar.zst.age [target-home]}
 target_home=${2:-/home/mariano}
 owner=${OWNER:-}
 
@@ -12,13 +12,31 @@ fi
 
 mkdir -p "$target_home"
 
-tar \
-  --extract \
-  --file "$payload" \
-  --xattrs \
-  --acls \
-  --preserve-permissions \
-  --directory "$target_home"
+extract() {
+  tar \
+    --extract \
+    --zstd \
+    --xattrs \
+    --acls \
+    --preserve-permissions \
+    --directory "$target_home"
+}
+
+case "$payload" in
+  *.age)
+    if ! command -v age >/dev/null 2>&1; then
+      echo "age is required to decrypt $payload" >&2
+      exit 1
+    fi
+    # age asks for the passphrase on the terminal.
+    age --decrypt "$payload" | extract
+    ;;
+  *)
+    # Archives created before payloads were encrypted.
+    echo "Restoring an unencrypted payload; recreate it with the current script afterwards." >&2
+    extract < "$payload"
+    ;;
+esac
 
 if [[ -z "$owner" ]]; then
   if id mariano >/dev/null 2>&1; then

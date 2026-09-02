@@ -4,11 +4,11 @@ set -euo pipefail
 usage() {
   cat >&2 <<'USAGE'
 Usage:
-  write-installer-usb.sh [USB_DISK] [ISO] [PAYLOAD.tar.zst ...]
+  write-installer-usb.sh [USB_DISK] [ISO] [PAYLOAD.tar.zst.age ...]
 
 Examples:
   sudo ./scripts/write-installer-usb.sh
-  sudo ./scripts/write-installer-usb.sh /dev/disk/by-id/usb-General_USB_Disk_FC0301A76E537-0:0 result-installer/iso/mariano-nixos-installer.iso payload/*.tar.zst
+  sudo ./scripts/write-installer-usb.sh /dev/disk/by-id/usb-General_USB_Disk_FC0301A76E537-0:0 result-installer/iso/mariano-nixos-installer.iso payload/*.tar.zst.age
 
 With no USB_DISK (or "auto"), removable disks are listed and one is chosen
 interactively. With no ISO (or "auto"), the newest ISO under

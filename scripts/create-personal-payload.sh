@@ -1,10 +1,23 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# The installer USB's payload partition is exFAT, which has no permission
+# bits, and the archive holds SSH private keys and API tokens. So the archive
+# is encrypted with an age passphrase before it touches disk, and everything
+# this script writes is private to the invoking user.
+umask 077
+
 destination=${1:-"$HOME/nixos-usb-payload"}
 timestamp=$(date -u +%Y%m%dT%H%M%SZ)
-payload="$destination/mariano-personal-payload-$timestamp.tar.zst"
+payload="$destination/mariano-personal-payload-$timestamp.tar.zst.age"
 manifest="$destination/mariano-personal-payload-$timestamp.manifest.txt"
+
+for tool in age tar zstd; do
+  if ! command -v "$tool" >/dev/null 2>&1; then
+    echo "Missing required tool: $tool" >&2
+    exit 1
+  fi
+done
 
 mkdir -p "$destination"
 
@@ -59,22 +72,24 @@ fi
   echo "Source home: $HOME"
   echo "Destination: $destination_real"
   echo "Excluded: node_modules directories"
+  echo "Encryption: age passphrase (restore-personal-payload.sh asks for it)"
   echo "Payload contains private data, including SSH keys if .ssh exists."
   printf '%s\n' "${existing[@]}"
 } > "$manifest"
 
+echo "Choose the payload passphrase. It is the only way to read this archive." >&2
 tar \
   --create \
-  --file "$payload" \
   --ignore-failed-read \
   --warning=no-file-changed \
   --xattrs \
   --acls \
   --preserve-permissions \
-  --use-compress-program='zstd -T0 -10' \
   --directory "$HOME" \
   "${tar_excludes[@]}" \
-  "${existing[@]}"
+  "${existing[@]}" \
+  | zstd -T0 -10 \
+  | age --passphrase --output "$payload"
 
 printf '%s\n' "$payload"
 printf '%s\n' "$manifest"

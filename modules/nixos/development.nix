@@ -49,6 +49,8 @@
     docker-compose
 
     git
+    # Encrypts the personal payload archive (scripts/create-personal-payload.sh).
+    age
     curl
     wget
     unzip

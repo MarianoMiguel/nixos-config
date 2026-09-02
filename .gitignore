@@ -3,6 +3,7 @@ result-*
 .direnv
 .envrc
 *.tar.zst
+*.tar.zst.age
 *.manifest.txt
 payload/
 __pycache__/

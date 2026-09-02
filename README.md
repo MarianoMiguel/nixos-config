@@ -83,12 +83,12 @@ previously made recovery installs fragile.
 
 ### Bonhart kernel and Wi-Fi stability
 
-Bonhart intentionally uses the stock NixOS 6.18 LTS kernel so kernel updates
-come from the binary cache. Its MT7925 fixes are packaged separately from the
-kernel using the pinned
-[`zbowling/mt7925` v1.5.0 driver](https://github.com/zbowling/mt7925/tree/v1.5.0).
-Only those Wi-Fi modules rebuild when the kernel ABI changes; the full kernel
-does not.
+Bonhart tracks the newest stable kernel (`linuxPackages_latest`) because the
+Strix Point s2idle and amdgpu paths receive fixes in nearly every release. Its
+Wi-Fi uses the in-tree `mt7925e` driver; the earlier out-of-tree MT7925
+package was dropped once mainline caught up. The one out-of-tree module left,
+DisplayLink's `evdi`, is the concrete cost of tracking the latest kernel: a
+release it does not yet support fails the build rather than the feature.
 
 Bonhart also sets the Argentina wireless regulatory domain, disables Wi-Fi
 power saving and MT7925 PCI ASPM, and keeps redistributable firmware current
@@ -98,11 +98,12 @@ kernel. Workstation systems retain five systemd-boot generations, run weekly
 garbage collection for store paths older than 14 days, and automatically
 optimise the Nix store.
 
-Bonhart leaves DisplayLink disabled because Synaptics requires
-accepting a separate EULA and the driver archive cannot legally be redistributed
-inside the ISO. To enable it, accept the vendor terms, add the pinned archive to
-the local Nix store, then change `mariano.displaylink.enable` to `true` in the
-machine-local `hosts/bonhart/storage.nix` before rebuilding:
+Bonhart enables DisplayLink (`mariano.displaylink.enable = true` in the
+committed `hosts/bonhart/common.nix`, so a checkout outside `/etc/nixos` sees
+it) for the Elgato Prompter. Synaptics requires accepting a separate EULA and
+the driver archive cannot legally be redistributed inside the ISO, so before
+the first build accept the vendor terms and add the pinned archive to the local
+Nix store:
 
 ```sh
 nix-prefetch-url --name displaylink-620.zip 'https://www.synaptics.com/sites/default/files/exe_files/2025-09/DisplayLink%20USB%20Graphics%20Software%20for%20Ubuntu6.2-EXE.zip'
@@ -121,10 +122,11 @@ applet, Discover and PackageKit are deliberately not installed as competing
 control surfaces. KDE applications such as Dolphin, Krita and Kdenlive remain
 available and follow the same GTK-derived light/dark appearance.
 
-`Alt+Space` opens the Vicinae application launcher in Niri and GNOME;
-`Super+Period` is a second Niri spelling. `Super+Space` opens the separate,
-searchable System Actions menu in both sessions. System actions are not
-exported as fake applications, so they no longer crowd Vicinae's results.
+In Niri, `Super+Period` opens the DMS application launcher and `Alt+Space`
+or `Super+Space` opens the separate, searchable System Actions menu. In GNOME,
+`Alt+Space` opens the Vicinae application launcher and `Super+Space` opens
+System Actions; Vicinae only runs in the GNOME session. System actions are not
+exported as fake applications, so they do not crowd launcher results.
 `mariano-system-menu --categories` offers the same commands as a browsable
 nested menu. Important entries include:
 
@@ -137,9 +139,11 @@ nested menu. Important entries include:
 - the 22 pinned official Omarchy themes (including Osaka Jade), their bundled
   non-wordmark wallpapers, and window border/gap toggles;
 - fingerprint enrollment on Bonhart; and
-- a fixed NixOS updater that updates only `nixpkgs`, Home Manager and Disko,
-  rejects a writable or symlinked `/etc/nixos`, restores the old lock file on
-  failure, and leaves third-party inputs pinned.
+- a fixed NixOS updater that updates only `nixpkgs`, Home Manager and Disko.
+  It resolves `/etc/nixos` (a symlink to the administrator's checkout), refuses
+  trees owned by anyone else or writable by group or others, updates the lock
+  file as the checkout owner, restores the old lock file on failure, and
+  leaves third-party inputs pinned.
 
 The guided installer already installs Steam and Proton VPN as part of the
 workstation closure.

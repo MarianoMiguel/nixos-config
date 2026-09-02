@@ -136,6 +136,53 @@
 
       nixosModules."local-web-hosting" = import ./modules/nixos/local-web-hosting.nix;
 
+      # Every tests/*.sh script runs under `nix flake check`. They are
+      # hermetic: fake binaries under tests/bin, fixtures under tests/fixtures.
+      checks.${system} =
+        let
+          pkgs = self.nixosConfigurations.bonhart.pkgs;
+          lib = pkgs.lib;
+          testNames = map (lib.removeSuffix ".sh") (
+            builtins.filter (lib.hasSuffix ".sh") (builtins.attrNames (builtins.readDir ./tests))
+          );
+        in
+        lib.genAttrs testNames (
+          name:
+          pkgs.runCommand "test-${name}"
+            {
+              nativeBuildInputs = with pkgs; [
+                bash
+                coreutils
+                findutils
+                gnugrep
+                gnused
+                gnutar
+                jq
+                ncurses
+                python3
+                ripgrep
+                util-linux
+                zstd
+              ];
+            }
+            ''
+              cp -r ${self} src
+              chmod -R u+w src
+              cd src
+              patchShebangs tests scripts
+              # The tests write fake binaries with env shebangs at runtime and
+              # the sandbox has no /usr/bin/env; point those at store paths.
+              sed -i \
+                -e "s|#!/usr/bin/env bash|#!${pkgs.runtimeShell}|" \
+                -e "s|#!/usr/bin/env python3|#!${pkgs.python3}/bin/python3|" \
+                tests/*.sh
+              export XDG_RUNTIME_DIR="$TMPDIR/runtime"
+              mkdir -p "$XDG_RUNTIME_DIR"
+              bash tests/${name}.sh
+              touch "$out"
+            ''
+        );
+
       packages.${system} = {
         granola = self.nixosConfigurations.bonhart.pkgs.callPackage ./packages/granola-linux { };
         librepods = inputs.librepods-rust.packages.${system}.default;

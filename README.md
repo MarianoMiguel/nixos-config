@@ -338,3 +338,6 @@ sudo restic-home snapshots                 # wrapper preloaded with the same set
 nix flake check
 nixos-rebuild dry-build --flake .#standard
 ```
+
+`nix flake check` also runs every script in `tests/` as a hermetic derivation.
+Run one on its own with `nix build .#checks.x86_64-linux.niri-modes`.

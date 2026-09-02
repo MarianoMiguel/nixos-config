@@ -1,0 +1,23 @@
+mode = "light"
+
+accent = "#205ea6"
+selection = "#e6e4d9"
+muted = "#6f6e69"
+
+background = "#fffcf0"
+dark_background = "#f2f0e5"
+darker_background = "#e6e4d9"
+lighter_background = "#ffffff"
+
+foreground = "#100f0f"
+dark_foreground = "#343331"
+light_foreground = "#575653"
+bright_foreground = "#1c1b1a"
+
+red = "#af3029"
+yellow = "#ad8301"
+orange = "#bc5215"
+green = "#66800b"
+cyan = "#24837b"
+blue = "#205ea6"
+magenta = "#a02f6f"

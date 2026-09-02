@@ -7,13 +7,13 @@
     isNormalUser = true;
     description = "Mariano";
     extraGroups = [
-      "input"
       "lp"
       "networkmanager"
       "scanner"
       "uinput"
       "video"
       "wheel"
+      "ydotool"
     ];
     packages = with pkgs; [
       kdePackages.kate

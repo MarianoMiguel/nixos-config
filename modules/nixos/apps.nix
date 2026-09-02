@@ -222,10 +222,10 @@ in
     enableVirtualCamera = true;
   };
   programs.steam.enable = true;
-  programs.ydotool = {
-    enable = true;
-    group = "input";
-  };
+  # The dedicated ydotool group grants only the daemon socket. Sharing the
+  # blanket input group instead would let every process running as the user
+  # read raw keyboard events, passwords included.
+  programs.ydotool.enable = true;
 
   xdg.mime.defaultApplications = browserMimeDefaults // {
     "application/pdf" = "firefox.desktop";

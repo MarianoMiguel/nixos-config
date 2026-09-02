@@ -13,12 +13,36 @@ PluginComponent {
     // values does the conversions. Campana shares Argentina's single
     // Buenos Aires zone.
     readonly property var places: [
-        { label: "Campana", detail: "Buenos Aires · Argentina", zone: "America/Argentina/Buenos_Aires" },
-        { label: "New York", detail: "United States", zone: "America/New_York" },
-        { label: "Los Angeles", detail: "United States", zone: "America/Los_Angeles" },
-        { label: "Sydney", detail: "Australia", zone: "Australia/Sydney" }
+        { label: "Campana", short: "CPA", detail: "Buenos Aires · Argentina", zone: "America/Argentina/Buenos_Aires" },
+        { label: "New York", short: "NY", detail: "United States", zone: "America/New_York" },
+        { label: "Los Angeles", short: "LA", detail: "United States", zone: "America/Los_Angeles" },
+        { label: "Sydney", short: "SYD", detail: "Australia", zone: "Australia/Sydney" }
     ]
+    // One entry per place: { time, day, hour, offsetMinutes }. Offsets are
+    // relative to the first place, the home zone.
     property var times: []
+
+    // The bar shows one away place while it is inside business hours
+    // (09:00 to 18:00 local), in list order: New York through the morning,
+    // Sydney in the evening. Outside those hours the pill is just the globe.
+    readonly property var awayNow: {
+        for (let i = 1; i < root.places.length; i++) {
+            const entry = root.times[i];
+            if (entry && entry.hour >= 9 && entry.hour < 18)
+                return { short: root.places[i].short, time: entry.time };
+        }
+        return null;
+    }
+
+    function offsetLabel(minutes) {
+        if (minutes === 0)
+            return "same time";
+        const sign = minutes > 0 ? "+" : "−";
+        const abs = Math.abs(minutes);
+        const hours = Math.floor(abs / 60);
+        const rest = abs % 60;
+        return sign + hours + (rest === 0 ? "" : ":" + (rest < 10 ? "0" : "") + rest) + " h";
+    }
 
     function refresh() {
         if (!clockProcess.running)
@@ -38,16 +62,27 @@ PluginComponent {
         // the day-difference display regardless of session locale.
         command: ["/bin/sh", "-c",
             "for tz in " + root.places.map(p => p.zone).join(" ")
-            + "; do LC_ALL=C TZ=\"$tz\" date '+%H:%M%t%a'; done"]
+            + "; do LC_ALL=C TZ=\"$tz\" date '+%H:%M%t%a%t%z'; done"]
 
         stdout: StdioCollector {
             onStreamFinished: {
                 const lines = text.trim().split("\n");
                 if (lines.length !== root.places.length)
                     return;
+                const zoneMinutes = value => {
+                    // %z is ±HHMM.
+                    const sign = value.startsWith("-") ? -1 : 1;
+                    return sign * (parseInt(value.substr(1, 2), 10) * 60 + parseInt(value.substr(3, 2), 10));
+                };
+                const homeMinutes = zoneMinutes(lines[0].split("\t")[2] || "+0000");
                 root.times = lines.map(line => {
                     const parts = line.split("\t");
-                    return { time: parts[0] || "--:--", day: parts[1] || "" };
+                    return {
+                        time: parts[0] || "--:--",
+                        day: parts[1] || "",
+                        hour: parseInt((parts[0] || "0").substr(0, 2), 10),
+                        offsetMinutes: zoneMinutes(parts[2] || "+0000") - homeMinutes
+                    };
                 });
             }
         }
@@ -77,6 +112,15 @@ PluginComponent {
                 color: Theme.surfaceText
                 anchors.verticalCenter: parent.verticalCenter
             }
+
+            StyledText {
+                text: root.awayNow ? root.awayNow.short + " " + root.awayNow.time : ""
+                visible: text !== ""
+                color: Theme.surfaceText
+                font.pixelSize: Theme.fontSizeSmall
+                font.weight: Font.Medium
+                anchors.verticalCenter: parent.verticalCenter
+            }
         }
     }
 
@@ -95,7 +139,7 @@ PluginComponent {
             id: popout
 
             headerText: "World clock"
-            detailsText: "Local weekday shown next to each time"
+            detailsText: "Offsets are relative to Campana"
             showCloseButton: true
 
             Connections {
@@ -141,7 +185,8 @@ PluginComponent {
                             }
 
                             StyledText {
-                                text: modelData.detail
+                                text: modelData.detail + (index === 0 || entry.offsetMinutes === undefined
+                                    ? "" : " · " + root.offsetLabel(entry.offsetMinutes))
                                 font.pixelSize: Theme.fontSizeSmall
                                 color: Theme.surfaceVariantText
                             }

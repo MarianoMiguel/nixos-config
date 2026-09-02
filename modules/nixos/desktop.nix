@@ -94,6 +94,12 @@ in
     };
   };
 
+  # Firmware updates through LVFS. This laptop's config carries several
+  # firmware-level workarounds (Wi-Fi ASPM, amdgpu display idle paths, s2idle),
+  # and UEFI/EC/Wi-Fi firmware releases are the lever most likely to retire
+  # them. Updates are never applied automatically: `fwupdmgr update` prompts.
+  services.fwupd.enable = true;
+
   hardware.bluetooth = {
     enable = true;
     powerOnBoot = true;

@@ -47,19 +47,9 @@ in
     hostName = "bonhart.local";
     title = "Bonhart Local";
     tls.enable = true;
-
-    # T3 Code binds only to the Tailscale address. nginx owns the same port on
-    # the Wi-Fi address and preserves its root-relative assets and WebSockets.
-    portApplications.t3-code = {
-      title = "T3 Code";
-      description = "Local access to the T3 Code instance running on this machine.";
-      port = 3773;
-      listenAddresses = [ "192.168.68.58" ];
-      upstream = "http://100.87.18.64:3773";
-      tls = true;
-      webSockets = true;
-      extraConfig = "proxy_buffering off;";
-    };
+    # Tailscale-only services stay Tailscale-only. The gateway adds no
+    # authentication to a dedicated-port application, so proxying one onto
+    # the Wi-Fi address would hand it to every device on the LAN.
   };
 
   boot.loader.systemd-boot.enable = true;

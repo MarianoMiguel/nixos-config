@@ -29,6 +29,7 @@ in
     ../../modules/nixos/local-web-hosting.nix
     ../../modules/nixos/intervals.nix
     ../../modules/nixos/power.nix
+    ../../modules/nixos/battery.nix
     ../../modules/nixos/tv-remotes.nix
   ]
   ++ lib.optional (builtins.pathExists ./local.nix) ./local.nix;

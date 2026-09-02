@@ -484,6 +484,13 @@ in
         src = ../../dotfiles/dms-plugins/world-clock;
         settings.enabled = true;
       };
+      # A charge-cap toggle beside the battery pill. The system side (the
+      # helper, the udev write grant and the boot restore) lives in
+      # modules/nixos/battery.nix; this only registers the widget.
+      batteryLimit = {
+        src = ../../dotfiles/dms-plugins/battery-limit;
+        settings.enabled = true;
+      };
       # Per-monitor switcher for the current workspace's window mode. The
       # niri-modes daemon in modules/nixos/workspace-modes.nix owns the state;
       # this widget is a view and a remote control.

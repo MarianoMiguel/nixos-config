@@ -1,0 +1,13 @@
+{
+  "id": "batteryLimit",
+  "name": "Battery Charge Limit",
+  "description": "Toggle the 80% charge cap for battery longevity from the bar, beside the battery indicator",
+  "version": "1.0.0",
+  "author": "Mariano Miguel",
+  "type": "widget",
+  "capabilities": ["dankbar-widget"],
+  "icon": "battery_saver",
+  "component": "./BatteryLimitWidget.qml",
+  "requires_dms": ">=1.5.0",
+  "permissions": ["process"]
+}

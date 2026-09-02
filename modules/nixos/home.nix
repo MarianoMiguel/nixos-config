@@ -224,6 +224,22 @@ in
             | .lockScreenShowMediaPlayer = false
             | .lockScreenNotificationMode = 0
             | .lockScreenVideoEnabled = false
+            # Seat the batteryLimit pill immediately left of the battery widget
+            # in every bar that shows one, without disturbing existing order or
+            # duplicating it on repeat activations. Widgets are a mix of bare
+            # strings ("battery") and {id,enabled} objects, so compare on id.
+            | .barConfigs = [
+                .barConfigs[]
+                | if ((.rightWidgets // []) | any(. == "battery"))
+                     and (((.rightWidgets // []) | map(if type == "object" then .id else . end)) | index("batteryLimit") | not)
+                  then .rightWidgets = (
+                    reduce .rightWidgets[] as $w ([];
+                      . + (if $w == "battery"
+                           then [{id: "batteryLimit", enabled: true}, $w]
+                           else [$w] end))
+                  )
+                  else . end
+              ]
           ' "$settings" > "$temporary"
           $DRY_RUN_CMD ${pkgs.coreutils}/bin/install -m 0600 "$temporary" "$settings"
           ${pkgs.coreutils}/bin/rm -f "$temporary"
@@ -246,6 +262,7 @@ in
             | .wallpaperPicker.enabled = true
             | .workspaceModes.enabled = true
             | .worldClock.enabled = true
+            | .batteryLimit.enabled = true
           ' "$plugin_settings" > "$temporary"
           $DRY_RUN_CMD ${pkgs.coreutils}/bin/install -m 0600 "$temporary" "$plugin_settings"
           ${pkgs.coreutils}/bin/rm -f "$temporary"

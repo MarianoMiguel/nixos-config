@@ -19,6 +19,13 @@ binds {
         spawn "niri-modes" "set" "focus";
     }
 
+    // Mod+C only centers horizontally; this also restores full height for
+    // tiled windows (niri cannot position a short column vertically) and
+    // centers floating windows on both axes.
+    Mod+Shift+C repeat=false hotkey-overlay-title="Re-center window (full height when tiled)" {
+        spawn "niri-modes" "recenter";
+    }
+
     // One scroll step = one app. In focus mode this walks the tabbed column;
     // in tile mode it walks columns.
     Mod+Alt+WheelScrollDown cooldown-ms=150 {

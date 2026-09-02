@@ -14,6 +14,11 @@ All enforcement uses per-window and per-workspace niri IPC actions, so a
 mode applies to exactly one workspace: the other monitor keeps its own
 modes untouched.
 
+float and focus modes are locked in: when the layout drifts from the mode
+(a window un-floats, or leaves the focus column), the daemon re-asserts it,
+so a workspace always matches its bar label. Moving a window to another
+workspace is the intended way out; switching the mode restructures in place.
+
 The daemon owns the state and exposes a JSON-lines protocol on
 $XDG_RUNTIME_DIR/niri-modes.sock; `niri-modes set|get|cycle-mode|cycle|watch`
 are thin clients used by the DMS bar widget and the niri keybinds.
@@ -88,6 +93,7 @@ class Daemon:
         self.windows = {}          # window id -> window object
         self.dirty = set()         # focus-mode workspaces awaiting enforcement
         self.toggled_tabbed = set()  # workspaces we made tabbed via the toggle fallback
+        self.drift_timers = {}     # workspace id -> debounce Timer for re-enforcement
         self.watchers = []         # write files of `watch` clients
 
     # ----- state ---------------------------------------------------------
@@ -99,9 +105,15 @@ class Daemon:
             self.workspaces = {w["id"]: w for w in workspaces}
             self.windows = {w["id"]: w for w in windows}
             for gone in set(self.modes) - set(self.workspaces):
-                self.modes.pop(gone, None)
-                self.dirty.discard(gone)
-                self.toggled_tabbed.discard(gone)
+                self.forget_workspace(gone)
+
+    def forget_workspace(self, workspace_id):
+        self.modes.pop(workspace_id, None)
+        self.dirty.discard(workspace_id)
+        self.toggled_tabbed.discard(workspace_id)
+        timer = self.drift_timers.pop(workspace_id, None)
+        if timer is not None:
+            timer.cancel()
 
     def mode_of(self, workspace_id):
         return self.modes.get(workspace_id, "tile")
@@ -250,9 +262,53 @@ class Daemon:
                 action("toggle-column-tabbed-display")
                 self.toggled_tabbed.add(workspace_id)
         action("set-column-width", FOCUS_WIDTH)
+        action("reset-window-height", "--id", base["id"])
         action("center-window", "--id", base["id"])
         if focused_before is not None and focused_before != base["id"]:
             action("focus-window", "--id", focused_before)
+
+    def focus_drift(self, workspace_id):
+        """Cheap check on cached state: has the focus column broken up?
+
+        Windows with no scrolling-layout position (e.g. mid interactive
+        move) are ignored rather than counted as drift; they resolve to a
+        real position or a workspace change, and both re-check.
+        """
+        windows = self.workspace_windows(workspace_id)
+        if any(w.get("is_floating") for w in windows):
+            return True
+        columns = set()
+        for window in windows:
+            position = (window.get("layout") or {}).get("pos_in_scrolling_layout")
+            if isinstance(position, list) and position:
+                columns.add(position[0])
+        return len(columns) > 1
+
+    def schedule_enforce(self, workspace_id):
+        """Debounce drift enforcement so event bursts (and drags in
+        progress) coalesce into one re-check against fresh state."""
+        with self.lock:
+            timer = self.drift_timers.pop(workspace_id, None)
+            if timer is not None:
+                timer.cancel()
+            timer = threading.Timer(0.3, self.enforce_after_drift, (workspace_id,))
+            timer.daemon = True
+            self.drift_timers[workspace_id] = timer
+            timer.start()
+
+    def enforce_after_drift(self, workspace_id):
+        with self.lock:
+            self.drift_timers.pop(workspace_id, None)
+        if self.mode_of(workspace_id) != "focus":
+            return
+        self.resync()
+        with self.lock:
+            if not self.focus_drift(workspace_id):
+                return
+            if (self.workspaces.get(workspace_id) or {}).get("is_focused"):
+                self.enforce_focus(workspace_id)
+            else:
+                self.dirty.add(workspace_id)
 
     def cycle_windows(self, direction):
         workspace = self.resolve_workspace()
@@ -271,9 +327,7 @@ class Daemon:
                 incoming = event["WorkspacesChanged"].get("workspaces", [])
                 self.workspaces = {w["id"]: w for w in incoming}
                 for gone in set(self.modes) - set(self.workspaces):
-                    self.modes.pop(gone, None)
-                    self.dirty.discard(gone)
-                    self.toggled_tabbed.discard(gone)
+                    self.forget_workspace(gone)
             self.broadcast()
         elif "WindowsChanged" in event:
             with self.lock:
@@ -290,17 +344,22 @@ class Daemon:
                     previous.get("workspace_id") != window.get("workspace_id")
                 workspace_id = window.get("workspace_id")
                 mode = self.mode_of(workspace_id) if workspace_id else "tile"
-                if not arrived or is_exempt(window):
+                if is_exempt(window):
                     return
                 if mode == "float":
+                    # Applies to arrivals and to a window the user un-floated
+                    # in place: the mode is locked, so it floats right back.
                     if not window.get("is_floating"):
                         action("move-window-to-floating", "--id", window["id"])
                 elif mode == "focus":
-                    workspace = self.workspaces.get(workspace_id) or {}
-                    if workspace.get("is_focused"):
-                        self.enforce_focus(workspace_id)
-                    else:
-                        self.dirty.add(workspace_id)
+                    if arrived:
+                        workspace = self.workspaces.get(workspace_id) or {}
+                        if workspace.get("is_focused"):
+                            self.enforce_focus(workspace_id)
+                        else:
+                            self.dirty.add(workspace_id)
+                    elif self.focus_drift(workspace_id):
+                        self.schedule_enforce(workspace_id)
         elif "WindowClosed" in event:
             with self.lock:
                 self.windows.pop(event["WindowClosed"].get("id"), None)
@@ -324,12 +383,47 @@ class Daemon:
                         self.enforce_tile(workspace_id, "focus")
             self.broadcast()
         elif "WindowLayoutsChanged" in event:
+            # set-column-width is asynchronous: the column resizes only when
+            # the app acks the configure, after enforce_focus has already
+            # centered it, so the column grows rightward off-center. Re-center
+            # when a focus column's size actually lands; centering changes
+            # position, not size, so this does not re-trigger itself.
+            #
+            # Height is locked to automatic (full) as well: niri top-aligns a
+            # column shorter than the workspace and has no action to move it
+            # down, so full height is the only vertically centered height.
+            # Resetting an already-automatic height emits no event, so the
+            # reset->change->reset chain converges after one round.
+            recenter = []
+            drifted = set()
             with self.lock:
                 for change in event["WindowLayoutsChanged"].get("changes", []):
-                    if isinstance(change, list) and len(change) == 2:
-                        window = self.windows.get(change[0])
-                        if window is not None:
-                            window["layout"] = change[1]
+                    if not (isinstance(change, list) and len(change) == 2):
+                        continue
+                    window = self.windows.get(change[0])
+                    if window is None:
+                        continue
+                    layout_before = window.get("layout") or {}
+                    window["layout"] = change[1]
+                    workspace_id = window.get("workspace_id")
+                    if is_exempt(window) or self.mode_of(workspace_id) != "focus":
+                        continue
+                    before = layout_before.get("tile_size") or []
+                    after = change[1].get("tile_size") or []
+                    if before != after:
+                        recenter.append((window["id"], before[1:2] != after[1:2]))
+                    # A position change can mean the window left the focus
+                    # column (expel, drag-out): re-consolidate after settling.
+                    if layout_before.get("pos_in_scrolling_layout") != \
+                            change[1].get("pos_in_scrolling_layout") and \
+                            self.focus_drift(workspace_id):
+                        drifted.add(workspace_id)
+            for window_id, height_changed in recenter:
+                if height_changed:
+                    action("reset-window-height", "--id", window_id)
+                action("center-window", "--id", window_id)
+            for workspace_id in drifted:
+                self.schedule_enforce(workspace_id)
 
     def event_loop(self):
         while True:
@@ -386,6 +480,23 @@ class Daemon:
         if op == "cycle":
             ok = self.cycle_windows(
                 "next" if request.get("dir") != "prev" else "prev")
+            return {"ok": ok}
+        if op == "recenter":
+            with self.lock:
+                window = next(
+                    (w for w in self.windows.values() if w.get("is_focused")),
+                    None,
+                )
+            if window is None:
+                return {"ok": False, "error": "no focused window"}
+            if not window.get("is_floating"):
+                # Tiled columns cannot be positioned vertically (niri
+                # top-aligns short columns), so full height is the only
+                # vertically centered height; center-window then handles
+                # the horizontal axis. For floating windows center-window
+                # alone centers both axes.
+                action("reset-window-height", "--id", window["id"])
+            ok = action("center-window", "--id", window["id"])
             return {"ok": ok}
         return {"ok": False, "error": f"unknown op {op!r}"}
 
@@ -460,6 +571,7 @@ def main():
     commands.add_parser("daemon")
     commands.add_parser("get")
     commands.add_parser("watch")
+    commands.add_parser("recenter")
 
     set_parser = commands.add_parser("set")
     set_parser.add_argument("mode", choices=MODES)
@@ -491,6 +603,8 @@ def main():
             sys.exit(response.get("error", "failed"))
     elif arguments.command == "cycle":
         request({"op": "cycle", "dir": arguments.dir})
+    elif arguments.command == "recenter":
+        request({"op": "recenter"})
 
 
 if __name__ == "__main__":

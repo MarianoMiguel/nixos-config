@@ -11,12 +11,18 @@
 # Three pieces make the toggle instant and durable:
 #   * a `battery-charge-limit` helper that writes the sysfs threshold and
 #     records the choice in a state file,
-#   * a udev rule that hands the `wheel` group write access to the threshold
-#     attribute, so the helper (run from the unprivileged DMS process) needs no
-#     pkexec password prompt — DMS's own settings tab uses pkexec and prompts
-#     every time, which is too heavy for a bar toggle,
-#   * a boot-time oneshot that re-applies the recorded choice, because a cold
-#     boot resets `charge_control_end_threshold` back to 100.
+#   * a boot-time oneshot that, as root, hands the `wheel` group write access
+#     to the threshold attribute and then re-applies the recorded choice. The
+#     write grant is what lets the helper run from the unprivileged DMS process
+#     with no pkexec password prompt (DMS's own settings tab prompts every
+#     time); re-applying is needed because a cold boot resets
+#     `charge_control_end_threshold` back to 100.
+#
+# The permission grant lives in this service rather than a udev rule on
+# purpose: a udev `add` rule only fires for devices that appear after it loads,
+# so a `nixos-rebuild switch` that never reboots would leave the always-present
+# battery ungranted. A changed service, by contrast, is restarted by the switch
+# itself, so the toggle works the moment the rebuild lands.
 let
   # The health cap. 80 is the widely cited sweet spot for longevity headroom
   # without giving up too much usable capacity.
@@ -112,16 +118,6 @@ in
 {
   environment.systemPackages = [ batteryChargeLimit ];
 
-  # sysfs threshold attributes are created root:root 0644, so an unprivileged
-  # write is refused. Hand write access to `wheel` on the internal battery's
-  # end-threshold attribute the moment the power_supply device appears. The
-  # attribute is not a security boundary — a wheel user can already sudo — so
-  # this only removes a password prompt from a battery toggle. $devpath keeps
-  # the path correct regardless of the driver's hwmon numbering.
-  services.udev.extraRules = ''
-    ACTION=="add", SUBSYSTEM=="power_supply", KERNEL=="BAT0", ATTR{charge_control_end_threshold}=="?*", RUN+="${pkgs.coreutils}/bin/chgrp wheel /sys$devpath/charge_control_end_threshold", RUN+="${pkgs.coreutils}/bin/chmod 0664 /sys$devpath/charge_control_end_threshold"
-  '';
-
   # State lives in a wheel-writable file seeded to the health cap, so a machine
   # that has never been toggled still boots into the longevity-friendly limit.
   systemd.tmpfiles.rules = [
@@ -129,19 +125,26 @@ in
     "f ${stateFile} 0664 root wheel - ${toString healthLimit}"
   ];
 
-  # A cold boot clears the kernel/EC threshold back to 100. Re-apply the
-  # recorded choice once the battery device and the state file exist. Resume
-  # from hibernate restores systemd state from the image rather than re-running
-  # this unit, but Lenovo's EC keeps the threshold across a power cycle, so the
-  # boot pass is the only one that has to run.
+  # Two jobs, both as root at boot (and on every switch, since a changed unit
+  # is restarted): open the threshold attribute to the wheel group so the
+  # unprivileged toggle can write it, then re-apply the recorded choice — a
+  # cold boot clears the kernel/EC threshold back to 100. sysfs attribute modes
+  # persist until the attribute is recreated, which for the internal battery is
+  # effectively never. Resume from hibernate restores systemd state from the
+  # image rather than re-running this unit, but Lenovo's EC keeps the threshold
+  # across a power cycle, so the boot pass is the only one that has to run.
   systemd.services.battery-charge-limit = {
-    description = "Restore the persisted battery charge limit";
+    description = "Grant and restore the battery charge limit";
     wantedBy = [ "multi-user.target" ];
     after = [ "systemd-tmpfiles-setup.service" ];
     unitConfig.ConditionPathExists = "/sys/class/power_supply/BAT0/charge_control_end_threshold";
     serviceConfig = {
       Type = "oneshot";
       RemainAfterExit = true;
+      ExecStartPre = [
+        "${pkgs.coreutils}/bin/chgrp wheel /sys/class/power_supply/BAT0/charge_control_end_threshold"
+        "${pkgs.coreutils}/bin/chmod 0664 /sys/class/power_supply/BAT0/charge_control_end_threshold"
+      ];
       ExecStart = "${batteryChargeLimit}/bin/battery-charge-limit apply";
     };
   };

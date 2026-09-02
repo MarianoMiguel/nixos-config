@@ -164,6 +164,14 @@ in
   # Themeport's rendered ~/.config/kdeglobals for colours, fonts and icons.
   # The former gtk3 platform theme only carried GTK's base palette, which is
   # why KDE apps stayed light while the desktop was dark.
+  # Clients that predate the cursor-shape protocol (Xwayland, some Electron
+  # builds) read these; everything else takes the compositor cursor, so the
+  # pointer looks the same in every window.
+  environment.sessionVariables = {
+    XCURSOR_THEME = "Adwaita";
+    XCURSOR_SIZE = "24";
+  };
+
   qt = {
     enable = true;
     platformTheme = "kde";

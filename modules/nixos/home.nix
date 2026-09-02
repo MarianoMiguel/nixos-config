@@ -110,6 +110,18 @@ in
 
         programs.home-manager.enable = true;
 
+        # One typography and cursor for every toolkit. DMS, Themeport's
+        # kdeglobals and the terminal already use Inter and JetBrains Mono;
+        # without these keys GTK apps and portals fell back to Adwaita Sans.
+        # The icon theme is deliberately absent: Themeport sets it per theme.
+        dconf.settings."org/gnome/desktop/interface" = {
+          font-name = "Inter 11";
+          document-font-name = "Inter 11";
+          monospace-font-name = "JetBrainsMonoNL NFM 11";
+          cursor-theme = "Adwaita";
+          cursor-size = 24;
+        };
+
         # systemd --user reads environment.d before the graphical session
         # starts, so this is the one place a PATH entry reaches everything:
         # units, the compositor, apps DMS launches and their terminals.

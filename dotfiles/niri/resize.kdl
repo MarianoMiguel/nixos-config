@@ -1,20 +1,35 @@
 // Trackpad-friendly window resizing. niri hardcodes interactive drag-resize
 // to Mod+right-mouse-drag, which is awkward on a ThinkPad trackpad, so these
-// binds resize the focused window without ever needing the right button.
+// binds resize the focused window without ever needing a right-button drag.
+// (Configurable drag buttons are upstream niri issue #372; until then there
+// is no way to bind real resize handles to another gesture.)
+// All width/height actions here also apply to floating windows.
 binds {
-    // One click steps the focused column through the preset widths
-    // (1/3 -> 1/2 -> 2/3, see preset-column-widths). Click = resize.
-    Mod+Shift+MouseLeft repeat=false hotkey-overlay-title="Resize: cycle column width preset" {
+    // One click steps the focused window through the preset widths; a
+    // two-finger click steps through the preset heights (see
+    // preset-column-widths / preset-window-heights). Click = resize.
+    Mod+Shift+MouseLeft repeat=false hotkey-overlay-title="Resize: cycle width preset" {
         switch-preset-column-width;
     }
+    Mod+Shift+MouseRight repeat=false hotkey-overlay-title="Resize: cycle height preset" {
+        switch-preset-window-height;
+    }
 
-    // Hold Mod+Alt+Shift and two-finger scroll for fine 10% width steps.
+    // Hold Mod+Alt+Shift and two-finger scroll for fine 5% steps: vertical
+    // scroll changes height, horizontal scroll changes width, so a diagonal
+    // two-finger movement behaves like dragging a corner handle.
     // Plain Mod+scroll stays the workspace switcher, and Mod+Shift / Mod+Ctrl
     // scroll stay column navigation, so nothing existing is displaced.
     Mod+Alt+Shift+WheelScrollUp cooldown-ms=50 {
-        set-column-width "+10%";
+        set-window-height "-5%";
     }
     Mod+Alt+Shift+WheelScrollDown cooldown-ms=50 {
-        set-column-width "-10%";
+        set-window-height "+5%";
+    }
+    Mod+Alt+Shift+WheelScrollRight cooldown-ms=50 {
+        set-column-width "+5%";
+    }
+    Mod+Alt+Shift+WheelScrollLeft cooldown-ms=50 {
+        set-column-width "-5%";
     }
 }

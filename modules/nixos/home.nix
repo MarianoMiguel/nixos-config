@@ -142,68 +142,79 @@ in
         # user Matugen templates or third-party launcher entries from executing
         # as part of a theme switch. Preserve every unrelated DMS preference.
         home.activation.enforceDmsConsistency = lib.hm.dag.entryAfter [ "seedMutableDotfiles" ] ''
+          # DMS writes these files live, so a crash or a full disk mid-write
+          # can leave a truncated file. Rather than failing every later
+          # activation, keep the damaged copy for inspection and re-seed from
+          # the store so the policy below still applies.
+          ensure_json_object() {
+            file=$1
+            seed=$2
+            if ${pkgs.jq}/bin/jq -e 'type == "object"' "$file" >/dev/null 2>&1; then
+              return 0
+            fi
+            broken="$file.broken-$(${pkgs.coreutils}/bin/date +%Y%m%d%H%M%S)"
+            echo "DMS state $file is not a JSON object; kept at $broken and re-seeded from the store copy." >&2
+            if [ -e "$file" ]; then
+              $DRY_RUN_CMD ${pkgs.coreutils}/bin/mv -f "$file" "$broken"
+            fi
+            $DRY_RUN_CMD ${pkgs.coreutils}/bin/install -m 0600 "$seed" "$file"
+          }
+
           settings=${lib.escapeShellArg "${mutableState}/dms/settings.json"}
-          if ${pkgs.jq}/bin/jq -e 'type == "object"' "$settings" >/dev/null 2>&1; then
-            temporary="$(${pkgs.coreutils}/bin/mktemp)"
-            ${pkgs.jq}/bin/jq --argjson fingerprint ${builtins.toJSON fingerprintEnabled} '
-              .runUserMatugenTemplates = false
-              | .showThirdPartyPlugins = false
-              | .searchAppActions = true
-              | .launcherStyle = "full"
-              | .dankLauncherV2Size = "medium"
-              | .gtkThemingEnabled = true
-              | .qtThemingEnabled = false
-              | .matugenTemplateGtk = true
-              | .greeterEnableFprint = $fingerprint
-              | .enableFprint = $fingerprint
-              | .lockBeforeSuspend = true
-              | .animationSpeed = 4
-              | .customAnimationDuration = 40
-              | .syncComponentAnimationSpeeds = true
-              | .popoutAnimationSpeed = 4
-              | .popoutCustomAnimationDuration = 40
-              | .modalAnimationSpeed = 4
-              | .modalCustomAnimationDuration = 40
-              | .notificationAnimationSpeed = 4
-              | .notificationCustomAnimationDuration = 60
-              | .controlCenterShowIdleInhibitorIcon = false
-              | .controlCenterShowDoNotDisturbIcon = false
-              | .controlCenterWidgets = (
-                  (.controlCenterWidgets // []) as $widgets
-                  | if any($widgets[]?; .id == "builtin_tailscale") then
-                      [$widgets[] | if .id == "builtin_tailscale" then . + {enabled: true, width: 100} else . end]
-                    else
-                      $widgets + [{id: "builtin_tailscale", enabled: true, width: 100}]
-                    end
-                )
-              | .fadeToLockEnabled = false
-              | .fadeToLockGracePeriod = 0
-              | .lockScreenShowPowerActions = false
-              | .lockScreenShowSystemIcons = false
-              | .lockScreenShowTime = true
-              | .lockScreenShowDate = false
-              | .lockScreenShowProfileImage = false
-              | .lockScreenShowPasswordField = true
-              | .lockScreenShowMediaPlayer = false
-              | .lockScreenNotificationMode = 0
-              | .lockScreenVideoEnabled = false
-            ' "$settings" > "$temporary"
-            $DRY_RUN_CMD ${pkgs.coreutils}/bin/install -m 0600 "$temporary" "$settings"
-            ${pkgs.coreutils}/bin/rm -f "$temporary"
-          else
-            echo "DMS settings are not valid JSON: $settings" >&2
-            exit 1
-          fi
+          ensure_json_object "$settings" ${lib.escapeShellArg "${mutableDotfileSeed}/dms/settings.json"}
+          temporary="$(${pkgs.coreutils}/bin/mktemp)"
+          ${pkgs.jq}/bin/jq --argjson fingerprint ${builtins.toJSON fingerprintEnabled} '
+            .runUserMatugenTemplates = false
+            | .showThirdPartyPlugins = false
+            | .searchAppActions = true
+            | .launcherStyle = "full"
+            | .dankLauncherV2Size = "medium"
+            | .gtkThemingEnabled = true
+            | .qtThemingEnabled = false
+            | .matugenTemplateGtk = true
+            | .greeterEnableFprint = $fingerprint
+            | .enableFprint = $fingerprint
+            | .lockBeforeSuspend = true
+            | .animationSpeed = 4
+            | .customAnimationDuration = 40
+            | .syncComponentAnimationSpeeds = true
+            | .popoutAnimationSpeed = 4
+            | .popoutCustomAnimationDuration = 40
+            | .modalAnimationSpeed = 4
+            | .modalCustomAnimationDuration = 40
+            | .notificationAnimationSpeed = 4
+            | .notificationCustomAnimationDuration = 60
+            | .controlCenterShowIdleInhibitorIcon = false
+            | .controlCenterShowDoNotDisturbIcon = false
+            | .controlCenterWidgets = (
+                (.controlCenterWidgets // []) as $widgets
+                | if any($widgets[]?; .id == "builtin_tailscale") then
+                    [$widgets[] | if .id == "builtin_tailscale" then . + {enabled: true, width: 100} else . end]
+                  else
+                    $widgets + [{id: "builtin_tailscale", enabled: true, width: 100}]
+                  end
+              )
+            | .fadeToLockEnabled = false
+            | .fadeToLockGracePeriod = 0
+            | .lockScreenShowPowerActions = false
+            | .lockScreenShowSystemIcons = false
+            | .lockScreenShowTime = true
+            | .lockScreenShowDate = false
+            | .lockScreenShowProfileImage = false
+            | .lockScreenShowPasswordField = true
+            | .lockScreenShowMediaPlayer = false
+            | .lockScreenNotificationMode = 0
+            | .lockScreenVideoEnabled = false
+          ' "$settings" > "$temporary"
+          $DRY_RUN_CMD ${pkgs.coreutils}/bin/install -m 0600 "$temporary" "$settings"
+          ${pkgs.coreutils}/bin/rm -f "$temporary"
 
           # System-wide plugin installation and mutable enablement are separate
           # in DMS. Keep the three reviewed launcher providers active on both
           # upgrades and fresh installs while preserving every other plugin's
           # settings.
           plugin_settings=${lib.escapeShellArg "${mutableState}/dms/plugin-settings.json"}
-          if ! ${pkgs.jq}/bin/jq -e 'type == "object"' "$plugin_settings" >/dev/null 2>&1; then
-            echo "DMS plugin settings are not valid JSON: $plugin_settings" >&2
-            exit 1
-          fi
+          ensure_json_object "$plugin_settings" ${lib.escapeShellArg "${mutableDotfileSeed}/dms/plugin-settings.json"}
           temporary="$(${pkgs.coreutils}/bin/mktemp)"
           ${pkgs.jq}/bin/jq \
             --arg codexbar ${lib.escapeShellArg "${marianoCodexbar}/bin/codexbar"} '
@@ -244,10 +255,6 @@ in
           qol_bar_marker=${lib.escapeShellArg "${mutableState}/dms/.qol-bar-v1"}
           if [ ! -e "$qol_bar_marker" ]; then
             plugin_settings=${lib.escapeShellArg "${mutableState}/dms/plugin-settings.json"}
-            if ! ${pkgs.jq}/bin/jq -e 'type == "object"' "$plugin_settings" >/dev/null 2>&1; then
-              echo "DMS plugin settings are not valid JSON: $plugin_settings" >&2
-              exit 1
-            fi
             temporary="$(${pkgs.coreutils}/bin/mktemp)"
             ${pkgs.jq}/bin/jq '
               def widget_id: if type == "object" then .id else . end;

@@ -7,7 +7,6 @@
     isNormalUser = true;
     description = "Mariano";
     extraGroups = [
-      "docker"
       "input"
       "lp"
       "networkmanager"

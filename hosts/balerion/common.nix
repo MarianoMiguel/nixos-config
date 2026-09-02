@@ -68,5 +68,4 @@ in
   };
 
   system.stateVersion = "25.11";
-  nixpkgs.config.permittedInsecurePackages = [ "docker-28.5.2" ];
 }

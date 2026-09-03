@@ -19,7 +19,15 @@ let
   codexDesktopBase =
     (codex-desktop-linux.packages.${system}.codex-desktop.override {
       linuxFeatureIds = [
+        # Inbound: exposes "Devices that can control this PC" and the Computer
+        # Use backend that a controller drives.
         "computer-use-linux"
+        # Outbound: keeps the "Control other devices" Connections tab reachable
+        # on Linux and swaps the macOS-only native device key for a Linux
+        # ECDSA P-256 provider, so this desktop can enroll against and control
+        # another remote-control host (e.g. the Mac). Experimental: OpenAI may
+        # still gate Linux enrollment/authorization server-side.
+        "remote-mobile-control"
         "omarchy-theme"
       ];
     }).overrideAttrs

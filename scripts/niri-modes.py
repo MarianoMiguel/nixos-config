@@ -57,7 +57,59 @@ def socket_path():
     return os.path.join(runtime_dir, "niri-modes.sock")
 
 
+# Spawning `niri msg` per call costs ~8 ms (fork+exec of the binary and a fresh
+# socket connect). Consolidating one focus-mode window runs ~6 of them back to
+# back, so the intermediate two-column layout is on screen for ~50 ms — a
+# visible flash independent of any animation. Talking to niri's IPC socket
+# directly is a sub-millisecond round trip, which collapses that to one frame.
+# `niri msg` stays the fallback: for the socket being unavailable, and for
+# `set-column-width`, whose SizeChange argument this does not encode.
+_QUERY_VARIANT = {"windows": "Windows", "workspaces": "Workspaces", "outputs": "Outputs"}
+
+
+def _socket_call(request):
+    """One niri IPC request. Returns the parsed reply dict, or None on any
+    failure so the caller falls back to `niri msg`.
+
+    Every failure path here is a pre- or in-flight error on a local unix socket
+    where the request completes in microseconds, so niri did not apply a
+    partial action; the CLI retry cannot double-apply a non-idempotent action.
+    A dict return with "Ok" is the only signal that the socket already applied
+    it and the CLI must be skipped.
+    """
+    path = os.environ.get("NIRI_SOCKET")
+    if not path:
+        return None
+    connection = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    connection.settimeout(5)
+    try:
+        connection.connect(path)
+        connection.sendall((json.dumps(request) + "\n").encode())
+        connection.shutdown(socket.SHUT_WR)
+        buffer = bytearray()
+        while True:
+            chunk = connection.recv(65536)
+            if not chunk:
+                break
+            buffer += chunk
+    except OSError:
+        return None
+    finally:
+        connection.close()
+    try:
+        return json.loads(buffer.decode())
+    except (ValueError, UnicodeDecodeError):
+        return None
+
+
 def niri_json(command):
+    variant = _QUERY_VARIANT.get(command)
+    if variant:
+        reply = _socket_call(variant)
+        if isinstance(reply, dict):
+            payload = reply.get("Ok")
+            if isinstance(payload, dict) and variant in payload:
+                return payload[variant]
     result = subprocess.run(
         ["niri", "msg", "--json", command],
         capture_output=True, text=True, timeout=10,
@@ -67,14 +119,40 @@ def niri_json(command):
     return json.loads(result.stdout)
 
 
+def _action_request(args):
+    """Build the IPC Action request for a CLI-style action, or None to defer to
+    `niri msg` (an argument shape this does not encode, e.g. set-column-width)."""
+    variant = "".join(part.capitalize() for part in args[0].split("-"))
+    rest = args[1:]
+    if not rest:
+        params = {}
+    elif rest[0] == "--id" and len(rest) == 2:
+        params = {"id": int(rest[1])}
+    elif args[0] == "set-column-display" and len(rest) == 1:
+        params = {"display": rest[0].capitalize()}
+    else:
+        return None
+    return {"Action": {variant: params}}
+
+
 def action(*args):
     """Run one niri action; report success instead of raising.
 
-    Failures are expected for actions the running niri may not support yet
-    (callers fall back) and for no-ops like consuming past the last column.
+    Tries the IPC socket first, falling back to `niri msg`. Failures are
+    expected for actions the running niri may not support yet (callers fall
+    back) and for no-ops like consuming past the last column.
     """
+    args = [str(a) for a in args]
+    request = _action_request(args)
+    if request is not None:
+        reply = _socket_call(request)
+        if isinstance(reply, dict) and "Ok" in reply:
+            return True
+        # An Err reply means niri rejected the action without applying it — a
+        # genuine no-op/unsupported, or a schema mismatch. Either way the CLI
+        # is the source of truth, and re-running it cannot double-apply.
     result = subprocess.run(
-        ["niri", "msg", "action", *[str(a) for a in args]],
+        ["niri", "msg", "action", *args],
         capture_output=True, text=True, timeout=10,
     )
     return result.returncode == 0

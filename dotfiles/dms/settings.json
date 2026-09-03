@@ -580,9 +580,7 @@
       "leftWidgets": [
         "launcherButton",
         "workspaceSwitcher",
-        "focusedWindow"
-      ],
-      "centerWidgets": [
+        "focusedWindow",
         {
           "id": "worldClock",
           "enabled": true
@@ -591,6 +589,7 @@
         "music",
         "weather"
       ],
+      "centerWidgets": [],
       "rightWidgets": [
         {
           "id": "codexBar",

@@ -306,6 +306,21 @@ in
           ${pkgs.coreutils}/bin/rm -f "$temporary" "$source_json"
         '';
 
+        # A rebuild swaps the niri/config.kdl symlink to a new store path, but
+        # niri's inotify watch is on the old target and never fires, so it keeps
+        # the old config in memory until the next relogin. Poke it to re-read
+        # the freshly linked config. Best-effort: niri may not be the running
+        # compositor (no socket to find), and a reload must never fail
+        # activation. niri msg needs NIRI_SOCKET set explicitly — it does not
+        # discover the socket on its own — so resolve it from the runtime dir.
+        home.activation.reloadNiri = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
+          runtime="''${XDG_RUNTIME_DIR:-/run/user/$(${pkgs.coreutils}/bin/id -u)}"
+          socket="$(${pkgs.findutils}/bin/find "$runtime" -maxdepth 1 -name 'niri.*.sock' 2>/dev/null | ${pkgs.coreutils}/bin/head -n1)"
+          if [ -n "$socket" ]; then
+            $DRY_RUN_CMD env NIRI_SOCKET="$socket" ${pkgs.niri}/bin/niri msg action load-config-file || true
+          fi
+        '';
+
         # Shell memory: atuin makes history searchable (Ctrl+R) and keeps the
         # up arrow plain; zoxide learns directories from use (z, zi).
         programs.atuin = {

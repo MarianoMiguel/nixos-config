@@ -209,13 +209,16 @@ animations {
         duration-ms 40
         curve "ease-out-quad"
     }
+    // Off: in focus mode the daemon folds a new window into the centered tab
+    // group, and the view pan + window glide during that fold read as a slide
+    // that snapped back. niri animations are global and can't be scoped to the
+    // mode, so column moves are instant everywhere — left/right navigation
+    // jumps rather than glides.
     horizontal-view-movement {
-        duration-ms 60
-        curve "ease-out-expo"
+        off
     }
     window-movement {
-        duration-ms 60
-        curve "ease-out-expo"
+        off
     }
     window-resize {
         duration-ms 60

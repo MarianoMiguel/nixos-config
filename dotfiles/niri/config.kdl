@@ -200,9 +200,10 @@ animations {
         duration-ms 70
         curve "ease-out-expo"
     }
+    // Disabled globally: in focus mode the daemon re-centers a new window,
+    // which read as a pointless "slide". New windows now just appear.
     window-open {
-        duration-ms 50
-        curve "ease-out-expo"
+        off
     }
     window-close {
         duration-ms 40

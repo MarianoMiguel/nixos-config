@@ -42,4 +42,15 @@ in
   # Reachable on the tailnet over HTTPS for the phone, after a one-time
   #   tailscale serve --bg --https=443 http://127.0.0.1:47391
   # which tailscaled remembers across reboots.
+
+  # An "app" in the launcher: Chrome in app mode on the local server, with the Overfly icon.
+  home-manager.users.mariano.xdg.desktopEntries.overfly = {
+    name = "Overfly";
+    comment = "Agent control panel";
+    exec = "${pkgs.google-chrome}/bin/google-chrome-stable --app=http://127.0.0.1:47391 --class=Overfly --name=Overfly";
+    icon = "${appRoot}/public/overfly.png";
+    terminal = false;
+    categories = [ "Development" ];
+    settings.StartupWMClass = "Overfly";
+  };
 }

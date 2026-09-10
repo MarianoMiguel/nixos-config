@@ -47,10 +47,11 @@ in
   home-manager.users.mariano.xdg.desktopEntries.overfly = {
     name = "Overfly";
     comment = "Agent control panel";
-    exec = "google-chrome-stable --app=http://127.0.0.1:47391 --class=Overfly --name=Overfly";
+    exec = "google-chrome-stable --app=http://127.0.0.1:47391";
     icon = "${appRoot}/public/overfly.png";
     terminal = false;
     categories = [ "Development" ];
-    settings.StartupWMClass = "Overfly";
+    # Chrome names an --app window after its origin and profile; matching it here gives the window this name and icon.
+    settings.StartupWMClass = "chrome-127.0.0.1__-Default";
   };
 }

@@ -47,7 +47,7 @@ in
   home-manager.users.mariano.xdg.desktopEntries.overfly = {
     name = "Overfly";
     comment = "Agent control panel";
-    exec = "${pkgs.google-chrome}/bin/google-chrome-stable --app=http://127.0.0.1:47391 --class=Overfly --name=Overfly";
+    exec = "google-chrome-stable --app=http://127.0.0.1:47391 --class=Overfly --name=Overfly";
     icon = "${appRoot}/public/overfly.png";
     terminal = false;
     categories = [ "Development" ];

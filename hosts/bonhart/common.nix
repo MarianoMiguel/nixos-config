@@ -28,6 +28,7 @@ in
     ../../modules/nixos/fingerprint.nix
     ../../modules/nixos/local-web-hosting.nix
     ../../modules/nixos/intervals.nix
+    ../../modules/nixos/overfly.nix
     ../../modules/nixos/power.nix
     ../../modules/nixos/battery.nix
     ../../modules/nixos/tv-remotes.nix

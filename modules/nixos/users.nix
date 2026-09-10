@@ -18,6 +18,10 @@
     packages = with pkgs; [
       kdePackages.kate
     ];
+    # The MacBook, so it can reach this machine over the tailnet (deploys, Overfly).
+    openssh.authorizedKeys.keys = [
+      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINf1PihwqTD8d7wAIOrrvYS/HJPlELAb8FAsGVvPVWS8 mariano@macbook"
+    ];
   };
 
   programs.zsh = {

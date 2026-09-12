@@ -33,7 +33,7 @@ in
     serviceConfig = {
       Type = "simple";
       WorkingDirectory = standalone;
-      ExecStart = "${pkgs.nodejs_24}/bin/node ${standalone}/server.js";
+      ExecStart = "${pkgs.nodejs_24}/bin/node --max-semi-space-size=64 ${standalone}/server.js";
       Restart = "on-failure";
       RestartSec = 3;
     };

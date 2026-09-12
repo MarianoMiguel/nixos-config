@@ -47,7 +47,8 @@
   # and idle policy, so the logind rules above do not apply there. Mirror the
   # hibernate-only policy: replayed power-key events must not act, a closed lid
   # hibernates on either power source, and idle hibernates only on battery so
-  # long plugged-in builds are never interrupted.
+  # long plugged-in builds are never interrupted. The niri session's DMS idle
+  # policy is enforced the same way from home.nix (enforceDmsConsistency).
   home-manager.users.mariano.dconf.settings."org/gnome/settings-daemon/plugins/power" = {
     power-button-action = "nothing";
     lid-close-ac-action = "hibernate";

@@ -194,6 +194,15 @@ in
             | .greeterEnableFprint = $fingerprint
             | .enableFprint = $fingerprint
             | .lockBeforeSuspend = true
+            # Idle policy for the niri session, mirroring power.nix: plain
+            # suspend is refused there, so idle on battery hibernates (DMS
+            # behaviour 1) after fifteen minutes, and idle on AC never sleeps
+            # so long plugged-in builds finish. Without this the session only
+            # locked and blanked, leaving a "sleeping" laptop fully awake.
+            # Balerion has no battery, so only the AC line applies there.
+            | .acSuspendTimeout = 0
+            | .batterySuspendTimeout = 900
+            | .batterySuspendBehavior = 1
             | .animationSpeed = 4
             | .customAnimationDuration = 40
             | .syncComponentAnimationSpeeds = true

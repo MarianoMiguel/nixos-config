@@ -42,7 +42,7 @@ QtObject {
     function executeItem(item) {
         if (!item?.action)
             return;
-        Quickshell.execDetached(["/run/current-system/sw/bin/dms", "ipc", "call", "wallpaper", "set", item.action]);
+        Quickshell.execDetached(["/run/current-system/sw/bin/mariano-set-wallpaper", item.action]);
         if (typeof ToastService !== "undefined")
             ToastService.showInfo("Wallpaper", item.name);
     }

@@ -12,10 +12,14 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     dms.url = "github:AvengeMedia/DankMaterialShell";
-    # A real unstable pin. Following DMS's nixpkgs made "unstable" whatever DMS
-    # last locked, which trailed the stable pin by months. Only DaVinci Resolve
-    # (21, newer than the stable channel's 20.x) comes from here.
-    nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
+    dank-greeter = {
+      url = "github:AvengeMedia/dank-greeter";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+    # Only DaVinci Resolve comes from this package set. Keep its last known-good
+    # 21.0.4 revision fixed: Blackmagic replaced the 21.1 archive in place, so
+    # the current nixos-unstable expression fails its source integrity check.
+    nixpkgs-unstable.url = "github:NixOS/nixpkgs/34ab99075ac4f7e40cf037eef32cb1c360bb85e9";
     quickshell = {
       url = "github:quickshell-mirror/quickshell";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -51,6 +55,7 @@
       nixpkgs,
       nixpkgs-unstable,
       home-manager,
+      dank-greeter,
       dms,
       quickshell,
       codex-desktop-linux,
@@ -71,7 +76,7 @@
       sharedModules = [
         home-manager.nixosModules.home-manager
         dms.nixosModules.dank-material-shell
-        dms.nixosModules.greeter
+        dank-greeter.nixosModules.default
       ];
       mkSystem =
         modules:

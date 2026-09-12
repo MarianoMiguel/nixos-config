@@ -50,7 +50,7 @@ QtObject {
         { name: "Set Up Fingerprints", icon: "fingerprint", section: "Security", detail: "Enroll login or administrator fingerprints", action: "fingerprint", keywords: "biometric sudo unlock" },
 
         { name: "All Settings", icon: "settings", section: "System", detail: "Open the complete system settings", action: "settings", keywords: "configure preferences" },
-        { name: "Update NixOS Packages", icon: "system_update", section: "System", detail: "Update reviewed inputs and switch generations safely", action: "update", keywords: "upgrade rebuild" }
+        { name: "Update All NixOS Packages", icon: "system_update", section: "System", detail: "Update NixOS, Codex Desktop, and every movable flake input safely", action: "update", keywords: "upgrade rebuild everything codex" }
     ]
 
     function getItems(query) {

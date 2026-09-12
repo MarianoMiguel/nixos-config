@@ -1244,7 +1244,9 @@ def apply_wallpapers(theme: Theme, meta: dict) -> None:
             shutil.copy2(theme.src / "backgrounds" / bg, dest / bg)
         selected = dest / theme.default_background
         location = f"{len(theme.backgrounds)} copied"
-    if _dms_ipc("wallpaper", "set", str(selected), timeout=15) is not None:
+    if shutil.which("mariano-set-wallpaper") and _run_quiet(
+        ["mariano-set-wallpaper", str(selected)]
+    ):
         print(f"  wallpaper: {selected.name} ({location})")
     elif _edit_json(
         xdg_state_home() / "DankMaterialShell/session.json",
@@ -2164,7 +2166,9 @@ def cmd_wallpapers(args: argparse.Namespace) -> int:
         print("fzf unavailable or nothing chosen")
         _hold_open(args)
         return 1
-    if shutil.which("dms") and _run_quiet(["dms", "ipc", "call", "wallpaper", "set", choice]):
+    if shutil.which("mariano-set-wallpaper") and _run_quiet(
+        ["mariano-set-wallpaper", choice]
+    ):
         print(f"wallpaper set: {choice}")
     else:
         print(f"couldn't reach DMS — set it manually: {choice}")

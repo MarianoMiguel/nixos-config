@@ -1,4 +1,4 @@
-{ cat-dms, codeIsland-dms, dms, dms-codexbar, librepods-rust, pkgs, quickshell, ... }:
+{ cat-dms, codeIsland-dms, dank-greeter, dms, dms-codexbar, librepods-rust, pkgs, quickshell, ... }:
 
 let
   system = pkgs.stdenv.hostPlatform.system;
@@ -229,6 +229,20 @@ EOF
     patches = [ ../../patches/dms-codexbar-partial-results.patch ];
   };
 
+  # Keep Niri as the deterministic fallback when session remembering is
+  # disabled. The greeter UI now ships from its own upstream flake.
+  dmsGreeter = dank-greeter.packages.${system}.default.overrideAttrs (old: {
+    postPatch = ''
+      substituteInPlace quickshell/Modules/Greetd/GreeterContent.qml \
+        --replace-fail \
+          'const savedDesktopId = GreetdSettings.rememberLastSession ? (GreetdMemory.lastSessionDesktopId || desktopIdFromPath(GreetdMemory.lastSessionId)) : "";' \
+          'const savedDesktopId = (GreetdSettings.rememberLastSession ? (GreetdMemory.lastSessionDesktopId || desktopIdFromPath(GreetdMemory.lastSessionId)) : "") || Quickshell.env("DMS_GREET_DEFAULT_SESSION") || "";' \
+        --replace-fail \
+          'if ((savedSession || savedDesktopId) && GreetdSettings.rememberLastSession) {' \
+          'if (savedSession || savedDesktopId) {'
+    '' + (old.postPatch or "");
+  });
+
   # DMS's custom motion base already keeps expressive transitions at or below
   # 80 ms. Two inline notification transitions bypass that base upstream, so
   # bind them back to the configured duration in the installed shell.
@@ -255,18 +269,6 @@ EOF
         --replace-fail \
           'const userUrl = Paths.toFileUrl(root.pluginDirectory);' \
           'const userUrl = "";'
-
-      # DMS's greeter does not consult NixOS's display-manager default and
-      # otherwise selects whichever desktop entry finishes loading first. Add
-      # a deterministic fallback while retaining its normal remembered-session
-      # behavior when that feature is enabled.
-      substituteInPlace "$out/share/quickshell/dms/Modules/Greetd/GreeterContent.qml" \
-        --replace-fail \
-          'const savedDesktopId = GreetdSettings.rememberLastSession ? (GreetdMemory.lastSessionDesktopId || desktopIdFromPath(GreetdMemory.lastSessionId)) : "";' \
-          'const savedDesktopId = (GreetdSettings.rememberLastSession ? (GreetdMemory.lastSessionDesktopId || desktopIdFromPath(GreetdMemory.lastSessionId)) : "") || Quickshell.env("DMS_GREET_DEFAULT_SESSION") || "";' \
-        --replace-fail \
-          'if ((savedSession || savedDesktopId) && GreetdSettings.rememberLastSession) {' \
-          'if (savedSession || savedDesktopId) {'
 
       # DMS's backend toggles WantRunning, which reconnects an enrolled node but
       # cannot begin interactive authentication for a logged-out one. Delegate
@@ -522,6 +524,8 @@ in
     # the service disabled avoids starting the shell inside Plasma sessions.
     systemd.enable = false;
   };
+
+  programs.dms-greeter.package = dmsGreeter;
 
   services.iio-niri.enable = false;
 

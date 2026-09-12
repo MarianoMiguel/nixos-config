@@ -8,17 +8,23 @@
 let
   fingerprintEnabled = config.services.fprintd.enable;
 
-  systemUpdate = pkgs.writeShellApplication {
-    name = "mariano-system-update";
-    runtimeInputs = with pkgs; [
-      coreutils
-      findutils
-      glibc
-      nix
-      nixos-rebuild
-      util-linux
-    ];
-    text = ''
+  mkSystemUpdate =
+    {
+      name,
+      updateDescription,
+      updateInputs ? null,
+    }:
+    pkgs.writeShellApplication {
+      inherit name;
+      runtimeInputs = with pkgs; [
+        coreutils
+        findutils
+        glibc
+        nix
+        nixos-rebuild
+        util-linux
+      ];
+      text = ''
       set -eu
 
       # /etc/nixos is a symlink to the administrator's working tree, so
@@ -68,8 +74,10 @@ let
       }
       trap restore_lock INT TERM HUP
 
-      echo "Updating reviewed stable inputs (nixpkgs, Home Manager and Disko)..."
-      if ! run_as_owner nix flake update --flake "path:$config_dir" nixpkgs home-manager disko; then
+      echo ${lib.escapeShellArg updateDescription}
+      if ! run_as_owner nix flake update --flake "path:$config_dir"${
+        lib.optionalString (updateInputs != null) " ${lib.concatStringsSep " " updateInputs}"
+      }; then
         restore_lock
         echo "Input update failed; the previous lock file was restored." >&2
         exit 1
@@ -84,7 +92,22 @@ let
 
       trap - INT TERM HUP
       echo "System update complete. The previous lock file is in $backup."
-    '';
+      '';
+    };
+
+  systemUpdate = mkSystemUpdate {
+    name = "mariano-system-update";
+    updateDescription = "Updating reviewed stable inputs (nixpkgs, Home Manager and Disko)...";
+    updateInputs = [
+      "nixpkgs"
+      "home-manager"
+      "disko"
+    ];
+  };
+
+  systemUpdateAll = mkSystemUpdate {
+    name = "mariano-system-update-all";
+    updateDescription = "Updating all movable flake inputs, including Codex Desktop...";
   };
 
   displayToggle = pkgs.writeShellApplication {
@@ -491,8 +514,8 @@ let
             ${fingerprintManager}/bin/mariano-fingerprint-manager
           ;;
         update)
-          exec /run/current-system/sw/bin/ghostty --class=system.actions --title="NixOS Update" -e \
-            /run/wrappers/bin/sudo ${systemUpdate}/bin/mariano-system-update
+          exec /run/current-system/sw/bin/ghostty --class=system.actions --title="Update All NixOS Packages" -e \
+            /run/wrappers/bin/sudo ${systemUpdateAll}/bin/mariano-system-update-all
           ;;
         *)
           echo "Unknown system action: $action" >&2
@@ -548,7 +571,7 @@ Security · Preview lock screen
 Security · Lock screen & screensaver settings
 ${lib.optionalString fingerprintEnabled ''Security · Set up fingerprints
 ''}System · All settings
-System · Update NixOS packages
+System · Update all NixOS packages
 CATALOG
       }
 
@@ -585,7 +608,7 @@ CATALOG
           "Security · Lock screen & screensaver settings"|"Lock screen & screensaver settings") action=lock-settings ;;
 ${lib.optionalString fingerprintEnabled ''          "Security · Set up fingerprints"|"Set up fingerprints") action=fingerprint ;;
 ''}          "System · All settings"|"All settings") action=settings ;;
-          "System · Update NixOS packages"|"Update NixOS packages") action=update ;;
+          "System · Update all NixOS packages"|"Update all NixOS packages") action=update ;;
           *)
             echo "Unknown system action: $1" >&2
             exit 2
@@ -634,7 +657,7 @@ ${lib.optionalString fingerprintEnabled ''          "Security · Set up fingerpr
             ;;
           System)
             choice=$(gum filter --height 9 --header "System · type to filter · esc/back to categories" \
-              "All settings" "Update NixOS packages" "Back") || return 0
+              "All settings" "Update all NixOS packages" "Back") || return 0
             ;;
           *)
             echo "Unknown system action category: $category" >&2
@@ -690,13 +713,13 @@ ${lib.optionalString fingerprintEnabled ''          "Security · Set up fingerpr
       [ "$age_days" -ge 14 ] || exit 0
       notify-send --app-name="NixOS" --icon=system-software-update \
         "NixOS inputs are $age_days days old" \
-        "Open System Actions › Update NixOS when convenient."
+        "Open System Actions › Update all NixOS packages when convenient."
     '';
   };
 in
 {
   # Nudge, never auto-update: twice a week, if the locked nixpkgs is older
-  # than two weeks, one notification points at System Actions › Update NixOS.
+  # than two weeks, one notification points at the all-packages update action.
   systemd.user.services.nixos-update-nudge = {
     description = "Remind about stale NixOS inputs";
     serviceConfig = {
@@ -720,5 +743,6 @@ in
     displayToggle
     systemMenu
     systemUpdate
+    systemUpdateAll
   ] ++ lib.optionals fingerprintEnabled [ fingerprintManager ];
 }

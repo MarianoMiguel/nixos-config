@@ -23,7 +23,6 @@ in
   imports = [
     ../nixos-dev/hardware-common.nix
     ../../profiles/workstation.nix
-    ../../modules/nixos/android-development.nix
     ../../modules/nixos/displaylink.nix
     ../../modules/nixos/fingerprint.nix
     ../../modules/nixos/local-web-hosting.nix
@@ -59,11 +58,10 @@ in
   # Keep the multi-boot menu available without adding the default five-second
   # pause to every normal startup.
   boot.loader.timeout = 2;
-  # Track the newest stable kernel, matching how Fedora runs this machine.
-  # The Strix Point s2idle and amdgpu paths receive fixes in nearly every
-  # kernel release, and the sleep failures seen here never reproduced on
-  # Fedora's current kernel.
-  boot.kernelPackages = pkgs.linuxPackages_latest;
+  # Stay on the newest maintained LTS series. Strix Point still receives the
+  # current amdgpu and s2idle fixes, while DisplayLink's EVDI module cannot yet
+  # compile against the short-lived 7.2 kernel selected by linuxPackages_latest.
+  boot.kernelPackages = pkgs.linuxPackages_6_18;
   boot.extraModprobeConfig = ''
     options cfg80211 ieee80211_regdom=AR
     options mt7925e disable_aspm=Y

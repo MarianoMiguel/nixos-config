@@ -48,6 +48,74 @@ let
     exec /run/current-system/sw/bin/dms "$@"
   '';
 
+  # DMS has separate global and per-monitor wallpaper IPC methods. Its CLI
+  # reports a rejected global call on stdout while still exiting successfully,
+  # so callers cannot rely on the process status alone. Try the global method,
+  # detect per-monitor mode, and then apply the selection to every active output.
+  wallpaperSetter = pkgs.writeShellApplication {
+    name = "mariano-set-wallpaper";
+    runtimeInputs = [
+      dmsBridge
+      pkgs.coreutils
+      pkgs.jq
+      pkgs.niri
+    ];
+    text = ''
+      set -eu
+
+      if [ "$#" -ne 1 ] || [ ! -f "$1" ]; then
+        echo "Usage: mariano-set-wallpaper IMAGE" >&2
+        exit 2
+      fi
+      wallpaper=$1
+
+      if ! response=$(dms ipc call wallpaper set "$wallpaper" 2>&1); then
+        printf '%s\n' "$response" >&2
+        exit 1
+      fi
+      case "$response" in
+        "SUCCESS:"*)
+          printf '%s\n' "$response"
+          ;;
+        "ERROR: Per-monitor mode enabled."*)
+          outputs=""
+          if niri_outputs=$(niri msg --json outputs 2>/dev/null) \
+            && printf '%s\n' "$niri_outputs" | jq -e 'type == "object" and length > 0' >/dev/null; then
+            # DMS accepts Niri connector IDs (for example eDP-1) and maps them
+            # to its internal monitor key. Its own `outputs current` IPC emits
+            # a descriptive EDID label that wallpaper.setFor silently discards.
+            outputs=$(printf '%s\n' "$niri_outputs" | jq -c 'keys')
+          elif ! outputs=$(dms ipc call outputs current 2>&1); then
+            printf 'Could not determine active displays: %s\n' "$outputs" >&2
+            exit 1
+          fi
+          if ! printf '%s\n' "$outputs" | jq -e 'type == "array" and length > 0 and all(.[]; type == "string" and length > 0)' >/dev/null; then
+            printf 'Could not determine active displays: %s\n' "$outputs" >&2
+            exit 1
+          fi
+
+          failed=0
+          while IFS= read -r output; do
+            if ! result=$(dms ipc call wallpaper setFor "$output" "$wallpaper" 2>&1); then
+              printf '%s\n' "$result" >&2
+              failed=1
+            elif [ "''${result#SUCCESS:}" = "$result" ]; then
+              printf '%s\n' "$result" >&2
+              failed=1
+            else
+              printf '%s\n' "$result"
+            fi
+          done < <(printf '%s\n' "$outputs" | jq -r '.[]')
+          exit "$failed"
+          ;;
+        *)
+          printf '%s\n' "$response" >&2
+          exit 1
+          ;;
+      esac
+    '';
+  };
+
   # Themeport only uses this bridge with Chrome's fixed policy-refresh flags.
   # Keeping Chrome itself out of the wrapper closure avoids duplicating its
   # large package while still allowing an already-running browser to update.
@@ -131,6 +199,7 @@ let
     pkgs.tmux
     chromeBridge
     dmsBridge
+    wallpaperSetter
     vicinaeBridge
   ];
 
@@ -306,7 +375,7 @@ HELP
             *) echo "Wallpaper escaped the trusted directory." >&2; exit 2 ;;
           esac
           status=0
-          dms ipc call wallpaper set "$resolved" || status=$?
+          mariano-set-wallpaper "$resolved" || status=$?
           if [ "$hold" -eq 1 ]; then
             printf '\nPress Enter to close.'
             read -r _ || true
@@ -361,6 +430,7 @@ in
 
   environment.systemPackages = [
     themeport
+    wallpaperSetter
     # Export previews and backgrounds at /run/current-system/sw/share/themeport
     # for the native DMS pickers; the command wrapper itself contains only bin/.
     themeportUnwrapped

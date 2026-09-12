@@ -84,7 +84,7 @@ in
     "org.freedesktop.impl.portal.Secret" = "gnome-keyring";
   };
 
-  programs.dank-material-shell.greeter = {
+  programs.dms-greeter = {
     enable = true;
     compositor.name = "niri";
     configHome = "/home/mariano";

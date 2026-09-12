@@ -83,12 +83,11 @@ previously made recovery installs fragile.
 
 ### Bonhart kernel and Wi-Fi stability
 
-Bonhart tracks the newest stable kernel (`linuxPackages_latest`) because the
-Strix Point s2idle and amdgpu paths receive fixes in nearly every release. Its
-Wi-Fi uses the in-tree `mt7925e` driver; the earlier out-of-tree MT7925
-package was dropped once mainline caught up. The one out-of-tree module left,
-DisplayLink's `evdi`, is the concrete cost of tracking the latest kernel: a
-release it does not yet support fails the build rather than the feature.
+Bonhart tracks the newest maintained LTS kernel (`linuxPackages_6_18`) so the
+Strix Point s2idle and amdgpu paths keep receiving fixes without outrunning
+DisplayLink's out-of-tree `evdi` module. Its Wi-Fi uses the in-tree `mt7925e`
+driver; the earlier out-of-tree MT7925 package was dropped once mainline caught
+up. A future kernel-series change must still build EVDI before activation.
 
 Bonhart also sets the Argentina wireless regulatory domain, disables Wi-Fi
 power saving and MT7925 PCI ASPM, and keeps redistributable firmware current
@@ -139,11 +138,14 @@ nested menu. Important entries include:
 - the 22 pinned official Omarchy themes (including Osaka Jade), their bundled
   non-wordmark wallpapers, and window border/gap toggles;
 - fingerprint enrollment on Bonhart; and
-- a fixed NixOS updater that updates only `nixpkgs`, Home Manager and Disko.
-  It resolves `/etc/nixos` (a symlink to the administrator's checkout), refuses
-  trees owned by anyone else or writable by group or others, updates the lock
-  file as the checkout owner, restores the old lock file on failure, and
-  leaves third-party inputs pinned.
+- a guarded `Update All NixOS Packages` action in the `Super+Space` menu. It
+  runs the same operation as `sudo mariano-system-update-all`, refreshing every
+  movable flake input—including Codex Desktop—before building and switching.
+  It resolves `/etc/nixos` to the administrator's checkout, rejects unsafe
+  ownership or permissions, updates the lock file as the checkout owner, and
+  restores the old lock file on failure. Explicitly commit-pinned inputs remain
+  pinned; `sudo mariano-system-update` remains available for a narrow update of
+  only `nixpkgs`, Home Manager and Disko.
 
 The guided installer already installs Steam and Proton VPN as part of the
 workstation closure.

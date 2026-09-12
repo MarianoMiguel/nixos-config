@@ -1,51 +1,29 @@
-diff --git a/Modules/DankBar/DankBarWindow.qml b/Modules/DankBar/DankBarWindow.qml
-index e8dbbaa..8d17d36 100644
---- a/Modules/DankBar/DankBarWindow.qml
-+++ b/Modules/DankBar/DankBarWindow.qml
-@@ -43,7 +43,8 @@ PanelWindow {
-         PopoutManager.requestPopout(popout, undefined, "systemUpdate");
-     }
-
--    function triggerControlCenter() {
-+    function triggerControlCenter(section) {
-         controlCenterLoader.active = true;
-         if (!controlCenterLoader.item) {
-+            Qt.callLater(() => triggerControlCenter(section));
-             return;
-@@ -59,7 +59,17 @@ PanelWindow {
-             controlCenterLoader.item.triggerScreen = barWindow.screen;
-         }
-
--        controlCenterLoader.item.toggle();
-+        if (!section || !controlCenterLoader.item.shouldBeVisible)
-+            controlCenterLoader.item.toggle();
-+        if (section && controlCenterLoader.item.shouldBeVisible) {
-+            const widgetIndex = (SettingsData.controlCenterWidgets || []).findIndex(widget => widget.id === section);
-+            const widgetData = widgetIndex >= 0 ? SettingsData.controlCenterWidgets[widgetIndex] : null;
-+            Qt.callLater(() => {
-+                controlCenterLoader.item.expandedWidgetIndex = widgetIndex;
-+                controlCenterLoader.item.expandedWidgetData = widgetData;
-+                controlCenterLoader.item.expandedSection = section;
-+            });
-+        }
-         if (controlCenterLoader.item.shouldBeVisible && NetworkService.wifiEnabled) {
-             NetworkService.scanWifi();
-         }
 diff --git a/DMSShellIPC.qml b/DMSShellIPC.qml
-index 8dd8bf7..248ffb2 100644
+index 8dd8bf7..72cba41 100644
 --- a/DMSShellIPC.qml
 +++ b/DMSShellIPC.qml
-@@ -224,3 +224,21 @@ Item {
+@@ -249,3 +249,32 @@ Item {
 +        function openSection(section: string): string {
 +            if (!section)
 +                return "CONTROL_CENTER_OPEN_SECTION_FAILED";
 +
-+            const bar = root.getPreferredBar("controlCenterButtonRef");
-+            if (bar) {
-+                bar.triggerControlCenter(section);
++            if (PopoutService.routeToIsland("controlcenter", null, false, section))
 +                return "CONTROL_CENTER_OPEN_SECTION_SUCCESS";
-+            }
-+            return "CONTROL_CENTER_OPEN_SECTION_FAILED";
++
++            const bar = root.getPreferredBar("controlCenterButtonRef");
++            if (!bar)
++                return "CONTROL_CENTER_OPEN_SECTION_FAILED";
++
++            root.controlCenterLoader.active = true;
++            Qt.callLater(() => {
++                const popout = root.controlCenterLoader.item;
++                if (!popout)
++                    return;
++                if (!popout.shouldBeVisible)
++                    bar.triggerControlCenter();
++                Qt.callLater(() => popout.openWithSection(section));
++            });
++            return "CONTROL_CENTER_OPEN_SECTION_SUCCESS";
 +        }
 +
 +        function section(): string {
@@ -70,23 +48,21 @@ index c72165e..45cd96a 100644
          if (!trayItem.onlyMenu) {
              trayItem.activate();
              return;
-@@ -83,6 +85,15 @@ BasePill {
+@@ -83,6 +85,13 @@ BasePill {
          root.showForTrayItem(trayItem, anchorItem, parentScreen, root.isAtBottom, root.isVerticalOrientation, root.axis);
      }
 
 +    function openTailscaleControl(trayItem) {
 +        if ((trayItem?.id || "").toLowerCase() !== "tailscale")
 +            return false;
-+        if (!parentWindow || typeof parentWindow.triggerControlCenter !== "function")
-+            return false;
-+        parentWindow.triggerControlCenter("builtin_tailscale");
++        Quickshell.execDetached(["/run/current-system/sw/bin/dms", "ipc", "call", "control-center", "openSection", "builtin_tailscale"]);
 +        return true;
 +    }
 +
      function openInlineTrayContextMenu(trayItem, areaItem, mouse, anchorItem) {
          if (!trayItem) {
              return;
-@@ -583,6 +595,8 @@ BasePill {
+@@ -583,6 +592,8 @@ BasePill {
 
                              if (!delegateRoot.trayItem)
                                  return;
@@ -95,7 +71,7 @@ index c72165e..45cd96a 100644
                              if (!delegateRoot.trayItem.onlyMenu) {
                                  delegateRoot.trayItem.activate();
                                  return;
-@@ -909,6 +923,8 @@ BasePill {
+@@ -909,6 +920,8 @@ BasePill {
 
                      if (!trayItem)
                          return;
@@ -104,7 +80,7 @@ index c72165e..45cd96a 100644
                      if (!trayItem.onlyMenu) {
                          trayItem.activate();
                          return;
-@@ -1461,6 +1477,10 @@ BasePill {
+@@ -1461,6 +1474,10 @@ BasePill {
                                          return;
                                      if (!trayItem)
                                          return;

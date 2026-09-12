@@ -99,15 +99,17 @@ in
     SUBSYSTEM=="power_supply", KERNEL=="AC", ACTION=="change", TAG+="systemd", ENV{SYSTEMD_WANTS}+="power-profile-auto.service"
   '';
 
-  # If a kernel lockup ever freezes the machine, reboot automatically instead
-  # of requiring a long power-button hold. The SP5100 hardware watchdog is
-  # present on this machine.
-  systemd.settings.Manager.RuntimeWatchdogSec = "60s";
-  boot.kernel.sysctl = {
-    "kernel.softlockup_panic" = 1;
-    "kernel.hardlockup_panic" = 1;
-    "kernel.panic" = 30;
-  };
+  # No hardware watchdog and no panic-on-lockup, on purpose. Hibernation
+  # freezes userspace, systemd included, before the kernel writes the memory
+  # image to the encrypted swap. The watchdog core keeps the SP5100 timer
+  # armed to fire RuntimeWatchdogSec after systemd's last ping, the sp5100_tco
+  # driver has no sleep handling, and systemd-sleep never touches the
+  # watchdog, so a 60 s watchdog reset the laptop whenever the image took
+  # longer than a minute to write. It came back up at the LUKS prompt with the
+  # backlight on and drained the battery inside the closed lid. The
+  # softlockup/hardlockup panic sysctls with kernel.panic=30 end the same way.
+  # Both were agent-host conveniences; on a laptop a hard freeze is a
+  # ten-second hold of the power button.
 
   time.timeZone = "America/Argentina/Buenos_Aires";
 

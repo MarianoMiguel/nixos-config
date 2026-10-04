@@ -117,6 +117,7 @@ let
     };
   };
   beeperDesktop = pkgs.callPackage ../../packages/beeper.nix { };
+  cmuxBrowser = pkgs.callPackage ../../packages/cmux-browser.nix { };
   granola = pkgs.callPackage ../../packages/granola-linux { };
   obsbotCameraControl = pkgs.callPackage ../../packages/obsbot-camera-control.nix { };
   wrapDesignAppImage =
@@ -238,6 +239,7 @@ in
   xdg.mime.defaultApplications = browserMimeDefaults // {
     "application/pdf" = "firefox.desktop";
     "x-scheme-handler/beeper" = "beepertexts.desktop";
+    "x-scheme-handler/cmux" = "cmux-browser.desktop";
     "x-scheme-handler/figma" = "io.github.nickvdp.figma-desktop-linux.desktop";
     "x-scheme-handler/granola" = "granola.desktop";
     "x-scheme-handler/granola-dev" = "granola.desktop";
@@ -309,6 +311,7 @@ in
     ++ [
       davinciResolve
       codexDesktop
+      cmuxBrowser
       granola
       herdr
     ];

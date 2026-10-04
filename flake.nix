@@ -189,6 +189,7 @@
         );
 
       packages.${system} = {
+        cmux-browser = self.nixosConfigurations.bonhart.pkgs.callPackage ./packages/cmux-browser.nix { };
         granola = self.nixosConfigurations.bonhart.pkgs.callPackage ./packages/granola-linux { };
         librepods = inputs.librepods-rust.packages.${system}.default;
         niri-pip = self.nixosConfigurations.bonhart.pkgs.callPackage ./packages/niri-pip.nix {

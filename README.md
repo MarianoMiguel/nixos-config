@@ -121,8 +121,17 @@ applet, Discover and PackageKit are deliberately not installed as competing
 control surfaces. KDE applications such as Dolphin, Krita and Kdenlive remain
 available and follow the same GTK-derived light/dark appearance.
 
-In Niri, `Super+Period` opens the DMS application launcher and `Alt+Space`
-or `Super+Space` opens the separate, searchable System Actions menu. In GNOME,
+cmux Browser is installed with the workstation applications. Launch `cmux`
+or `cmux-browser`, or search for cmux in the app launcher; `cmux-tui` exposes
+its terminal control CLI. The Nix package pins the official Linux nightly's
+version and SHA-256 in `packages/cmux-browser.nix`, patches its libraries for
+NixOS, and retains Chromium's user-namespace sandbox. Updates are managed by
+changing that package pin and rebuilding, rather than the in-app updater.
+Chrome remains the default web browser.
+
+In Niri, `Alt+Space` opens the DMS application launcher with an empty search
+(`Super+Period` also toggles the launcher), and `Super+Space` opens the separate,
+searchable System Actions menu with the `sys` filter. In GNOME,
 `Alt+Space` opens the Vicinae application launcher and `Super+Space` opens
 System Actions; Vicinae only runs in the GNOME session. System actions are not
 exported as fake applications, so they do not crowd launcher results.

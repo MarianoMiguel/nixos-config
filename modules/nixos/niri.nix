@@ -479,6 +479,12 @@ in
     package = dmsShell;
     quickshell.package = quickshell.packages.${system}.default;
     plugins = {
+      # Composite plugin: one shared sidebar daemon, a button on each bar.
+      # All content lives in this repo and reuses DMS services/plugin panels.
+      folioSidebar = {
+        src = ../../dotfiles/dms-plugins/folio-sidebar;
+        settings.enabled = true;
+      };
       codexBar = {
         src = codexbarDmsPlugin;
         settings = {

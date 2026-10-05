@@ -456,6 +456,7 @@ def dms_variant(colors: dict[str, str], label: str) -> dict[str, str]:
         "outline": colors["muted"],
         "outlineVariant": colors["selection"],
         **elevation,
+        "success": colors["green"],
         "error": colors["red"],
         "warning": colors["orange"],
         "info": info,

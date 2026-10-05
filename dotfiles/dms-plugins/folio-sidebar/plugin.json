@@ -1,0 +1,13 @@
+{
+  "id": "folioSidebar",
+  "name": "Folio Sidebar",
+  "description": "A right-hand companion for Azure Folio: time, media and the existing DMS controls",
+  "version": "1.0.0",
+  "author": "Mariano Miguel",
+  "type": "composite",
+  "capabilities": ["daemon", "dankbar-widget"],
+  "icon": "dock_to_right",
+  "components": {"daemon": "./SidebarDaemon.qml", "widget": "./SidebarWidget.qml"},
+  "requires_dms": ">=1.5.0",
+  "permissions": ["process"]
+}

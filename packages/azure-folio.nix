@@ -6,6 +6,12 @@ let
   } ''
     python ${../tools/azure-folio/build.py} ${../assets/azure-folio} "$out"
   '';
+  # Typography/layout and neutral-color edits never re-dither the artwork.
+  palettes = runCommand "azure-folio-palettes-1.0.0" {
+    nativeBuildInputs = [ python3 ];
+  } ''
+    python ${../tools/azure-folio/palettes.py} ${../assets/azure-folio} "$out"
+  '';
 in
 stdenvNoCC.mkDerivation {
   pname = "azure-folio";
@@ -16,7 +22,7 @@ stdenvNoCC.mkDerivation {
     runHook preInstall
     mkdir -p "$out/share/azure-folio" "$out/share/fonts/truetype" "$out/bin"
     ln -s ${artwork}/art "$out/share/azure-folio/art"
-    ln -s ${artwork}/themes "$out/share/azure-folio/themes"
+    ln -s ${palettes} "$out/share/azure-folio/themes"
     cp ${artwork}/catalog.json "$out/share/azure-folio/"
     cp ${../assets/azure-folio/generation-prompts.json} "$out/share/azure-folio/"
     cp -R ${../assets/azure-folio/fonts} "$out/share/azure-folio/fonts"

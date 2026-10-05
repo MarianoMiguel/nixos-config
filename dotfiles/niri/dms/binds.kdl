@@ -35,7 +35,8 @@ binds {
     Mod+Y repeat=false hotkey-overlay-title="Browse Wallpapers" {
         spawn "mariano-dms-picker" "wall";
     }
-    Mod+N repeat=false hotkey-overlay-title="Notification Center" { spawn "dms" "ipc" "call" "notifications" "toggle"; }
+    Mod+N repeat=false hotkey-overlay-title="Folio Sidebar" { spawn "dms" "ipc" "call" "folioSidebar" "toggle"; }
+    Mod+Ctrl+N repeat=false hotkey-overlay-title="Sidebar Notifications" { spawn "dms" "ipc" "call" "folioSidebar" "section" "notifications"; }
     Mod+Shift+N repeat=false hotkey-overlay-title="Notepad" { spawn "dms" "ipc" "call" "notepad" "toggle"; }
 
     // === Security ===

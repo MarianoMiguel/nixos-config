@@ -56,7 +56,7 @@ def appearance(selection):
     mode=selection['mode'];ink=selection['ink']
     prefix=f'{ink}-{mode}'
     images=[{'title':a['title'],'credit':a['credit'],'portrait':str(DATA/'art'/a['id']/f'{prefix}-portrait.png'),'desktop':str(DATA/'art'/a['id']/f'{prefix}-desktop.png')} for a in collection['art']]
-    return {**selection,'collectionName':collection['name'],'paper':'#f7f4e9' if mode=='light' else '#101d33','inkColor':cat['inks'][ink][mode],'muted':'#64728a' if mode=='light' else '#9eb0ca','line':'#cbd1d7' if mode=='light' else '#384c69','images':images}
+    return {**selection,'collectionName':collection['name'],'paper':'#f7f4e9' if mode=='light' else '#101d33','inkColor':cat['inks'][ink][mode],'muted':'#536177' if mode=='light' else '#9eb0ca','line':'#d9d0bf' if mode=='light' else '#384c69','images':images}
 
 
 def ipc(*args,required=False):
@@ -83,7 +83,7 @@ def apply(selection, previous, force=False):
     doc=appearance(selection)
     # Live IPC owns DMS settings writes. The Home Manager activation separately
     # provides the same defaults before the shell has started.
-    for key,value in {'fontFamily':'Inter','monoFontFamily':'IBM Plex Mono','lockScreenFontFamily':'Jacquard 24','lockScreenShowDate':'true','greeterFontFamily':'Inter','fontWeight':'400','fontScale':'1','niriLayoutRadiusOverride':'5','niriLayoutBorderSize':'1','niriLayoutGapsOverride':'12','dockTransparency':'1','cornerRadius':'5','widgetRadius':'5','popupTransparency':'1','terminalsAlwaysDark':'false'}.items():
+    for key,value in {'fontFamily':'Inter','monoFontFamily':'IBM Plex Mono','lockScreenFontFamily':'Jacquard 24','lockScreenShowDate':'true','greeterFontFamily':'Inter','fontWeight':'400','fontScale':'1','niriLayoutRadiusOverride':'5','niriLayoutBorderSize':'1','niriLayoutGapsOverride':'12','dockTransparency':'1','cornerRadius':'5','popupTransparency':'1','terminalsAlwaysDark':'false'}.items():
         ipc('settings','set',key,value)
     selected=doc['images'][selection['art']]['desktop']
     if ipc('settings','get','currentThemeName') is not None:

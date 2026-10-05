@@ -773,7 +773,7 @@ PluginComponent {
                         width: parent.width
                         height: scheduleSummaryRow.implicitHeight + Theme.spacingM * 2
                         radius: Theme.cornerRadius
-                        color: Theme.primaryContainer
+                        color: Theme.surfaceContainerHighest
 
                         Row {
                             id: scheduleSummaryRow

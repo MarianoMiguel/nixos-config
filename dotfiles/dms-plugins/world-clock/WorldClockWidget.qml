@@ -276,8 +276,7 @@ PluginComponent {
                         width: parent.width
                         height: placeColumn.implicitHeight + Theme.spacingM * 2
                         radius: Theme.cornerRadius
-                        color: index === 0 ? Theme.primary : Theme.surfaceContainerHigh
-                        opacity: index === 0 ? 0.18 : 1
+                        color: index === 0 ? Theme.surfaceContainerHighest : Theme.surfaceContainerHigh
 
                         Column {
                             id: placeColumn

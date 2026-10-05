@@ -249,8 +249,8 @@ in
             | .lockScreenVideoEnabled = false
             | .barConfigs = [.barConfigs[] | . + {
                 leftWidgets: ["launcherButton", "workspaceSwitcher", "focusedWindow"],
-                centerWidgets: [{id:"worldClock",enabled:true},"clock"],
-                rightWidgets: [{id:"codexBar",enabled:true},{id:"focus",enabled:true},{id:"workspaceModes",enabled:true},"systemTray","notificationButton","battery","controlCenterButton"],
+                centerWidgets: ["clock"],
+                rightWidgets: ["systemTray",{id:"folioSidebar",enabled:true}],
                 spacing: 8, innerPadding: 2, bottomGap: 0,
                 transparency: 1, widgetTransparency: 0,
                 squareCorners: false, noBackground: false,
@@ -272,7 +272,9 @@ in
           temporary="$(${pkgs.coreutils}/bin/mktemp)"
           ${pkgs.jq}/bin/jq \
             --arg codexbar ${lib.escapeShellArg "${marianoCodexbar}/bin/codexbar"} '
-            .codexBar.enabled = true
+            .folioSidebar.enabled = true
+            | .focus.enabled = true
+            | .codexBar.enabled = true
             | .codexBar.codexbarPath = $codexbar
             | .codexBar.refreshInterval = "60000"
             | .codexBar.sourceMode = "oauth"

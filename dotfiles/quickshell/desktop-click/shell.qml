@@ -23,14 +23,15 @@ ShellRoot {
             WlrLayershell.namespace: "desktop-click-empty"
             WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
 
-            // Cover the desktop without reserving any space for this surface.
+            // Include wallpaper beside the bar/dock's reserved strips too.
+            // Normal exclusion would shrink this to the window work area.
+            exclusionMode: ExclusionMode.Ignore
             anchors {
                 top: true
                 bottom: true
                 left: true
                 right: true
             }
-            exclusiveZone: 0
             color: "transparent"
 
             MouseArea {

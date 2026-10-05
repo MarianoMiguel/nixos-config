@@ -612,7 +612,7 @@
       "bottomGap": 0,
       "transparency": 1,
       "widgetTransparency": 0,
-      "squareCorners": true,
+      "squareCorners": false,
       "noBackground": false,
       "maximizeWidgetIcons": false,
       "maximizeWidgetText": false,
@@ -780,5 +780,6 @@
   "barInsetPaddingShared": -1,
   "barInsetPaddingSyncAll": false,
   "frameBarInsetPadding": -1,
-  "configVersion": 12
+  "configVersion": 12,
+  "widgetRadius": 5
 }

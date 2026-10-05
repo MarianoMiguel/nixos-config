@@ -35,7 +35,7 @@ Use medium weight for compact status and bold only for a provider heading. Other
 
 ## 4. Spacing & Layout
 
-The login/lock view splits into art on the left and identity, clock and authentication on the right. Its proportions follow the approved live HTML study. The desktop bar uses a thin opaque surface, transparent widgets and restrained outlines; windows have 5-pixel corners and 12-pixel gaps.
+The login/lock view splits into art on the left and identity, clock and authentication on the right. Its proportions follow the approved live HTML study. The desktop bar uses a thin opaque surface, transparent widgets and restrained outlines; the bar, panels, dock and windows share 5-pixel corners, with 12-pixel window gaps. Desktop art fills the full display; only login and lock use the split page.
 
 Other QML spacing uses `Theme.spacingXS`, `Theme.spacingS`, `Theme.spacingM`, or larger existing DMS tokens. Cards use `Theme.cornerRadius`. Popouts stay within DMS's established 420-pixel compact panel width and must remain readable without horizontal scrolling.
 

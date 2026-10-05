@@ -285,7 +285,7 @@ Summer**, and **Argentina**. Each contains two plates. All share Inter for the
 interface, IBM Plex Mono for terminals and captions, and Jacquard 24 for the
 large clock. Choose **Daylight / After hours** and **Azure / Cobalt / Slate** in
 `Super+Space → Azure Folio Appearance`. `Choose Wallpaper` picks a plate from
-the active collection. The desktop keeps that choice; login and lock screens
+the active collection. The desktop fills the display with that choice; login and lock screens use the split layout and
 randomize within the collection each time they open.
 
 DMS still owns the launcher, controls, notifications, media, authentication and

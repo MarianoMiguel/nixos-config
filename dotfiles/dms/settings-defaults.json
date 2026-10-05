@@ -65,5 +65,6 @@
   "niriLayoutRadiusOverride": 5,
   "niriLayoutBorderSize": 1,
   "popupTransparency": 1,
-  "dockTransparency": 1
+  "dockTransparency": 1,
+  "widgetRadius": 5
 }

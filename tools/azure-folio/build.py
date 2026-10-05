@@ -35,19 +35,9 @@ def masks(source, art):
     if art['generated']:
         image = ImageOps.autocontrast(image, cutoff=.3)
     portrait = ImageOps.fit(image, (700,875), centering=(.72 if art['generated'] else .5,.5))
-    if art['generated']:
-        desktop = ImageOps.fit(image,(1400,875))
-    else:
-        desktop = Image.new('L',(1400,875),255)
-        plate = ImageOps.contain(image,(720,910))
-        x0 = 1400-plate.width
-        desktop.paste(plate,(x0,(875-plate.height)//2))
-        # Ease a portrait engraving into a landscape without obscuring the
-        # figure or making the desktop's quiet left side look cut off.
-        px=desktop.load()
-        for x in range(x0,min(1400,x0+round(plate.width*.3))):
-            blend=(x-x0)/(plate.width*.3); blend=blend*blend*(3-2*blend)
-            for y in range(875): px[x,y]=round(255-(255-px[x,y])*blend)
+    # Desktop art fills the entire monitor. Login/lock use the separate
+    # portrait asset in their split page; never bake that split into wallpaper.
+    desktop = ImageOps.fit(image, (1400,875), centering=(.5,.5))
     return {'desktop':atkinson(desktop),'portrait':atkinson(portrait)}
 
 

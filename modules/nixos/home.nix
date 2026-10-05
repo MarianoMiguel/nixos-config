@@ -139,6 +139,22 @@ in
           '') mutableDotfiles}
         '';
 
+        # Qt caches plugins under stable /etc paths, while Nix store files all
+        # have the same epoch timestamp. Invalidate compiled QML when the local
+        # plugin sources change so a restart cannot load an earlier catalog.
+        home.activation.refreshDmsPluginCache = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+          marker="${home}/.local/state/nixos-config/dms-plugin-cache-revision"
+          revision="${../../dotfiles/dms-plugins}"
+          previous="$(${pkgs.coreutils}/bin/cat "$marker" 2>/dev/null || true)"
+          if [ "$previous" != "$revision" ]; then
+            $DRY_RUN_CMD ${pkgs.coreutils}/bin/rm -rf "${home}/.cache/quickshell/qmlcache"
+            $DRY_RUN_CMD ${pkgs.coreutils}/bin/mkdir -p "${home}/.local/state/nixos-config"
+            if [ -z "$DRY_RUN_CMD" ]; then
+              printf '%s\n' "$revision" > "$marker"
+            fi
+          fi
+        '';
+
         # These settings are policy rather than user preferences: they keep one
         # visual owner, enable Bonhart's biometric surfaces, and prevent mutable
         # user Matugen templates or third-party launcher entries from executing
@@ -178,7 +194,7 @@ in
             | .popupTransparency = 1
             | .dockTransparency = 1
             | .cornerRadius = 5
-            | .widgetRadius = 3
+            | .widgetRadius = 5
             | .runUserMatugenTemplates = false
             | .showThirdPartyPlugins = false
             | .searchAppActions = true
@@ -235,7 +251,7 @@ in
                 rightWidgets: [{id:"codexBar",enabled:true},{id:"focus",enabled:true},{id:"workspaceModes",enabled:true},"systemTray","notificationButton","battery","controlCenterButton"],
                 spacing: 8, innerPadding: 2, bottomGap: 0,
                 transparency: 1, widgetTransparency: 0,
-                squareCorners: true, noBackground: false,
+                squareCorners: false, noBackground: false,
                 borderEnabled: true, borderColor: "outlineVariant", borderOpacity: 1,
                 borderThickness: 1, widgetPadding: 8,
                 shadowIntensity: 0, shadowOpacity: 0

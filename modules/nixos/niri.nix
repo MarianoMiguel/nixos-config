@@ -90,7 +90,7 @@ let
       esac
     '';
   };
-  # Backs the bottom-edge wallpaper click surface (dotfiles/quickshell/desktop-click).
+  # Backs the wallpaper click surface (dotfiles/quickshell/desktop-click).
   niriFocusEmpty = pkgs.writeShellApplication {
     name = "niri-focus-empty";
     runtimeInputs = with pkgs; [

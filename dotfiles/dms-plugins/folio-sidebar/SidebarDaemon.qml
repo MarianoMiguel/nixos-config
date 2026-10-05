@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls
 import QtQuick.Effects
 import Quickshell
 import Quickshell.Io
@@ -63,6 +64,12 @@ Item {
         close();
         Quickshell.execDetached(["dms", "ipc", "call", "control-center", "open"]);
     }
+    function launchPowerMenu() {
+        close();
+        // Let DMS finish loading its menu and release the drawer's focus first.
+        PopoutService.powerMenuModalLoader.active = true;
+        powerMenuTimer.restart();
+    }
     Component.onDestruction: PopoutManager.hidePopout(root)
     Connections {
         target: root.pluginService
@@ -102,6 +109,7 @@ Item {
         }
     }
 
+    Timer { id: powerMenuTimer; interval: 100; onTriggered: PopoutService.openPowerMenu() }
     Timer { id: revealTimer; interval: 32; onTriggered: root.revealSection() }
     SystemClock { id: clock; precision: SystemClock.Minutes }
     PanelWindow {
@@ -303,14 +311,41 @@ Item {
                     anchors.left: parent.left; anchors.right: parent.right
                     anchors.leftMargin: 24; anchors.rightMargin: 24
                     height: 32
-                    StyledText {
+                    Button {
+                        id: powerButton
                         anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
+                        width: 92; height: 32
+                        padding: 0; leftPadding: 0; rightPadding: 0
+                        Accessible.name: "Power menu"
+                        onClicked: root.launchPowerMenu()
+                        background: Rectangle {
+                            radius: Theme.cornerRadius
+                            color: powerButton.hovered || powerButton.visualFocus ? Theme.surfaceContainerHigh : "transparent"
+                            border.width: powerButton.visualFocus ? 1 : 0
+                            border.color: Theme.primary
+                        }
+                        contentItem: Row {
+                            spacing: 12
+                            DankIcon {
+                                anchors.verticalCenter: parent.verticalCenter
+                                name: "power_settings_new"; size: 20; color: Theme.primary
+                            }
+                            StyledText {
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: "Power"; font.pixelSize: 14; color: Theme.surfaceText
+                            }
+                        }
+                    }
+                    StyledText {
+                        anchors.right: moreControls.left; anchors.rightMargin: 16
+                        anchors.verticalCenter: parent.verticalCenter
                         text: "SUPER + N"
                         font.family: SettingsData.monoFontFamily
                         font.pixelSize: 10; font.letterSpacing: 1
                         color: Theme.surfaceVariantText
                     }
                     DankActionButton {
+                        id: moreControls
                         anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
                         iconName: "tune"; buttonSize: 32
                         Accessible.name: "More system controls"

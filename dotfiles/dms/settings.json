@@ -529,14 +529,12 @@
   "powerActionConfirm": true,
   "powerActionHoldDuration": 0.5,
   "powerMenuActions": [
-    "reboot",
-    "logout",
-    "poweroff",
     "lock",
-    "suspend",
-    "restart"
+    "logout",
+    "reboot",
+    "poweroff"
   ],
-  "powerMenuDefaultAction": "logout",
+  "powerMenuDefaultAction": "lock",
   "powerMenuGridLayout": false,
   "customPowerActionLock": "",
   "customPowerActionLogout": "",

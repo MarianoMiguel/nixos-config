@@ -206,6 +206,10 @@ in
             | .greeterEnableFprint = $fingerprint
             | .enableFprint = $fingerprint
             | .lockBeforeSuspend = true
+            | .powerMenuActions = ["lock", "logout", "reboot", "poweroff"]
+            | .powerMenuDefaultAction = "lock"
+            | .powerMenuGridLayout = false
+            | .powerActionConfirm = true
             # Idle policy for the niri session, mirroring power.nix: plain
             # suspend is refused there, so idle on battery hibernates (DMS
             # behaviour 1) after fifteen minutes, and idle on AC never sleeps
@@ -417,8 +421,8 @@ in
           "niri/toggles/radius.kdl".source = mutableDotfile "niri/toggles/radius.kdl";
 
           # Standalone Quickshell instance (qs -c desktop-click), spawned by the
-          # niri config: a bottom-edge wallpaper strip that jumps to the empty
-          # workspace on click. See dotfiles/quickshell/desktop-click/shell.qml.
+          # niri config: exposed wallpaper jumps to the nearest empty workspace
+          # on that display. See dotfiles/quickshell/desktop-click/shell.qml.
           "quickshell/desktop-click/shell.qml".source =
             ../../dotfiles/quickshell/desktop-click/shell.qml;
 

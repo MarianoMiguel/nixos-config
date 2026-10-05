@@ -15,6 +15,10 @@ shell fork or DMS source patch is needed for the sidebar.
   DMS settings. When LibrePods is running, its reported battery status and exported
   noise-control radio actions appear here; no private Bluetooth API is used.
 - The footer's sliders button opens the full DMS Control Center.
+- The fixed footer's **Power** button opens DMS's native power menu: Lock,
+  Log Out, Reboot and Power Off. Lock is selected initially; the other actions
+  retain DMS's hold-to-confirm interaction. DMS's `PopoutService` loads and opens
+  the original menu, keeping action execution and keyboard handling upstream.
 
 ## Ownership and update boundaries
 

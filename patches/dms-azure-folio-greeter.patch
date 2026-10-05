@@ -1,0 +1,462 @@
+--- a/quickshell/Modules/Greetd/GreeterContent.qml
++++ b/quickshell/Modules/Greetd/GreeterContent.qml
+@@ -9,6 +9,7 @@
+ import qs.Common
+ import qs.Services
+ import qs.Widgets
++import qs.Folio
+ import qs.DankCommon.Session
+ import "../../DankCommon/Common/LayoutCodes.js" as LayoutCodes
+ 
+@@ -734,60 +735,30 @@
+             userListOpen = false;
+     }
+ 
+-    Rectangle {
++    FolioBackdrop {
++        id: folio
+         anchors.fill: parent
+-        color: GreetdSettings.effectiveWallpaperBackgroundColor
+-    }
+-
+-    DankBackdrop {
+-        anchors.fill: parent
+-        screenName: root.screenName
+-        visible: {
+-            var _ = SessionData.perMonitorWallpaper;
+-            var __ = SessionData.monitorWallpapers;
+-            var currentWallpaper = SessionData.getMonitorWallpaper(screenName);
+-            return !currentWallpaper || currentWallpaper === "" || (currentWallpaper && currentWallpaper.startsWith("#"));
+-        }
+-    }
+-
+-    Image {
+-        id: wallpaperBackground
+-
+-        anchors.fill: parent
+-        source: {
+-            var _ = SessionData.perMonitorWallpaper;
+-            var __ = SessionData.monitorWallpapers;
+-            var currentWallpaper = SessionData.getMonitorWallpaper(screenName);
+-            return (currentWallpaper && !currentWallpaper.startsWith("#")) ? encodeFileUrl(currentWallpaper) : "";
+-        }
+-        fillMode: Theme.getFillMode(GreetdSettings.getEffectiveWallpaperFillMode())
+-        smooth: true
+-        asynchronous: false
+-        cache: true
+-        visible: source !== ""
+-        layer.enabled: true
+-
+-        layer.effect: MultiEffect {
+-            autoPaddingEnabled: false
+-            blurEnabled: true
+-            blur: 0.8
+-            blurMax: 32
+-            blurMultiplier: 1
+-        }
+-
+-        Behavior on opacity {
+-            NumberAnimation {
+-                duration: Theme.mediumDuration
+-                easing.type: Theme.standardEasing
+-            }
+-        }
+-    }
+-
+-    Rectangle {
+-        anchors.fill: parent
+-        color: "black"
+-        opacity: 0.4
+-    }
++    }
++
++    Binding { target: Theme; property: "primary"; value: folio.ink }
++    Binding { target: Theme; property: "primaryText"; value: folio.paper }
++    Binding { target: Theme; property: "secondary"; value: folio.ink }
++    Binding { target: Theme; property: "surface"; value: folio.paper }
++    Binding { target: Theme; property: "surfaceText"; value: folio.ink }
++    Binding { target: Theme; property: "surfaceVariant"; value: folio.state.line || "#cbd1d7" }
++    Binding { target: Theme; property: "surfaceVariantText"; value: folio.muted }
++    Binding { target: Theme; property: "surfaceTint"; value: folio.ink }
++    Binding { target: Theme; property: "background"; value: folio.paper }
++    Binding { target: Theme; property: "outline"; value: folio.muted }
++    Binding { target: Theme; property: "surfaceContainer"; value: folio.paper }
++    Binding { target: Theme; property: "surfaceContainerHigh"; value: folio.state.line || "#cbd1d7" }
++    Binding { target: Theme; property: "primaryContainer"; value: folio.state.line || "#cbd1d7" }
++    Binding { target: Theme; property: "error"; value: folio.state.mode === "dark" ? "#e1a2a2" : "#994949" }
++    Binding { target: Theme; property: "warning"; value: folio.state.mode === "dark" ? "#d5bc8b" : "#78602f" }
++    Binding { target: Theme; property: "fontFamily"; value: "Inter" }
++    Binding { target: Theme; property: "monoFontFamily"; value: "IBM Plex Mono" }
++    Binding { target: Theme; property: "cornerRadius"; value: 5 }
++    Binding { target: Theme; property: "isLightMode"; value: folio.state.mode !== "dark" }
+ 
+     SystemClock {
+         id: systemClock
+@@ -808,138 +779,14 @@
+         Column {
+             id: greeterMainColumn
+ 
+-            anchors.horizontalCenter: parent.horizontalCenter
+-            anchors.verticalCenter: parent.verticalCenter
++            x: folio.contentX
++            y: Math.min(folio.authY, root.height - implicitHeight - 32)
+             spacing: Theme.spacingM
+-            width: 380
+-
+-            Item {
+-                id: clockContainer
+-
+-                width: parent.width
+-                height: clockText.implicitHeight
+-
+-                Row {
+-                    id: clockText
+-
+-                    anchors.horizontalCenter: parent.horizontalCenter
+-                    anchors.top: parent.top
+-                    spacing: 0
+-
+-                    property string fullTimeStr: {
+-                        const format = GreetdSettings.getEffectiveTimeFormat();
+-                        return systemClock.date.toLocaleTimeString(I18n.locale(), format);
+-                    }
+-                    property var timeParts: fullTimeStr.split(':')
+-                    property string hours: timeParts[0] || ""
+-                    property string minutes: timeParts[1] || ""
+-                    property string secondsWithAmPm: timeParts.length > 2 ? timeParts[2] : ""
+-                    property string seconds: secondsWithAmPm.replace(/\s*(AM|PM|am|pm)$/i, '')
+-                    property string ampm: {
+-                        const match = fullTimeStr.match(/\s*(AM|PM|am|pm)$/i);
+-                        return match ? match[0].trim() : "";
+-                    }
+-                    property bool hasSeconds: timeParts.length > 2
+-
+-                    StyledText {
+-                        width: 75
+-                        text: clockText.hours.length > 1 ? clockText.hours[0] : ""
+-                        font.pixelSize: 120
+-                        font.weight: Font.Light
+-                        color: "white"
+-                        horizontalAlignment: Text.AlignHCenter
+-                    }
+-
+-                    StyledText {
+-                        width: 75
+-                        text: clockText.hours.length > 1 ? clockText.hours[1] : clockText.hours.length > 0 ? clockText.hours[0] : ""
+-                        font.pixelSize: 120
+-                        font.weight: Font.Light
+-                        color: "white"
+-                        horizontalAlignment: Text.AlignHCenter
+-                    }
+-
+-                    StyledText {
+-                        text: ":"
+-                        font.pixelSize: 120
+-                        font.weight: Font.Light
+-                        color: "white"
+-                    }
+-
+-                    StyledText {
+-                        width: 75
+-                        text: clockText.minutes.length > 0 ? clockText.minutes[0] : ""
+-                        font.pixelSize: 120
+-                        font.weight: Font.Light
+-                        color: "white"
+-                        horizontalAlignment: Text.AlignHCenter
+-                    }
+-
+-                    StyledText {
+-                        width: 75
+-                        text: clockText.minutes.length > 1 ? clockText.minutes[1] : ""
+-                        font.pixelSize: 120
+-                        font.weight: Font.Light
+-                        color: "white"
+-                        horizontalAlignment: Text.AlignHCenter
+-                    }
+-
+-                    StyledText {
+-                        text: clockText.hasSeconds ? ":" : ""
+-                        font.pixelSize: 120
+-                        font.weight: Font.Light
+-                        color: "white"
+-                        visible: clockText.hasSeconds
+-                    }
+-
+-                    StyledText {
+-                        width: 75
+-                        text: clockText.hasSeconds && clockText.seconds.length > 0 ? clockText.seconds[0] : ""
+-                        font.pixelSize: 120
+-                        font.weight: Font.Light
+-                        color: "white"
+-                        horizontalAlignment: Text.AlignHCenter
+-                        visible: clockText.hasSeconds
+-                    }
+-
+-                    StyledText {
+-                        width: 75
+-                        text: clockText.hasSeconds && clockText.seconds.length > 1 ? clockText.seconds[1] : ""
+-                        font.pixelSize: 120
+-                        font.weight: Font.Light
+-                        color: "white"
+-                        horizontalAlignment: Text.AlignHCenter
+-                        visible: clockText.hasSeconds
+-                    }
+-
+-                    StyledText {
+-                        width: 20
+-                        text: " "
+-                        font.pixelSize: 120
+-                        font.weight: Font.Light
+-                        color: "white"
+-                        visible: clockText.ampm !== ""
+-                    }
+-
+-                    StyledText {
+-                        text: clockText.ampm
+-                        font.pixelSize: 120
+-                        font.weight: Font.Light
+-                        color: "white"
+-                        visible: clockText.ampm !== ""
+-                    }
+-                }
+-            }
+-
+-            StyledText {
+-                id: dateText
+-
+-                anchors.horizontalCenter: parent.horizontalCenter
+-                text: systemClock.date.toLocaleDateString(I18n.locale(), GreetdSettings.getEffectiveLockDateFormat())
+-                font.pixelSize: Theme.fontSizeXLarge
+-                color: "white"
+-                opacity: 0.9
+-            }
++            width: folio.contentWidth
++
++
++
++
+ 
+             ColumnLayout {
+                 id: authColumn
+@@ -974,7 +821,7 @@
+                             anchors.fill: parent
+                             radius: width / 2
+                             color: "transparent"
+-                            border.color: Theme.primary
++                            border.color: folio.ink
+                             border.width: (avatarPickerArea.containsMouse || root.userListOpen) && !GreeterState.showPasswordInput ? 2 : 0
+                             visible: root.pickerAvailable
+                             Behavior on border.width {
+@@ -1004,7 +851,7 @@
+                                 anchors.centerIn: parent
+                                 name: "switch_account"
+                                 size: 24
+-                                color: "white"
++                                color: folio.ink
+                             }
+                         }
+ 
+@@ -1034,9 +881,9 @@
+ 
+                         clip: true
+                         radius: Theme.cornerRadius
+-                        color: Theme.withAlpha(Theme.surfaceContainer, 0.9)
+-                        border.color: inputField.activeFocus ? Theme.primary : Qt.rgba(1, 1, 1, 0.3)
+-                        border.width: inputField.activeFocus ? 2 : 1
++                        color: folio.paper
++                        border.color: folio.ink
++                        border.width: 1
+ 
+                         GreeterUserPicker {
+                             id: userPicker
+@@ -1066,7 +913,7 @@
+                             anchors.verticalCenter: parent.verticalCenter
+                             name: GreeterState.showPasswordInput ? "lock" : "person"
+                             size: 20
+-                            color: inputField.activeFocus ? Theme.primary : Theme.surfaceVariantText
++                            color: inputField.activeFocus ? folio.ink : folio.muted
+                             visible: !root.showUserPicker
+                         }
+ 
+@@ -1175,7 +1022,7 @@
+                                 }
+                                 return I18n.tr("Username...");
+                             }
+-                            color: (GreeterState.unlocking || (Greetd.state !== GreetdState.Inactive && !awaitingExternalAuth && !pendingPasswordResponse)) ? Theme.primary : Theme.outline
++                            color: (GreeterState.unlocking || (Greetd.state !== GreetdState.Inactive && !awaitingExternalAuth && !pendingPasswordResponse)) ? folio.ink : folio.muted
+                             font.pixelSize: Theme.fontSizeMedium
+                             opacity: (GreeterState.showPasswordInput ? GreeterState.passwordBuffer.length === 0 : (root.showUserPicker ? false : GreeterState.usernameInput.length === 0)) ? 1 : 0
+ 
+@@ -1209,7 +1056,7 @@
+                                 }
+                                 return GreeterState.usernameInput;
+                             }
+-                            color: Theme.surfaceText
++                            color: folio.ink
+                             font.pixelSize: (GreeterState.showPasswordInput && !parent.showPassword) ? Theme.fontSizeLarge : Theme.fontSizeMedium
+                             opacity: (GreeterState.showPasswordInput ? GreeterState.passwordBuffer.length > 0 : (root.showUserPicker ? false : GreeterState.usernameInput.length > 0)) ? 1 : 0
+                             clip: true
+@@ -1225,6 +1072,7 @@
+                         }
+ 
+                         DankActionButton {
++                        iconColor: folio.ink
+                             id: revealButton
+ 
+                             anchors.right: externalAuthButton.visible ? externalAuthButton.left : (virtualKeyboardButton.visible ? virtualKeyboardButton.left : (enterButton.visible ? enterButton.left : parent.right))
+@@ -1237,6 +1085,7 @@
+                             onClicked: parent.showPassword = !parent.showPassword
+                         }
+                         DankActionButton {
++                        iconColor: folio.ink
+                             id: externalAuthButton
+ 
+                             anchors.right: virtualKeyboardButton.visible ? virtualKeyboardButton.left : (enterButton.visible ? enterButton.left : parent.right)
+@@ -1249,6 +1098,7 @@
+                             onClicked: root.startAuthSession(false)
+                         }
+                         DankActionButton {
++                        iconColor: folio.ink
+                             id: virtualKeyboardButton
+ 
+                             anchors.right: enterButton.visible ? enterButton.left : parent.right
+@@ -1268,6 +1118,7 @@
+                         }
+ 
+                         DankActionButton {
++                        iconColor: folio.ink
+                             id: enterButton
+ 
+                             anchors.right: parent.right
+@@ -1322,7 +1173,7 @@
+ 
+                         anchors.horizontalCenter: parent.horizontalCenter
+                         text: I18n.tr("Back to user list", "greeter link to return from manual username entry to user picker")
+-                        color: Theme.primary
++                        color: folio.ink
+                         font.pixelSize: Theme.fontSizeSmall
+                         font.underline: accountSwitchMouse.containsMouse
+                     }
+@@ -1343,7 +1194,7 @@
+                     Layout.topMargin: -Theme.spacingS
+                     Layout.bottomMargin: -Theme.spacingS
+                     text: root.authDisplayMessage
+-                    color: root.authFeedbackMessage !== "" ? Theme.error : Theme.surfaceVariantText
++                    color: root.authFeedbackMessage !== "" ? Theme.error : folio.muted
+                     font.pixelSize: Theme.fontSizeSmall
+                     horizontalAlignment: Text.AlignHCenter
+                     wrapMode: Text.WordWrap
+@@ -1390,7 +1241,7 @@
+                         DankIcon {
+                             name: "keyboard"
+                             size: Theme.iconSize
+-                            color: "white"
++                            color: folio.ink
+                             anchors.centerIn: parent
+                         }
+                     }
+@@ -1410,7 +1261,7 @@
+                             }
+                             font.pixelSize: Theme.fontSizeMedium
+                             font.weight: Font.Light
+-                            color: "white"
++                            color: folio.ink
+                             anchors.verticalCenter: parent.verticalCenter
+                         }
+                     }
+@@ -1435,7 +1286,7 @@
+             Rectangle {
+                 width: 1
+                 height: 24
+-                color: Qt.rgba(255, 255, 255, 0.2)
++                color: Theme.withAlpha(folio.ink, 0.2)
+                 anchors.verticalCenter: parent.verticalCenter
+                 visible: {
+                     const keyboardVisible = (CompositorService.isNiri && NiriService.keyboardLayoutNames.length > 1) || (CompositorService.isHyprland && hyprlandLayoutCount > 1);
+@@ -1451,7 +1302,7 @@
+                 DankIcon {
+                     name: WeatherService.getWeatherIcon(WeatherService.weather.wCode)
+                     size: Theme.iconSize
+-                    color: "white"
++                    color: folio.ink
+                     anchors.verticalCenter: parent.verticalCenter
+                 }
+ 
+@@ -1459,7 +1310,7 @@
+                     text: (GreetdSettings.useFahrenheit ? WeatherService.weather.tempF : WeatherService.weather.temp) + "°"
+                     font.pixelSize: Theme.fontSizeLarge
+                     font.weight: Font.Light
+-                    color: "white"
++                    color: folio.ink
+                     anchors.verticalCenter: parent.verticalCenter
+                 }
+             }
+@@ -1467,7 +1318,7 @@
+             Rectangle {
+                 width: 1
+                 height: 24
+-                color: Qt.rgba(255, 255, 255, 0.2)
++                color: Theme.withAlpha(folio.ink, 0.2)
+                 anchors.verticalCenter: parent.verticalCenter
+                 visible: GreetdSettings.lockScreenShowWeather && WeatherService.weather.available && (NetworkService.networkStatus !== "disconnected" || BluetoothService.enabled || (AudioService.sink && AudioService.sink.audio) || BatteryService.batteryAvailable)
+             }
+@@ -1480,7 +1331,7 @@
+                 DankIcon {
+                     name: NetworkService.networkStatus === "ethernet" ? "lan" : NetworkService.wifiSignalIcon
+                     size: Theme.iconSize - 2
+-                    color: NetworkService.networkStatus !== "disconnected" ? "white" : Qt.rgba(255, 255, 255, 0.5)
++                    color: NetworkService.networkStatus !== "disconnected" ? folio.ink : Theme.withAlpha(folio.ink, 0.5)
+                     anchors.verticalCenter: parent.verticalCenter
+                     visible: NetworkService.networkStatus !== "disconnected"
+                 }
+@@ -1488,7 +1339,7 @@
+                 DankIcon {
+                     name: "bluetooth"
+                     size: Theme.iconSize - 2
+-                    color: "white"
++                    color: folio.ink
+                     anchors.verticalCenter: parent.verticalCenter
+                     visible: BluetoothService.available && BluetoothService.enabled
+                 }
+@@ -1508,7 +1359,7 @@
+                         return "volume_up";
+                     }
+                     size: Theme.iconSize - 2
+-                    color: (AudioService.sink && AudioService.sink.audio && (AudioService.sink.audio.muted || AudioService.sink.audio.volume === 0)) ? Qt.rgba(255, 255, 255, 0.5) : "white"
++                    color: (AudioService.sink && AudioService.sink.audio && (AudioService.sink.audio.muted || AudioService.sink.audio.volume === 0)) ? Theme.withAlpha(folio.ink, 0.5) : folio.ink
+                     anchors.verticalCenter: parent.verticalCenter
+                     visible: AudioService.sink && AudioService.sink.audio
+                 }
+@@ -1517,7 +1368,7 @@
+             Rectangle {
+                 width: 1
+                 height: 24
+-                color: Qt.rgba(255, 255, 255, 0.2)
++                color: Theme.withAlpha(folio.ink, 0.2)
+                 anchors.verticalCenter: parent.verticalCenter
+                 visible: BatteryService.batteryAvailable && (NetworkService.networkStatus !== "disconnected" || BluetoothService.enabled || (AudioService.sink && AudioService.sink.audio))
+             }
+@@ -1616,10 +1467,10 @@
+                         }
+ 
+                         if (BatteryService.isCharging || BatteryService.isPluggedIn) {
+-                            return Theme.primary;
+-                        }
+-
+-                        return "white";
++                            return folio.ink;
++                        }
++
++                        return folio.ink;
+                     }
+                     anchors.verticalCenter: parent.verticalCenter
+                 }
+@@ -1628,7 +1479,7 @@
+                     text: BatteryService.batteryLevel + "%"
+                     font.pixelSize: Theme.fontSizeLarge
+                     font.weight: Font.Light
+-                    color: "white"
++                    color: folio.ink
+                     anchors.verticalCenter: parent.verticalCenter
+                 }
+             }

@@ -1,8 +1,8 @@
 {
   "id": "themePicker",
   "name": "Theme Preview",
-  "description": "Preview and apply the reviewed Themeport catalog",
-  "version": "1.0.0",
+  "description": "Azure Folio: three art collections, light or dark, and three blue inks",
+  "version": "2.0.0",
   "author": "Mariano Miguel",
   "type": "launcher",
   "trigger": "theme",
@@ -10,5 +10,7 @@
   "viewModeEnforced": true,
   "icon": "palette",
   "component": "./ThemePicker.qml",
-  "permissions": ["process"]
+  "permissions": [
+    "process"
+  ]
 }

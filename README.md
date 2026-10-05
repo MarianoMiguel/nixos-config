@@ -144,8 +144,8 @@ nested menu. Important entries include:
 - DMS Power & Sleep settings plus a Focus menu for notification silence,
   `Stay awake`, reminders, local dictation and Night Light;
 - immediate lock, lock-screen preview, and lock/screen-saver settings;
-- the 22 pinned official Omarchy themes (including Osaka Jade), their bundled
-  non-wordmark wallpapers, and window border/gap toggles;
+- Azure Folio appearance: Doré, European Summer, or Argentina art; light/dark
+  with Azure, Cobalt, or Slate ink, plus window border/gap controls;
 - fingerprint enrollment on Bonhart; and
 - a guarded `Update All NixOS Packages` action in the `Super+Space` menu. It
   runs the same operation as `sudo mariano-system-update-all`, refreshing every
@@ -278,24 +278,42 @@ Mode state is in-memory and resets with the session; the daemon is Niri-only
 and talks solely to Niri's local IPC socket plus its own private Unix socket
 (in the per-login runtime directory) for the widget and CLI.
 
-### Theme security and Omarchy lessons
+### Azure Folio appearance
 
-Themeport exposes a closed catalog copied into the immutable Nix store. It no
-longer registers `aether://` browser links, downloads themes, consumes runtime
-plugin catalogs, installs VS Code extensions declared by a theme, or links
-user-writable color files into Chromium managed-policy directories. DMS may run
-its built-in Matugen templates, but mutable user templates and third-party
-launcher results are forced off. Existing DMS integrations are flake-pinned
-source inputs built with the OS, not marketplace-installed runtime plugins.
+Azure Folio is one visual family with three art collections: **Doré**, **European
+Summer**, and **Argentina**. Each contains two plates. All share Inter for the
+interface, IBM Plex Mono for terminals and captions, and Jacquard 24 for the
+large clock. Choose **Daylight / After hours** and **Azure / Cobalt / Slate** in
+`Super+Space → Azure Folio Appearance`. `Choose Wallpaper` picks a plate from
+the active collection. The desktop keeps that choice; login and lock screens
+randomize within the collection each time they open.
 
-The useful parts borrowed from Omarchy are one shell owning common controls,
-grouped searchable actions, a single theme switcher and a visible update path.
-The runtime plugin registry, executable theme hooks and unreviewed package/theme
-sources are intentionally excluded. See Omarchy's official documentation for
-its [menu and command model](https://github.com/basecamp/omarchy/blob/quattro/default/omarchy-skill/SKILL.md),
-[themes](https://github.com/basecamp/omarchy/blob/quattro/manual/06-themes.md),
-[top bar](https://github.com/basecamp/omarchy/blob/quattro/manual/05-the-top-bar.md),
-and [updates](https://github.com/basecamp/omarchy/blob/quattro/manual/30-updates.md).
+DMS still owns the launcher, controls, notifications, media, authentication and
+session locking. Small source patches replace only the greeter and lock-screen
+presentation. The greeter reads a validated, root-published selection; it never
+loads user-supplied QML. A system switch preserves the running greeter session;
+the new login screen appears when greetd next starts (normally after reboot).
+
+```sh
+azure-folio set --collection summer --mode light --ink azure
+azure-folio next
+azure-folio set --collection argentina --mode dark --ink slate
+azure-folio status
+azure-folio restore
+```
+
+The six palette slots are implementation details in Themeport's closed,
+immutable catalog. The old theme collection is no longer packaged. Art and
+fonts are bundled offline. `tools/azure-folio/build.py` creates deterministic
+two-color Atkinson-dithered wallpapers at build time; switching never calls an
+image-generation service. Source credits and original illustration prompts are
+in `assets/azure-folio/`.
+
+Themeport does not register browser URL handlers, download executable themes,
+install theme-declared VS Code extensions or load mutable third-party catalogs.
+DMS's built-in Matugen templates remain available, while mutable user templates
+are disabled. Chrome receives only a validated theme-color policy. Existing
+DMS integrations are flake-pinned source inputs built with the OS.
 
 ## Personal Payload
 

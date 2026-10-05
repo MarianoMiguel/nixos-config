@@ -9,18 +9,11 @@ let
   system = pkgs.stdenv.hostPlatform.system;
   quickshellPackage = quickshell.packages.${system}.default;
 
-  # Pin the official Omarchy catalog so every reviewed theme and its bundled
-  # non-wordmark wallpapers are available offline on both hosts and in the installer.
-  omarchyThemes = pkgs.fetchFromGitHub {
-    owner = "basecamp";
-    repo = "omarchy";
-    rev = "5d3299fb9426ae927b9fc7ef16c94bd334a90f01";
-    hash = "sha256-smjQlpZd7mzMrxV6PQFjXRwVm0s8xybBthcIrvrTYUA=";
-  };
+  folio = pkgs.callPackage ../../packages/azure-folio.nix { };
 
   themeportUnwrapped = pkgs.stdenvNoCC.mkDerivation {
     pname = "themeport-unwrapped";
-    version = "0.4.0";
+    version = "1.0.0";
     src = ../../tools/themeport;
     dontBuild = true;
     installPhase = ''
@@ -32,7 +25,7 @@ let
       install -Dm0444 themeport.py "$out/share/themeport/themeport.py"
       cp -R templates "$out/share/themeport/templates"
       mkdir -p "$out/share/themeport/themes"
-      cp -R ${omarchyThemes}/themes/. "$out/share/themeport/themes/"
+      cp -R ${folio}/share/azure-folio/themes/. "$out/share/themeport/themes/"
       chmod -R u+w "$out/share/themeport/themes"
       find "$out/share/themeport/themes" -path '*/backgrounds/*' -type f \
         -iname '*omarchy*' -delete
@@ -400,7 +393,38 @@ in
   # validate the user-rendered color before updating it.
   environment.etc."opt/chrome/policies/managed/themeport-color.json".source = chromeThemePolicy;
 
-  systemd.tmpfiles.rules = [ "d /var/lib/themeport 0755 root root -" ];
+  systemd.tmpfiles.rules = [
+    "d /var/lib/themeport 0755 root root -"
+    "d /var/lib/azure-folio 0755 root root -"
+  ];
+
+  fonts.packages = [ folio ];
+
+  # Publish validated palette/collection choices for the unprivileged greeter.
+  # The bridge reconstructs all asset paths from the immutable catalog.
+  systemd.services.azure-folio-greeter-state = {
+    description = "Publish Azure Folio appearance for the greeter";
+    wantedBy = [ "multi-user.target" ];
+    before = [ "greetd.service" ];
+    after = [ "local-fs.target" ];
+    serviceConfig = {
+      Type = "oneshot";
+      ExecStart = "${folio}/bin/azure-folio publish --input /home/mariano/.local/state/nixos-config/azure-folio/selection.json --output /var/lib/azure-folio/appearance.json";
+      ProtectSystem = "strict";
+      ProtectHome = "read-only";
+      ReadWritePaths = [ "/var/lib/azure-folio" ];
+      NoNewPrivileges = true;
+      PrivateTmp = true;
+      PrivateDevices = true;
+    };
+  };
+  systemd.paths.azure-folio-greeter-state = {
+    wantedBy = [ "multi-user.target" ];
+    pathConfig = {
+      PathChanged = "/home/mariano/.local/state/nixos-config/azure-folio/selection.json";
+      Unit = "azure-folio-greeter-state.service";
+    };
+  };
 
   systemd.services.themeport-chrome-policy = {
     description = "Validate and publish Themeport's Chrome color policy";
@@ -430,6 +454,7 @@ in
 
   environment.systemPackages = [
     themeport
+    folio
     wallpaperSetter
     # Export previews and backgrounds at /run/current-system/sw/share/themeport
     # for the native DMS pickers; the command wrapper itself contains only bin/.

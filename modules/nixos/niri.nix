@@ -1,4 +1,4 @@
-{ cat-dms, codeIsland-dms, dank-greeter, dms, dms-codexbar, librepods-rust, pkgs, quickshell, ... }:
+{ config, cat-dms, codeIsland-dms, dank-greeter, dms, dms-codexbar, librepods-rust, pkgs, quickshell, ... }:
 
 let
   system = pkgs.stdenv.hostPlatform.system;
@@ -229,10 +229,22 @@ EOF
     patches = [ ../../patches/dms-codexbar-partial-results.patch ];
   };
 
+  folio = pkgs.callPackage ../../packages/azure-folio.nix { };
+  folioQml = pkgs.runCommand "azure-folio-qml" { } ''
+    mkdir -p "$out"
+    cp ${../../dotfiles/azure-folio}/*.qml "$out/"
+    substituteInPlace "$out/FolioBackdrop.qml" \
+      --replace-fail '@folioData@' '${folio}/share/azure-folio' \
+      --replace-fail '@hostname@' '${config.networking.hostName}'
+  '';
+
   # Keep Niri as the deterministic fallback when session remembering is
   # disabled. The greeter UI now ships from its own upstream flake.
   dmsGreeter = dank-greeter.packages.${system}.default.overrideAttrs (old: {
     postPatch = ''
+      patch -p1 < ${../../patches/dms-azure-folio-greeter.patch}
+      mkdir -p quickshell/Folio
+      cp ${folioQml}/*.qml quickshell/Folio/
       substituteInPlace quickshell/Modules/Greetd/GreeterContent.qml \
         --replace-fail \
           'const savedDesktopId = GreetdSettings.rememberLastSession ? (GreetdMemory.lastSessionDesktopId || desktopIdFromPath(GreetdMemory.lastSessionId)) : "";' \
@@ -248,6 +260,17 @@ EOF
   # bind them back to the configured duration in the installed shell.
   dmsShell = dms.packages.${system}.dms-shell.overrideAttrs (old: {
     postInstall = (old.postInstall or "") + ''
+      chmod u+w "$out/share/quickshell/dms" \
+        "$out/share/quickshell/dms/Modules/Lock" \
+        "$out/share/quickshell/dms/Modules/Lock/LockScreenContent.qml"
+      patch -d "$out/share/quickshell/dms" -p2 < ${../../patches/dms-azure-folio-lock.patch}
+      mkdir -p "$out/share/quickshell/dms/Folio"
+      cp ${folioQml}/*.qml "$out/share/quickshell/dms/Folio/"
+      substituteInPlace "$out/share/quickshell/dms/shell.qml" \
+        --replace-fail 'import qs.Services' 'import qs.Services
+import qs.Folio' \
+        --replace-fail '    id: entrypoint' '    id: entrypoint
+    FolioSync {}'
       substituteInPlace "$out/share/quickshell/dms/Common/Theme.qml" \
         --replace-fail \
           'readonly property int notificationInlineExpandDuration: notificationAnimationBaseDuration === 0 ? 0 : 185' \

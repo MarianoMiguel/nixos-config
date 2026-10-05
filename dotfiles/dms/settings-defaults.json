@@ -1,7 +1,7 @@
 {
-  "currentThemeCategory": "registry",
+  "currentThemeCategory": "custom",
   "currentThemeName": "custom",
-  "customThemeFile": "/home/mariano/.config/DankMaterialShell/themes/dms-ayu/theme.json",
+  "customThemeFile": "/home/mariano/.config/DankMaterialShell/themes/themeport/theme.json",
   "launcherStyle": "spotlight",
   "launcherUseOverlayLayer": false,
   "dankLauncherV2Size": "compact",
@@ -20,7 +20,7 @@
   "lockScreenShowPowerActions": false,
   "lockScreenShowSystemIcons": false,
   "lockScreenShowTime": true,
-  "lockScreenShowDate": false,
+  "lockScreenShowDate": true,
   "lockScreenShowProfileImage": false,
   "lockScreenShowPasswordField": true,
   "lockScreenShowMediaPlayer": false,
@@ -54,5 +54,16 @@
   "showThirdPartyPlugins": false,
   "searchAppActions": true,
   "syncModeWithPortal": true,
-  "terminalsAlwaysDark": false
+  "terminalsAlwaysDark": false,
+  "fontFamily": "Inter",
+  "monoFontFamily": "IBM Plex Mono",
+  "lockScreenFontFamily": "Jacquard 24",
+  "greeterFontFamily": "Inter",
+  "fontWeight": 400,
+  "fontScale": 1,
+  "cornerRadius": 5,
+  "niriLayoutRadiusOverride": 5,
+  "niriLayoutBorderSize": 1,
+  "popupTransparency": 1,
+  "dockTransparency": 1
 }

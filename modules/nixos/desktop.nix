@@ -84,6 +84,10 @@ in
     "org.freedesktop.impl.portal.Secret" = "gnome-keyring";
   };
 
+  # Updating the login artwork must not terminate the active desktop session.
+  # The rebuilt greeter is picked up when greetd next starts.
+  systemd.services.greetd.restartIfChanged = false;
+
   programs.dms-greeter = {
     enable = true;
     compositor.name = "niri";

@@ -1,8 +1,8 @@
 {
   "id": "wallpaperPicker",
   "name": "Wallpaper Preview",
-  "description": "Preview and apply every wallpaper in the shared library",
-  "version": "1.0.0",
+  "description": "Choose a plate from the active Azure Folio collection",
+  "version": "2.0.0",
   "author": "Mariano Miguel",
   "type": "launcher",
   "trigger": "wall",
@@ -10,5 +10,7 @@
   "viewModeEnforced": true,
   "icon": "wallpaper",
   "component": "./WallpaperPicker.qml",
-  "permissions": ["process"]
+  "permissions": [
+    "process"
+  ]
 }

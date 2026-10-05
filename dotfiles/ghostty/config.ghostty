@@ -1,9 +1,12 @@
 # Managed by themeport; `themeport set <name>` rewrites the theme file this
 # name resolves to (~/.config/ghostty/themes/themeport).
 theme = themeport
-background-opacity = 0.95
+background-opacity = 1
 window-padding-x = 12
 window-padding-y = 12
 window-padding-balance = true
 command = direct:/run/current-system/sw/bin/zsh
 env = SHELL=/run/current-system/sw/bin/zsh
+
+font-family = IBM Plex Mono
+font-size = 12

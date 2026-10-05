@@ -5,37 +5,20 @@ let
   dotfiles = ../../dotfiles;
   mutableState = "${home}/.local/state/nixos-config/dotfiles";
   fingerprintEnabled = config.services.fprintd.enable;
-  # Keep one immutable wallpaper catalog for Themeport, the DMS settings page,
-  # DankDash and the visual picker. A flat directory is intentional: DMS shows
-  # siblings of the active wallpaper, so any selection keeps the whole catalog
-  # visible.
-  omarchyThemes = pkgs.fetchFromGitHub {
-    owner = "basecamp";
-    repo = "omarchy";
-    rev = "5d3299fb9426ae927b9fc7ef16c94bd334a90f01";
-    hash = "sha256-smjQlpZd7mzMrxV6PQFjXRwVm0s8xybBthcIrvrTYUA=";
-  };
-  wallpaperLibrary = pkgs.runCommandLocal "mariano-wallpaper-library" { } ''
+  folio = pkgs.callPackage ../../packages/azure-folio.nix { };
+  # The gallery contains only this family's default blue/daylight plates.
+  # The native picker applies the current ink and mode through azure-folio.
+  wallpaperLibrary = pkgs.runCommandLocal "azure-folio-wallpapers" { } ''
     mkdir -p "$out"
-    cp -a ${../../assets/wallpapers}/. "$out/"
-    chmod u+w "$out"
-
-    find ${omarchyThemes}/themes -mindepth 3 -maxdepth 3 \
-      -path '*/backgrounds/*' -type f ! -iname '*omarchy*' \
-      \( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.webp' \) \
-      -print | while IFS= read -r source; do
-        theme_dir=$(dirname "$(dirname "$source")")
-        theme=$(basename "$theme_dir")
-        filename=$(basename "$source")
-        ln -s "$source" "$out/$theme--$filename"
-      done
+    for art in ${folio}/share/azure-folio/art/*; do
+      ln -s "$art/azure-light-desktop.png" "$out/$(basename "$art").png"
+    done
   '';
   mutableDotfiles = [
     "dms/plugin-settings.json"
     "dms/session.json"
     "dms/settings.json"
     "dms/theme.json"
-    "dms/themes/dms-ayu/theme.json"
     "niri/dms/alttab.kdl"
     "niri/dms/binds.kdl"
     "niri/dms/colors.kdl"
@@ -111,13 +94,13 @@ in
         programs.home-manager.enable = true;
 
         # One typography and cursor for every toolkit. DMS, Themeport's
-        # kdeglobals and the terminal already use Inter and JetBrains Mono;
+        # kdeglobals and the terminal already use Inter and IBM Plex Mono;
         # without these keys GTK apps and portals fell back to Adwaita Sans.
         # The icon theme is deliberately absent: Themeport sets it per theme.
         dconf.settings."org/gnome/desktop/interface" = {
           font-name = "Inter 11";
           document-font-name = "Inter 11";
-          monospace-font-name = "JetBrainsMonoNL NFM 11";
+          monospace-font-name = "IBM Plex Mono 11";
           cursor-theme = "Adwaita";
           cursor-size = 24;
         };
@@ -183,7 +166,20 @@ in
           ensure_json_object "$settings" ${lib.escapeShellArg "${mutableDotfileSeed}/dms/settings.json"}
           temporary="$(${pkgs.coreutils}/bin/mktemp)"
           ${pkgs.jq}/bin/jq --argjson fingerprint ${builtins.toJSON fingerprintEnabled} '
-            .runUserMatugenTemplates = false
+            .fontFamily = "Inter"
+            | .monoFontFamily = "IBM Plex Mono"
+            | .lockScreenFontFamily = "Jacquard 24"
+            | .greeterFontFamily = "Inter"
+            | .fontWeight = 400
+            | .fontScale = 1
+            | .niriLayoutGapsOverride = 12
+            | .niriLayoutRadiusOverride = 5
+            | .niriLayoutBorderSize = 1
+            | .popupTransparency = 1
+            | .dockTransparency = 1
+            | .cornerRadius = 5
+            | .widgetRadius = 3
+            | .runUserMatugenTemplates = false
             | .showThirdPartyPlugins = false
             | .searchAppActions = true
             | .launcherStyle = "full"
@@ -227,28 +223,24 @@ in
             | .lockScreenShowPowerActions = false
             | .lockScreenShowSystemIcons = false
             | .lockScreenShowTime = true
-            | .lockScreenShowDate = false
+            | .lockScreenShowDate = true
             | .lockScreenShowProfileImage = false
             | .lockScreenShowPasswordField = true
             | .lockScreenShowMediaPlayer = false
             | .lockScreenNotificationMode = 0
             | .lockScreenVideoEnabled = false
-            # Seat the batteryLimit pill immediately left of the battery widget
-            # in every bar that shows one, without disturbing existing order or
-            # duplicating it on repeat activations. Widgets are a mix of bare
-            # strings ("battery") and {id,enabled} objects, so compare on id.
-            | .barConfigs = [
-                .barConfigs[]
-                | if ((.rightWidgets // []) | any(. == "battery"))
-                     and (((.rightWidgets // []) | map(if type == "object" then .id else . end)) | index("batteryLimit") | not)
-                  then .rightWidgets = (
-                    reduce .rightWidgets[] as $w ([];
-                      . + (if $w == "battery"
-                           then [{id: "batteryLimit", enabled: true}, $w]
-                           else [$w] end))
-                  )
-                  else . end
-              ]
+            | .barConfigs = [.barConfigs[] | . + {
+                leftWidgets: ["launcherButton", "workspaceSwitcher", "focusedWindow"],
+                centerWidgets: [{id:"worldClock",enabled:true},"clock"],
+                rightWidgets: [{id:"codexBar",enabled:true},{id:"focus",enabled:true},{id:"workspaceModes",enabled:true},"systemTray","notificationButton","battery","controlCenterButton"],
+                spacing: 8, innerPadding: 2, bottomGap: 0,
+                transparency: 1, widgetTransparency: 0,
+                squareCorners: true, noBackground: false,
+                borderEnabled: true, borderColor: "outlineVariant", borderOpacity: 1,
+                borderThickness: 1, widgetPadding: 8,
+                shadowIntensity: 0, shadowOpacity: 0
+              }]
+
           ' "$settings" > "$temporary"
           $DRY_RUN_CMD ${pkgs.coreutils}/bin/install -m 0600 "$temporary" "$settings"
           ${pkgs.coreutils}/bin/rm -f "$temporary"
@@ -415,8 +407,6 @@ in
             ../../dotfiles/matugen/templates/neovim-dankcolors.lua;
 
           "DankMaterialShell/theme.json".source = mutableDotfile "dms/theme.json";
-          "DankMaterialShell/themes/dms-ayu/theme.json".source =
-            mutableDotfile "dms/themes/dms-ayu/theme.json";
           "DankMaterialShell/themes/themeport/theme.json".source = mutableDotfile "themeport/dms/theme.json";
           "DankMaterialShell/settings.json".source = mutableDotfile "dms/settings.json";
           "DankMaterialShell/plugin_settings.json".source = mutableDotfile "dms/plugin-settings.json";

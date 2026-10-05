@@ -1,0 +1,769 @@
+--- a/quickshell/Modules/Lock/LockScreenContent.qml
++++ b/quickshell/Modules/Lock/LockScreenContent.qml
+@@ -12,6 +12,7 @@
+ import qs.Modals
+ import qs.Services
+ import qs.Widgets
++import qs.Folio
+ import qs.DankCommon.Session
+ import "../../DankCommon/Common/LayoutCodes.js" as LayoutCodes
+ import "../../Common/KeyUtils.js" as KeyUtils
+@@ -44,7 +45,7 @@
+     component ClockDigitText: StyledText {
+         font.pixelSize: 120
+         font.weight: Font.Light
+-        color: "white"
++        color: folio.ink
+         horizontalAlignment: Text.AlignHCenter
+         font.family: root.lockFontFamily !== "" ? root.lockFontFamily : resolvedFontFamily
+     }
+@@ -53,6 +54,7 @@
+     signal passwordEdited(string text)
+ 
+     function resetLockState() {
++        folio.newVisit();
+         lockerReadySent = false;
+         lockerReadyArmed = true;
+         unlocking = false;
+@@ -230,127 +232,9 @@
+         }
+     }
+ 
+-    Rectangle {
++    FolioBackdrop {
++        id: folio
+         anchors.fill: parent
+-        color: SettingsData.effectiveWallpaperBackgroundColor
+-    }
+-
+-    Loader {
+-        anchors.fill: parent
+-        active: {
+-            if (root.hasCustomWallpaper)
+-                return false;
+-            var currentWallpaper = SessionData.getMonitorWallpaper(screenName);
+-            return !currentWallpaper || (currentWallpaper && currentWallpaper.startsWith("#"));
+-        }
+-        asynchronous: true
+-
+-        sourceComponent: DankBackdrop {
+-            screenName: root.screenName
+-        }
+-    }
+-
+-    Loader {
+-        id: wallpaperBackground
+-        anchors.fill: parent
+-
+-        readonly property string wallpaperSource: {
+-            if (root.hasCustomWallpaper)
+-                return root.encodeFileUrl(SettingsData.lockScreenWallpaperPath);
+-            var w = SessionData.getMonitorWallpaper(screenName);
+-            return (w && !w.startsWith("#")) ? encodeFileUrl(w) : "";
+-        }
+-        readonly property string fillModeName: {
+-            if (SettingsData.lockScreenWallpaperFillMode !== "")
+-                return SettingsData.lockScreenWallpaperFillMode;
+-            return root.hasCustomWallpaper ? "Fill" : SessionData.getMonitorWallpaperFillMode(root.screenName);
+-        }
+-
+-        readonly property real screenScale: CompositorService.getScreenScale(Quickshell.screens.find(s => s.name === root.screenName) ?? null)
+-        readonly property size decodeSize: Qt.size(Math.round(width * screenScale), Math.round(height * screenScale))
+-
+-        active: wallpaperSource !== "" && width > 0 && height > 0
+-        asynchronous: false
+-
+-        sourceComponent: fillModeName === "Scrolling" ? scrollWallpaperComp : plainWallpaperComp
+-
+-        layer.enabled: true
+-        layer.effect: MultiEffect {
+-            autoPaddingEnabled: false
+-            blurEnabled: true
+-            blur: 0.8
+-            blurMax: 32
+-            blurMultiplier: 1
+-        }
+-
+-        Behavior on opacity {
+-            NumberAnimation {
+-                duration: Theme.mediumDuration
+-                easing.type: Theme.standardEasing
+-            }
+-        }
+-    }
+-
+-    Component {
+-        id: plainWallpaperComp
+-        Image {
+-            source: wallpaperBackground.wallpaperSource
+-            sourceSize: wallpaperBackground.decodeSize
+-            fillMode: Theme.getFillMode(wallpaperBackground.fillModeName)
+-            smooth: true
+-            cache: true
+-            asynchronous: false
+-        }
+-    }
+-
+-    Component {
+-        id: scrollWallpaperComp
+-        Item {
+-            Image {
+-                id: scrollSource
+-                anchors.fill: parent
+-                visible: false
+-                source: wallpaperBackground.wallpaperSource
+-                sourceSize: wallpaperBackground.decodeSize
+-                asynchronous: false
+-                cache: true
+-            }
+-
+-            ShaderEffectSource {
+-                id: scrollSrc
+-                sourceItem: scrollSource
+-                hideSource: true
+-                live: false
+-            }
+-
+-            ShaderEffect {
+-                anchors.fill: parent
+-
+-                readonly property var scrollPos: SessionData.getMonitorScrollPosition(screenName)
+-
+-                property variant source1: scrollSrc
+-                property variant source2: scrollSrc
+-                property real progress: 0.0
+-                property real fillMode: Theme.getShaderFillMode(wallpaperBackground.fillModeName)
+-                property real scrollX: scrollPos.scrollX
+-                property real scrollY: scrollPos.scrollY
+-                property real imageWidth1: scrollSource.implicitWidth > 0 ? scrollSource.implicitWidth : 1
+-                property real imageHeight1: scrollSource.implicitHeight > 0 ? scrollSource.implicitHeight : 1
+-                property real imageWidth2: imageWidth1
+-                property real imageHeight2: imageHeight1
+-                property real screenWidth: width > 0 ? width : 1
+-                property real screenHeight: height > 0 ? height : 1
+-                property vector4d fillColor: Qt.vector4d(0, 0, 0, 1)
+-
+-                fragmentShader: Qt.resolvedUrl("../../Shaders/qsb/wp_fade.frag.qsb")
+-            }
+-        }
+-    }
+-
+-    Rectangle {
+-        anchors.fill: parent
+-        color: "black"
+-        opacity: 0.4
+     }
+ 
+     SystemClock {
+@@ -365,152 +249,14 @@
+ 
+         Item {
+             id: clockContainer
+-            anchors.horizontalCenter: parent.horizontalCenter
+-            anchors.bottom: parent.verticalCenter
+-            anchors.bottomMargin: 60
+-            width: parent.width
+-            height: verticalClock.visible ? verticalClock.implicitHeight : clockText.implicitHeight
+-            visible: SettingsData.lockScreenShowTime
+-
+-            Row {
+-                id: clockText
+-                anchors.horizontalCenter: parent.horizontalCenter
+-                anchors.top: parent.top
+-                spacing: 0
+-                visible: SettingsData.lockScreenClockStyle !== "vertical"
+-
+-                property string fullTimeStr: {
+-                    const format = SettingsData.getEffectiveTimeFormat();
+-                    return systemClock.date.toLocaleTimeString(Qt.locale(), format);
+-                }
+-                property var timeParts: fullTimeStr.split(':')
+-                property string hours: timeParts[0] || ""
+-                property string minutes: timeParts[1] || ""
+-                property string secondsWithAmPm: timeParts.length > 2 ? timeParts[2] : ""
+-                property string seconds: secondsWithAmPm.replace(/\s*(AM|PM|am|pm)$/i, '')
+-                property string ampm: {
+-                    const match = fullTimeStr.match(/\s*(AM|PM|am|pm)$/i);
+-                    return match ? match[0].trim() : "";
+-                }
+-                property bool hasSeconds: timeParts.length > 2
+-
+-                ClockDigitText {
+-                    width: clockText.hours.length > 1 ? 75 : 0
+-                    text: clockText.hours.length > 1 ? clockText.hours[0] : ""
+-                }
+-
+-                ClockDigitText {
+-                    width: 75
+-                    text: clockText.hours.length > 1 ? clockText.hours[1] : clockText.hours.length > 0 ? clockText.hours[0] : ""
+-                }
+-
+-                ClockDigitText {
+-                    text: ":"
+-                }
+-
+-                ClockDigitText {
+-                    width: 75
+-                    text: clockText.minutes.length > 0 ? clockText.minutes[0] : ""
+-                }
+-
+-                ClockDigitText {
+-                    width: 75
+-                    text: clockText.minutes.length > 1 ? clockText.minutes[1] : ""
+-                }
+-
+-                ClockDigitText {
+-                    text: clockText.hasSeconds ? ":" : ""
+-                    visible: clockText.hasSeconds
+-                }
+-
+-                ClockDigitText {
+-                    width: 75
+-                    text: clockText.hasSeconds && clockText.seconds.length > 0 ? clockText.seconds[0] : ""
+-                    visible: clockText.hasSeconds
+-                }
+-
+-                ClockDigitText {
+-                    width: 75
+-                    text: clockText.hasSeconds && clockText.seconds.length > 1 ? clockText.seconds[1] : ""
+-                    visible: clockText.hasSeconds
+-                }
+-
+-                ClockDigitText {
+-                    width: 20
+-                    text: " "
+-                    visible: clockText.ampm !== ""
+-                }
+-
+-                ClockDigitText {
+-                    text: clockText.ampm
+-                    visible: clockText.ampm !== ""
+-                }
+-            }
+-
+-            Column {
+-                id: verticalClock
+-                anchors.horizontalCenter: parent.horizontalCenter
+-                anchors.top: parent.top
+-                spacing: -8
+-                visible: SettingsData.lockScreenClockStyle === "vertical"
+-
+-                Row {
+-                    anchors.horizontalCenter: parent.horizontalCenter
+-                    spacing: 0
+-
+-                    ClockDigitText {
+-                        width: clockText.hours.length > 1 ? 75 : 0
+-                        text: clockText.hours.length > 1 ? clockText.hours[0] : ""
+-                    }
+-                    ClockDigitText {
+-                        width: 75
+-                        text: clockText.hours.length > 1 ? clockText.hours[1] : clockText.hours.length > 0 ? clockText.hours[0] : ""
+-                    }
+-                }
+-
+-                Row {
+-                    anchors.horizontalCenter: parent.horizontalCenter
+-                    spacing: 0
+-
+-                    ClockDigitText {
+-                        width: 75
+-                        text: clockText.minutes.length > 0 ? clockText.minutes[0] : ""
+-                    }
+-                    ClockDigitText {
+-                        width: 75
+-                        text: clockText.minutes.length > 1 ? clockText.minutes[1] : ""
+-                    }
+-                }
+-
+-                StyledText {
+-                    anchors.horizontalCenter: parent.horizontalCenter
+-                    text: clockText.hasSeconds ? clockText.seconds + (clockText.ampm !== "" ? " " + clockText.ampm : "") : clockText.ampm
+-                    font.pixelSize: 42
+-                    font.weight: Font.Light
+-                    font.family: root.lockFontFamily !== "" ? root.lockFontFamily : resolvedFontFamily
+-                    color: "white"
+-                    visible: clockText.hasSeconds || clockText.ampm !== ""
+-                }
+-            }
+-        }
+-
+-        StyledText {
+-            id: dateText
+-            anchors.horizontalCenter: parent.horizontalCenter
+-            anchors.top: clockContainer.bottom
+-            anchors.topMargin: 4
+-            visible: SettingsData.lockScreenShowDate
+-            text: {
+-                if (SettingsData.lockDateFormat && SettingsData.lockDateFormat.length > 0) {
+-                    return systemClock.date.toLocaleDateString(I18n.locale(), SettingsData.lockDateFormat);
+-                }
+-                return systemClock.date.toLocaleDateString(I18n.locale(), Locale.LongFormat);
+-            }
+-            font.pixelSize: Theme.fontSizeXLarge
+-            font.family: root.lockFontFamily !== "" ? root.lockFontFamily : resolvedFontFamily
+-            color: "white"
+-            opacity: 0.9
+-        }
++            x: folio.contentX
++            y: root.height * 0.55
++            width: folio.contentWidth
++            height: 1
++            visible: false
++        }
++
++        Item { id: dateText; visible: false; height: 0 }
+ 
+         Item {
+             id: lockNotificationPanel
+@@ -596,14 +342,14 @@
+                         DankIcon {
+                             name: "notifications"
+                             size: Theme.iconSize
+-                            color: "white"
++                            color: folio.ink
+                             anchors.verticalCenter: parent.verticalCenter
+                         }
+ 
+                         StyledText {
+                             text: lockNotificationPanel.totalCount === 1 ? I18n.tr("1 notification") : I18n.tr("%1 notifications").arg(lockNotificationPanel.totalCount)
+                             font.pixelSize: Theme.fontSizeMedium
+-                            color: "white"
++                            color: folio.ink
+                             anchors.verticalCenter: parent.verticalCenter
+                         }
+                     }
+@@ -645,7 +391,7 @@
+                                     DankIcon {
+                                         name: "notifications"
+                                         size: Theme.iconSize - 4
+-                                        color: "white"
++                                        color: folio.ink
+                                         opacity: 0.8
+                                         anchors.verticalCenter: parent.verticalCenter
+                                     }
+@@ -653,7 +399,7 @@
+                                     StyledText {
+                                         text: modelData.appName || I18n.tr("Unknown")
+                                         font.pixelSize: Theme.fontSizeMedium
+-                                        color: "white"
++                                        color: folio.ink
+                                         elide: Text.ElideRight
+                                         width: parent.width - Theme.iconSize - countBadge.width - Theme.spacingS * 2
+                                         anchors.verticalCenter: parent.verticalCenter
+@@ -673,7 +419,7 @@
+                                             anchors.centerIn: parent
+                                             text: modelData.count > 99 ? "99+" : modelData.count.toString()
+                                             font.pixelSize: Theme.fontSizeSmall
+-                                            color: "white"
++                                            color: folio.ink
+                                         }
+                                     }
+                                 }
+@@ -683,7 +429,7 @@
+                                 visible: lockNotificationPanel.appNameGroups.length > 5
+                                 text: I18n.tr("+ %1 more").arg(lockNotificationPanel.appNameGroups.length - 5)
+                                 font.pixelSize: Theme.fontSizeSmall
+-                                color: "white"
++                                color: folio.ink
+                                 opacity: 0.7
+                             }
+                         }
+@@ -750,7 +496,7 @@
+                                                 text: modelData.appName || I18n.tr("Unknown")
+                                                 font.pixelSize: Theme.fontSizeSmall
+                                                 font.weight: Font.Medium
+-                                                color: "white"
++                                                color: folio.ink
+                                                 opacity: 0.7
+                                                 elide: Text.ElideRight
+                                                 width: parent.width - timeText.implicitWidth - Theme.spacingXS
+@@ -760,7 +506,7 @@
+                                                 id: timeText
+                                                 text: modelData.timeStr || ""
+                                                 font.pixelSize: Theme.fontSizeSmall
+-                                                color: "white"
++                                                color: folio.ink
+                                                 opacity: 0.5
+                                             }
+                                         }
+@@ -770,7 +516,7 @@
+                                             text: modelData.summary || ""
+                                             font.pixelSize: Theme.fontSizeMedium
+                                             font.weight: Font.Medium
+-                                            color: "white"
++                                            color: folio.ink
+                                             elide: Text.ElideRight
+                                             maximumLineCount: 1
+                                             visible: text.length > 0
+@@ -783,7 +529,7 @@
+                                                 return body.replace(/<[^>]*>/g, '').replace(/\n/g, ' ');
+                                             }
+                                             font.pixelSize: Theme.fontSizeSmall
+-                                            color: "white"
++                                            color: folio.ink
+                                             opacity: 0.8
+                                             elide: Text.ElideRight
+                                             maximumLineCount: 2
+@@ -798,7 +544,7 @@
+                                 visible: lockNotificationPanel.appNameGroups.length > 5
+                                 text: I18n.tr("+ %1 more").arg(lockNotificationPanel.appNameGroups.length - 5)
+                                 font.pixelSize: Theme.fontSizeSmall
+-                                color: "white"
++                                color: folio.ink
+                                 opacity: 0.7
+                             }
+                         }
+@@ -809,11 +555,10 @@
+ 
+         ColumnLayout {
+             id: passwordLayout
+-            anchors.horizontalCenter: parent.horizontalCenter
+-            anchors.top: lockNotificationPanel.visible ? lockNotificationPanel.bottom : (dateText.visible ? dateText.bottom : clockContainer.bottom)
+-            anchors.topMargin: Theme.spacingL
++            x: folio.contentX
++            y: folio.authY
+             spacing: Theme.spacingM
+-            width: 380
++            width: folio.contentWidth
+ 
+             RowLayout {
+                 spacing: Theme.spacingL
+@@ -841,9 +586,9 @@
+                     Layout.fillWidth: true
+                     Layout.preferredHeight: 60
+                     radius: Theme.cornerRadius
+-                    color: Theme.withAlpha(Theme.surfaceContainer, 0.9)
+-                    border.color: passwordField.activeFocus ? Theme.primary : Qt.rgba(1, 1, 1, 0.3)
+-                    border.width: passwordField.activeFocus ? 2 : 1
++                    color: folio.paper
++                    border.color: folio.ink
++                    border.width: 1
+                     visible: SettingsData.lockScreenShowPasswordField || root.passwordBuffer.length > 0
+ 
+                     Item {
+@@ -875,7 +620,7 @@
+                                     return Theme.error;
+                                 if (pam.u2fState !== "")
+                                     return Theme.tertiary;
+-                                return passwordField.activeFocus ? Theme.primary : Theme.surfaceVariantText;
++                                return passwordField.activeFocus ? folio.ink : folio.muted;
+                             }
+                             opacity: pam.passwd.active ? 0 : 1
+ 
+@@ -1213,7 +958,7 @@
+                             }
+                             return "Password...";
+                         }
+-                        color: root.unlocking ? Theme.primary : (pam.passwd.active ? Theme.primary : Theme.outline)
++                        color: root.unlocking ? folio.ink : (pam.passwd.active ? folio.ink : folio.muted)
+                         font.pixelSize: Theme.fontSizeMedium
+                         opacity: (demoMode || root.passwordBuffer.length === 0) ? 1 : 0
+ 
+@@ -1288,7 +1033,7 @@
+                                 }
+                                 return "•".repeat(root.passwordBuffer.length);
+                             }
+-                            color: Theme.surfaceText
++                            color: folio.ink
+                             font.family: Theme.fontFamily
+                             font.weight: Theme.fontWeight
+                             font.pixelSize: passwordBox.showPassword ? Theme.fontSizeMedium : Theme.fontSizeLarge
+@@ -1331,6 +1076,7 @@
+                     }
+ 
+                     DankActionButton {
++                        iconColor: folio.ink
+                         id: revealButton
+ 
+                         anchors.right: virtualKeyboardButton.visible ? virtualKeyboardButton.left : (securityKeyButton.visible ? securityKeyButton.left : (enterButton.visible ? enterButton.left : (loadingSpinner.visible ? loadingSpinner.left : parent.right)))
+@@ -1343,6 +1089,7 @@
+                         onClicked: parent.showPassword = !parent.showPassword
+                     }
+                     DankActionButton {
++                        iconColor: folio.ink
+                         id: securityKeyButton
+ 
+                         anchors.right: enterButton.visible ? enterButton.left : (loadingSpinner.visible ? loadingSpinner.left : parent.right)
+@@ -1356,6 +1103,7 @@
+                         onClicked: root.triggerSecurityKeyUnlock()
+                     }
+                     DankActionButton {
++                        iconColor: folio.ink
+                         id: virtualKeyboardButton
+ 
+                         anchors.right: securityKeyButton.visible ? securityKeyButton.left : (enterButton.visible ? enterButton.left : (loadingSpinner.visible ? loadingSpinner.left : parent.right))
+@@ -1390,7 +1138,7 @@
+                             anchors.centerIn: parent
+                             name: "check_circle"
+                             size: 20
+-                            color: Theme.primary
++                            color: folio.ink
+                             visible: root.unlocking
+ 
+                             SequentialAnimation on scale {
+@@ -1424,7 +1172,7 @@
+                                 radius: 10
+                                 anchors.centerIn: parent
+                                 color: "transparent"
+-                                border.color: Theme.primarySelected
++                                border.color: folio.state.line || "#cbd1d7"
+                                 border.width: 2
+                             }
+ 
+@@ -1434,7 +1182,7 @@
+                                 radius: 10
+                                 anchors.centerIn: parent
+                                 color: "transparent"
+-                                border.color: Theme.primary
++                                border.color: folio.ink
+                                 border.width: 2
+ 
+                                 Rectangle {
+@@ -1443,7 +1191,7 @@
+                                     anchors.top: parent.top
+                                     anchors.topMargin: -1
+                                     anchors.horizontalCenter: parent.horizontalCenter
+-                                    color: Theme.withAlpha(Theme.surfaceContainer, 0.9)
++                                    color: folio.paper
+                                 }
+ 
+                                 RotationAnimator on rotation {
+@@ -1458,6 +1206,7 @@
+                     }
+ 
+                     DankActionButton {
++                        iconColor: folio.ink
+                         id: enterButton
+ 
+                         anchors.right: parent.right
+@@ -1496,7 +1245,7 @@
+                 Layout.fillWidth: true
+                 Layout.preferredHeight: text.length > 0 ? Math.min(implicitHeight, Math.ceil(Theme.fontSizeSmall * 4.5)) : 0
+                 text: root.currentAuthFeedbackText()
+-                color: root.authFeedbackIsHint() ? Theme.outline : Theme.error
++                color: root.authFeedbackIsHint() ? folio.muted : Theme.error
+                 font.pixelSize: Theme.fontSizeSmall
+                 horizontalAlignment: Text.AlignHCenter
+                 wrapMode: Text.WordWrap
+@@ -1548,7 +1297,7 @@
+             anchors.margins: Theme.spacingXL
+             text: I18n.tr("DEMO MODE - Click anywhere to exit")
+             font.pixelSize: Theme.fontSizeSmall
+-            color: "white"
++            color: folio.ink
+             opacity: 0.7
+             visible: demoMode
+         }
+@@ -1584,7 +1333,7 @@
+                         DankIcon {
+                             name: "keyboard"
+                             size: Theme.iconSize
+-                            color: "white"
++                            color: folio.ink
+                             anchors.centerIn: parent
+                         }
+                     }
+@@ -1604,7 +1353,7 @@
+                             }
+                             font.pixelSize: Theme.fontSizeMedium
+                             font.weight: Font.Light
+-                            color: "white"
++                            color: folio.ink
+                             anchors.verticalCenter: parent.verticalCenter
+                         }
+                     }
+@@ -1630,7 +1379,7 @@
+             Rectangle {
+                 width: 1
+                 height: 24
+-                color: Qt.rgba(255, 255, 255, 0.2)
++                color: Theme.withAlpha(folio.ink, 0.2)
+                 anchors.verticalCenter: parent.verticalCenter
+                 visible: MprisController.activePlayer && SettingsData.lockScreenShowMediaPlayer
+             }
+@@ -1689,7 +1438,7 @@
+                                     return 3;
+                                 }
+                                 radius: 1.5
+-                                color: "white"
++                                color: folio.ink
+                                 anchors.verticalCenter: parent.verticalCenter
+ 
+                                 Behavior on height {
+@@ -1714,7 +1463,7 @@
+                         return artist ? title + " • " + artist : title;
+                     }
+                     font.pixelSize: Theme.fontSizeLarge
+-                    color: "white"
++                    color: folio.ink
+                     opacity: 0.9
+                     anchors.verticalCenter: parent.verticalCenter
+                     elide: Text.ElideRight
+@@ -1732,7 +1481,7 @@
+                         height: 20
+                         radius: 10
+                         anchors.verticalCenter: parent.verticalCenter
+-                        color: prevArea.containsMouse ? Qt.rgba(255, 255, 255, 0.2) : Theme.withAlpha(Qt.rgba(255, 255, 255, 0.2), 0)
++                        color: prevArea.containsMouse ? Theme.withAlpha(folio.ink, 0.2) : Theme.withAlpha(Theme.withAlpha(folio.ink, 0.2), 0)
+                         visible: MprisController.activePlayer
+                         opacity: (MprisController.activePlayer?.canGoPrevious ?? false) ? 1 : 0.3
+ 
+@@ -1740,7 +1489,7 @@
+                             anchors.centerIn: parent
+                             name: "skip_previous"
+                             size: 12
+-                            color: "white"
++                            color: folio.ink
+                         }
+ 
+                         MouseArea {
+@@ -1758,14 +1507,14 @@
+                         height: 24
+                         radius: 12
+                         anchors.verticalCenter: parent.verticalCenter
+-                        color: MprisController.activePlayer?.playbackState === MprisPlaybackState.Playing ? Qt.rgba(255, 255, 255, 0.9) : Qt.rgba(255, 255, 255, 0.2)
++                        color: MprisController.activePlayer?.playbackState === MprisPlaybackState.Playing ? Qt.rgba(255, 255, 255, 0.9) : Theme.withAlpha(folio.ink, 0.2)
+                         visible: MprisController.activePlayer
+ 
+                         DankIcon {
+                             anchors.centerIn: parent
+                             name: MprisController.activePlayer?.playbackState === MprisPlaybackState.Playing ? "pause" : "play_arrow"
+                             size: 14
+-                            color: MprisController.activePlayer?.playbackState === MprisPlaybackState.Playing ? "black" : "white"
++                            color: MprisController.activePlayer?.playbackState === MprisPlaybackState.Playing ? "black" : folio.ink
+                         }
+ 
+                         MouseArea {
+@@ -1782,7 +1531,7 @@
+                         height: 20
+                         radius: 10
+                         anchors.verticalCenter: parent.verticalCenter
+-                        color: nextArea.containsMouse ? Qt.rgba(255, 255, 255, 0.2) : Theme.withAlpha(Qt.rgba(255, 255, 255, 0.2), 0)
++                        color: nextArea.containsMouse ? Theme.withAlpha(folio.ink, 0.2) : Theme.withAlpha(Theme.withAlpha(folio.ink, 0.2), 0)
+                         visible: MprisController.activePlayer
+                         opacity: (MprisController.activePlayer?.canGoNext ?? false) ? 1 : 0.3
+ 
+@@ -1790,7 +1539,7 @@
+                             anchors.centerIn: parent
+                             name: "skip_next"
+                             size: 12
+-                            color: "white"
++                            color: folio.ink
+                         }
+ 
+                         MouseArea {
+@@ -1808,7 +1557,7 @@
+             Rectangle {
+                 width: 1
+                 height: 24
+-                color: Qt.rgba(255, 255, 255, 0.2)
++                color: Theme.withAlpha(folio.ink, 0.2)
+                 anchors.verticalCenter: parent.verticalCenter
+                 visible: MprisController.activePlayer && SettingsData.lockScreenShowMediaPlayer && SettingsData.lockScreenShowWeather && WeatherService.weather.available
+             }
+@@ -1821,7 +1570,7 @@
+                 DankIcon {
+                     name: WeatherService.getWeatherIcon(WeatherService.weather.wCode)
+                     size: Theme.iconSize
+-                    color: "white"
++                    color: folio.ink
+                     anchors.verticalCenter: parent.verticalCenter
+                 }
+ 
+@@ -1829,7 +1578,7 @@
+                     text: (SettingsData.useFahrenheit ? WeatherService.weather.tempF : WeatherService.weather.temp) + "°"
+                     font.pixelSize: Theme.fontSizeLarge
+                     font.weight: Font.Light
+-                    color: "white"
++                    color: folio.ink
+                     anchors.verticalCenter: parent.verticalCenter
+                 }
+             }
+@@ -1837,7 +1586,7 @@
+             Rectangle {
+                 width: 1
+                 height: 24
+-                color: Qt.rgba(255, 255, 255, 0.2)
++                color: Theme.withAlpha(folio.ink, 0.2)
+                 anchors.verticalCenter: parent.verticalCenter
+                 visible: SettingsData.lockScreenShowWeather && WeatherService.weather.available && (NetworkService.networkStatus !== "disconnected" || BluetoothService.enabled || (AudioService.sink && AudioService.sink.audio) || BatteryService.batteryAvailable)
+             }
+@@ -1850,7 +1599,7 @@
+                 DankIcon {
+                     name: "screen_record"
+                     size: Theme.iconSize - 2
+-                    color: NiriService.hasActiveCast ? "white" : Qt.rgba(255, 255, 255, 0.5)
++                    color: NiriService.hasActiveCast ? folio.ink : Theme.withAlpha(folio.ink, 0.5)
+                     anchors.verticalCenter: parent.verticalCenter
+                     visible: NiriService.hasCasts
+                 }
+@@ -1872,7 +1621,7 @@
+                         }
+                     }
+                     size: Theme.iconSize - 2
+-                    color: (NetworkService.networkStatus !== "disconnected" || NetworkService.isConnecting) ? "white" : Qt.rgba(255, 255, 255, 0.5)
++                    color: (NetworkService.networkStatus !== "disconnected" || NetworkService.isConnecting) ? folio.ink : Theme.withAlpha(folio.ink, 0.5)
+                     anchors.verticalCenter: parent.verticalCenter
+                     visible: NetworkService.networkAvailable
+ 
+@@ -1885,7 +1634,7 @@
+                 DankIcon {
+                     name: "vpn_lock"
+                     size: Theme.iconSize - 2
+-                    color: "white"
++                    color: folio.ink
+                     anchors.verticalCenter: parent.verticalCenter
+                     visible: NetworkService.vpnAvailable && NetworkService.vpnConnected
+                 }
+@@ -1894,7 +1643,7 @@
+                     id: lockBluetoothIcon
+                     name: "bluetooth"
+                     size: Theme.iconSize - 2
+-                    color: "white"
++                    color: folio.ink
+                     anchors.verticalCenter: parent.verticalCenter
+                     visible: BluetoothService.available && BluetoothService.enabled
+ 
+@@ -1907,7 +1656,7 @@
+                 DankIcon {
+                     name: AudioService.sinkVolumeIconName
+                     size: Theme.iconSize - 2
+-                    color: AudioService.sinkSilent ? Qt.rgba(255, 255, 255, 0.5) : "white"
++                    color: AudioService.sinkSilent ? Theme.withAlpha(folio.ink, 0.5) : folio.ink
+                     anchors.verticalCenter: parent.verticalCenter
+                     visible: AudioService.sink && AudioService.sink.audio
+                 }
+@@ -1916,7 +1665,7 @@
+             Rectangle {
+                 width: 1
+                 height: 24
+-                color: Qt.rgba(255, 255, 255, 0.2)
++                color: Theme.withAlpha(folio.ink, 0.2)
+                 anchors.verticalCenter: parent.verticalCenter
+                 visible: BatteryService.batteryAvailable && (NetworkService.networkStatus !== "disconnected" || BluetoothService.enabled || (AudioService.sink && AudioService.sink.audio))
+             }
+@@ -2015,10 +1764,10 @@
+                         }
+ 
+                         if (BatteryService.isCharging || BatteryService.isPluggedIn) {
+-                            return Theme.primary;
+-                        }
+-
+-                        return "white";
++                            return folio.ink;
++                        }
++
++                        return folio.ink;
+                     }
+                     anchors.verticalCenter: parent.verticalCenter
+                 }
+@@ -2027,7 +1776,7 @@
+                     text: BatteryService.batteryLevel + "%"
+                     font.pixelSize: Theme.fontSizeLarge
+                     font.weight: Font.Light
+-                    color: "white"
++                    color: folio.ink
+                     anchors.verticalCenter: parent.verticalCenter
+                 }
+             }

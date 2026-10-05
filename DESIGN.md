@@ -6,7 +6,7 @@ A quiet, immediate command center. DMS owns the shell, Niri owns windows, and Al
 
 ## 2. Color
 
-The desktop follows the active DMS theme; extensions never introduce fixed colors.
+Azure Folio is the single visual family. Doré, European Summer and Argentina change only the art. Daylight uses warm near-white `#f7f4e9`; After hours uses navy `#101d33`. Azure, Cobalt and Slate provide three blue inks. DMS extensions consume the generated theme tokens; the greeter consumes the same validated palette.
 
 | Role | DMS token | Usage |
 |---|---|---|
@@ -19,11 +19,11 @@ The desktop follows the active DMS theme; extensions never introduce fixed color
 | Warning | `Theme.warning` | Quota at 60 percent or more |
 | Error | `Theme.error` | Quota at 80 percent or more and errors |
 
-Color communicates state only. Themeport and DMS remain the only palette owners; Qt and KDE applications follow Themeport through its rendered `kdeglobals` and the KDE platform theme.
+Art uses paper and ink only. Muted semantic colors still distinguish errors, warnings and success. Azure Folio, Themeport and DMS own the shared palette; Qt and KDE applications follow Themeport through its rendered `kdeglobals` and the KDE platform theme.
 
 ## 3. Typography
 
-Use DMS typography tokens and the active system font.
+Use Inter for the interface and IBM Plex Mono for terminals and captions. Jacquard 24 is reserved for the large login/lock clock and small host mark. These roles stay fixed across all collections and modes.
 
 | Level | DMS token | Usage |
 |---|---|---|
@@ -31,11 +31,13 @@ Use DMS typography tokens and the active system font.
 | Medium | `Theme.fontSizeMedium` | Normal panel content |
 | Small | `Theme.fontSizeSmall` | Bar values, quota labels, metadata |
 
-Use medium weight for compact status and bold only for a provider heading. No extension-specific font family is allowed.
+Use medium weight for compact status and bold only for a provider heading. Other extensions inherit these system fonts.
 
 ## 4. Spacing & Layout
 
-All QML spacing uses `Theme.spacingXS`, `Theme.spacingS`, `Theme.spacingM`, or larger existing DMS tokens. Cards use `Theme.cornerRadius`. Popouts stay within DMS's established 420-pixel compact panel width and must remain readable without horizontal scrolling.
+The login/lock view splits into art on the left and identity, clock and authentication on the right. Its proportions follow the approved live HTML study. The desktop bar uses a thin opaque surface, transparent widgets and restrained outlines; windows have 5-pixel corners and 12-pixel gaps.
+
+Other QML spacing uses `Theme.spacingXS`, `Theme.spacingS`, `Theme.spacingM`, or larger existing DMS tokens. Cards use `Theme.cornerRadius`. Popouts stay within DMS's established 420-pixel compact panel width and must remain readable without horizontal scrolling.
 
 ## 5. Components
 
@@ -99,7 +101,7 @@ Motion communicates state and preserves interruptibility. Continuous progress in
 
 ## 7. Depth & Surface
 
-Use DMS's existing mixed strategy: tonal surface elevation plus the configured subtle blur and outline. Extensions use `StyledRect` and DMS theme tokens; they do not add custom shadows, gradients, borders, or glass layers.
+Use opaque paper surfaces, tonal elevation and a restrained outline. Extensions use `StyledRect` and DMS theme tokens; they do not add custom shadows, gradients, borders, or glass layers.
 
 ## 8. Accessibility Constraints & Accepted Debt
 
@@ -115,4 +117,4 @@ Use DMS's existing mixed strategy: tonal surface elevation plus the configured s
 
 | Item | Location | Why accepted | Owner / Exit |
 |---|---|---|---|
-| Runtime motion and provider-switch visual QA requires an activated Niri session | DMS and Niri shell | This repository is being changed from macOS and cannot render the target compositor | Verify on Balerion or Bonhart after the next activation |
+| Runtime motion and provider-switch visual QA requires an activated Niri session | DMS and Niri shell | Native QML presentation is checked on Bonhart; credential entry is not automated | Verify normal login after activation without interrupting the active session |

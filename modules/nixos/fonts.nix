@@ -15,10 +15,12 @@
       '';
       defaultFonts = {
         monospace = [
+          "IBM Plex Mono"
           "GeistMono Nerd Font"
           "JetBrainsMono Nerd Font"
         ];
         sansSerif = [
+          "Inter"
           "Geist"
           "Noto Sans"
         ];

@@ -477,8 +477,8 @@ def build_dms_theme(theme: Theme, other: Theme | None) -> dict:
         "id": f"themeport-{theme.name}",
         "name": pretty,
         "version": "1.0.0",
-        "author": "themeport (from Omarchy community themes)",
-        "description": f"Converted from the Omarchy theme '{theme.name}'"
+        "author": "Azure Folio" if theme.name.startswith("folio-") else "themeport (from Omarchy community themes)",
+        "description": ("Blue and ivory desktop family" if theme.name.startswith("folio-") else f"Converted from the Omarchy theme '{theme.name}'")
         + (f" paired with '{other.name}'" if other else ""),
         "dark": dms_variant(dark.colors, f"{pretty} Dark" if other or dark.mode == "dark" else pretty),
         "light": dms_variant(light.colors, f"{pretty} Light" if other or light.mode == "light" else pretty),
@@ -616,7 +616,7 @@ TPL_OUTPUTS = {
 # Fonts match the DMS settings policy (fontFamily / monoFontFamily) so Qt
 # and KDE applications type-set like everything else on the desktop.
 KDE_FONT_FAMILY = "Inter"
-KDE_MONO_FAMILY = "JetBrainsMonoNL NFM"
+KDE_MONO_FAMILY = "IBM Plex Mono"
 
 
 def _kde_rgb(hexstr: str) -> str:

@@ -1,7 +1,7 @@
 --- a/chrome/browser/cmux_term/cmux_terminal_backend.cc
 +++ b/chrome/browser/cmux_term/cmux_terminal_backend.cc
 @@ -699,6 +699,11 @@
- 
+
  void CmuxTerminalBackend::EnsureDirectAttached() {
    DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 +#if !BUILDFLAG(IS_MAC)

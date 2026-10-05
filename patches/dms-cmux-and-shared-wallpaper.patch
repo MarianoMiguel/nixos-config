@@ -1,7 +1,7 @@
 --- a/Common/Paths.qml
 +++ b/Common/Paths.qml
 @@ -66,6 +66,16 @@
- 
+
      function isSteamApp(appId: string): bool {
          return appId && /^steam_app_\d+$/.test(appId);
 +    }
@@ -15,23 +15,23 @@
 +            return "cmux-browser";
 +        return "unknown";
      }
- 
+
      function moddedAppId(appId: string): string {
 --- a/Modules/Dock/DockApps.qml
 +++ b/Modules/Dock/DockApps.qml
 @@ -175,7 +175,7 @@
                      }
- 
+
                      sortedToplevels.forEach((toplevel, index) => {
 -                        const rawAppId = toplevel.appId || "unknown";
 +                        const rawAppId = Paths.windowAppId(toplevel);
                          let appId = Paths.moddedAppId(rawAppId);
                          let coreAppData = null;
- 
+
 @@ -273,7 +273,7 @@
                              }
                          }
- 
+
 -                        const rawAppId = toplevel.appId || "unknown";
 +                        const rawAppId = Paths.windowAppId(toplevel);
                          const moddedAppId = Paths.moddedAppId(rawAppId);
@@ -53,7 +53,7 @@
 @@ -388,6 +388,16 @@
              }
          }
- 
+
 +        // A single IPC transaction shares the wallpaper with every display,
 +        // including connectors that are attached after this call.
 +        function setAll(path: string): string {

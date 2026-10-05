@@ -24,6 +24,9 @@ import json
 import os
 import re
 import shutil
+import socket
+import stat
+import struct
 import subprocess
 import sys
 import tarfile
@@ -1404,7 +1407,109 @@ def apply_vicinae() -> None:
         print("  ! vicinae: theme staged; restart Vicinae if it did not update live")
 
 
+def cmux_theme_colors(theme_file: Path) -> dict:
+    """Translate our rendered Ghostty colors to cmux's control protocol."""
+    fields = {
+        "foreground": "fg", "background": "bg", "cursor-color": "cursor",
+        "selection-background": "selection_bg", "selection-foreground": "selection_fg",
+    }
+    colors = {"palette": {}}
+    for line in theme_file.read_text().splitlines():
+        key, _, value = line.partition("=")
+        key, value = key.strip(), value.strip()
+        if key in fields and HEX_RE.fullmatch(value):
+            colors[fields[key]] = value
+        elif key == "palette":
+            index, _, color = value.partition("=")
+            if index.isdigit() and 0 <= int(index) < 256 and HEX_RE.fullmatch(color):
+                colors["palette"][index] = color
+    if "fg" not in colors or "bg" not in colors or len(colors["palette"]) != 16:
+        raise ValueError("incomplete rendered cmux palette")
+    return colors
+
+
+def cmux_palette_osc(colors: dict) -> bytes:
+    # OSC 4 is terminal OUTPUT, never shell input. cmux's sparse renderer
+    # metadata forwards these explicit entries, unlike SetDefaultColors alone.
+    return "".join(
+        f"\x1b]4;{index};rgb:{color[1:3]}/{color[3:5]}/{color[5:7]}\x1b\\"
+        for index, color in colors["palette"].items()
+    ).encode("ascii")
+
+
+def update_cmux_pty_palette(pid: int, payload: bytes) -> bool:
+    """Write color escapes only to the user-owned PTY reported by cmux."""
+    output = Path(f"/proc/{int(pid)}/fd/1")
+    target = output.resolve(strict=True)
+    if not re.fullmatch(r"/dev/pts/[0-9]+", str(target)):
+        return False
+    fd = os.open(output, os.O_WRONLY | os.O_NOCTTY | os.O_NONBLOCK)
+    try:
+        node = os.fstat(fd)
+        if not stat.S_ISCHR(node.st_mode) or node.st_uid != os.getuid() or os.ttyname(fd) != str(target):
+            return False
+        return os.write(fd, payload) == len(payload)
+    finally:
+        os.close(fd)
+
+
+def apply_cmux() -> None:
+    """Update existing PTYs without restarting cmux or sending shell input."""
+    runtime = Path(os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}"))
+    sockets = (runtime / f"cmux-tui-{os.getuid()}").glob("cmux-browser-*.sock")
+    try:
+        colors = cmux_theme_colors(xdg_config_home() / "ghostty/themes/themeport")
+    except (OSError, ValueError) as exc:
+        print(f"  ! cmux: {exc}")
+        return
+    updated = 0
+    for path in sockets:
+        try:
+            # The runtime directory and peer must belong to this user.
+            if path.stat().st_uid != os.getuid():
+                continue
+            with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
+                client.settimeout(2)
+                client.connect(str(path))
+                _, uid, _ = struct.unpack("3i", client.getsockopt(socket.SOL_SOCKET, socket.SO_PEERCRED, 12))
+                if uid != os.getuid():
+                    continue
+                with client.makefile("rwb") as stream:
+                    def request(payload):
+                        stream.write((json.dumps(payload) + "\n").encode())
+                        stream.flush()
+                        return json.loads(stream.readline(65536))
+                    identity = request({"cmd": "identify", "id": 1})
+                    if identity.get("data", {}).get("app") != "cmux-tui":
+                        continue
+                    response = request({"cmd": "set-default-colors", "id": 2, **colors})
+                    if response.get("ok"):
+                        updated += 1
+                        workspaces = request({"cmd": "list-workspaces", "id": 3}).get("data", {}).get("workspaces", [])
+                        payload = cmux_palette_osc(colors)
+                        for workspace in workspaces:
+                            for screen in workspace.get("screens", []):
+                                for pane in screen.get("panes", []):
+                                    for tab in pane.get("tabs", []):
+                                        if tab.get("kind") != "pty" or tab.get("dead"):
+                                            continue
+                                        info = request({"cmd": "process-info", "surface": tab["surface"], "id": 4})
+                                        pid = info.get("data", {}).get("pid")
+                                        if isinstance(pid, int) and pid > 0:
+                                            try:
+                                                update_cmux_pty_palette(pid, payload)
+                                            except OSError:
+                                                pass  # PTY exited or output is temporarily full
+                    else:
+                        print(f"  ! cmux: {response.get('error', 'palette update rejected')}")
+        except (OSError, ValueError):
+            continue  # closed/stale session socket; future launches read Ghostty
+    if updated:
+        print(f"  cmux: colors updated in {updated} running session(s)")
+
+
 def apply_terminals() -> None:
+    apply_cmux()
     if shutil.which("tmux") and _run_quiet(["tmux", "has-session"]):
         conf = Path.home() / ".config/tmux/themeport.conf"
         if _run_quiet(["tmux", "source-file", str(conf)]):

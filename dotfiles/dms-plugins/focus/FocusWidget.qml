@@ -490,7 +490,7 @@ PluginComponent {
                                 buttonHeight: 40
                                 horizontalPadding: Theme.spacingM
                                 backgroundColor: selected ? Theme.primary : Theme.surfaceContainerHighest
-                                textColor: selected ? Theme.onPrimary : Theme.surfaceText
+                                textColor: selected ? Theme.primaryText : Theme.surfaceText
                                 border.width: selected ? 0 : 1
                                 border.color: Theme.outlineStrong
                                 activeFocusOnTab: true
@@ -563,7 +563,7 @@ PluginComponent {
                                     buttonHeight: 36
                                     horizontalPadding: Theme.spacingM
                                     backgroundColor: selected ? Theme.primary : Theme.surfaceContainerHighest
-                                    textColor: selected ? Theme.onPrimary : Theme.surfaceText
+                                    textColor: selected ? Theme.primaryText : Theme.surfaceText
                                     border.width: selected ? 0 : 1
                                     border.color: Theme.outlineStrong
                                     activeFocusOnTab: true
@@ -659,7 +659,7 @@ PluginComponent {
                                         buttonHeight: 34
                                         horizontalPadding: Theme.spacingS
                                         backgroundColor: selected ? Theme.primary : Theme.surfaceContainerHighest
-                                        textColor: selected ? Theme.onPrimary : Theme.surfaceText
+                                        textColor: selected ? Theme.primaryText : Theme.surfaceText
                                         border.width: selected ? 0 : 1
                                         border.color: Theme.outlineStrong
                                         activeFocusOnTab: true
@@ -813,7 +813,7 @@ PluginComponent {
                         enabled: reminderField.text.trim().length > 0 && root.scheduleValid && !mutationProcess.running
                         opacity: 1
                         backgroundColor: enabled ? Theme.primary : Theme.surfaceContainerHighest
-                        textColor: enabled ? Theme.onPrimary : Theme.surfaceVariantText
+                        textColor: enabled ? Theme.primaryText : Theme.surfaceVariantText
                         border.width: enabled ? 0 : 1
                         border.color: Theme.outlineStrong
                         activeFocusOnTab: true

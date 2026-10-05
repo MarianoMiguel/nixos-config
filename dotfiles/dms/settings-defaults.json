@@ -27,14 +27,14 @@
   "lockScreenNotificationMode": 0,
   "lockScreenVideoEnabled": false,
   "animationSpeed": 4,
-  "customAnimationDuration": 40,
+  "customAnimationDuration": 90,
   "syncComponentAnimationSpeeds": true,
   "popoutAnimationSpeed": 4,
-  "popoutCustomAnimationDuration": 40,
+  "popoutCustomAnimationDuration": 90,
   "modalAnimationSpeed": 4,
-  "modalCustomAnimationDuration": 40,
+  "modalCustomAnimationDuration": 90,
   "notificationAnimationSpeed": 4,
-  "notificationCustomAnimationDuration": 60,
+  "notificationCustomAnimationDuration": 90,
   "controlCenterShowIdleInhibitorIcon": false,
   "controlCenterShowDoNotDisturbIcon": false,
   "greeterEnableU2f": false,
@@ -66,5 +66,7 @@
   "niriLayoutBorderSize": 1,
   "popupTransparency": 1,
   "dockTransparency": 1,
-  "widgetRadius": 5
+  "widgetRadius": 5,
+  "reduceMotion": false,
+  "springBounce": 0
 }

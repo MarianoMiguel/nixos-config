@@ -1,0 +1,14 @@
+--- a/chrome/browser/cmux_term/cmux_terminal_backend.cc
++++ b/chrome/browser/cmux_term/cmux_terminal_backend.cc
+@@ -699,6 +699,11 @@
+ 
+ void CmuxTerminalBackend::EnsureDirectAttached() {
+   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
++#if !BUILDFLAG(IS_MAC)
++  // Linux/Windows reject BeginCmuxTerminalHostInputCutover. Retrying it tears
++  // down the working compatibility renderer and flashes the terminal pane.
++  return;
++#endif
+   const std::optional<CmuxTuiSurfaceId> surface = CurrentSurface();
+   if (closed_ || !frontend_ || frontend_suspended_ || !surface ||
+       !client_->ready() ||

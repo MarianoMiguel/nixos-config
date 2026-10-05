@@ -264,6 +264,10 @@ EOF
         "$out/share/quickshell/dms/Modules/Lock" \
         "$out/share/quickshell/dms/Modules/Lock/LockScreenContent.qml"
       patch -d "$out/share/quickshell/dms" -p2 < ${../../patches/dms-azure-folio-lock.patch}
+      chmod u+w "$out/share/quickshell/dms/Common" \
+        "$out/share/quickshell/dms/Services" \
+        "$out/share/quickshell/dms/Modules/Dock"
+      patch -d "$out/share/quickshell/dms" -p1 < ${../../patches/dms-cmux-and-shared-wallpaper.patch}
       mkdir -p "$out/share/quickshell/dms/Folio"
       cp ${folioQml}/*.qml "$out/share/quickshell/dms/Folio/"
       substituteInPlace "$out/share/quickshell/dms/shell.qml" \
@@ -278,6 +282,11 @@ import qs.Folio' \
         --replace-fail \
           'readonly property int notificationInlineCollapseDuration: notificationAnimationBaseDuration === 0 ? 0 : 150' \
           'readonly property int notificationInlineCollapseDuration: notificationAnimationBaseDuration === 0 ? 0 : Math.round(notificationAnimationBaseDuration * 0.85)'
+
+      # Expressive size multipliers otherwise exceed the requested 100 ms cap.
+      substituteInPlace "$out/share/quickshell/dms/Common/Theme.qml" \
+        --replace-fail '"large": baseDuration * 1.2' '"large": Math.min(100, baseDuration * 1.2)' \
+        --replace-fail '"extraLarge": baseDuration * 2.0' '"extraLarge": Math.min(100, baseDuration * 2.0)'
 
       # The shipped widgets are reviewed Nix inputs. Do not execute mutable
       # plugins from ~/.config/DankMaterialShell/plugins, even if a catalog or

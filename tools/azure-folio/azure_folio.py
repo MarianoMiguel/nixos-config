@@ -91,7 +91,7 @@ def apply(selection, previous, force=False):
     else:
         session=Path.home()/'.local/state/nixos-config/dotfiles/dms/session.json'
         raw=json.loads(session.read_text()) if session.exists() else {}
-        raw.update({'wallpaperPath':selected,'isLightMode':selection['mode']=='light'})
+        raw.update({'wallpaperPath':selected,'isLightMode':selection['mode']=='light','perMonitorWallpaper':False,'monitorWallpapers':{}})
         if isinstance(raw.get('monitorWallpapers'),dict): raw['monitorWallpapers']={k:selected for k in raw['monitorWallpapers']}
         atomic_json(session.resolve(),raw,0o600)
     # Publish only after the wallpaper/theme apply succeeded. Greeter state is

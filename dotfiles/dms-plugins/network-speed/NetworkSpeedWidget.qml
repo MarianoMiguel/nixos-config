@@ -313,7 +313,7 @@ PluginComponent {
                     text: root.testing ? "Cancel test" : (root.result ? "Run again" : "Run speed test")
                     iconName: root.testing ? "close" : "play_arrow"
                     backgroundColor: root.testing ? Theme.buttonBg : Theme.primary
-                    textColor: root.testing ? Theme.buttonText : Theme.onPrimary
+                    textColor: root.testing ? Theme.buttonText : Theme.primaryText
                     activeFocusOnTab: true
                     Accessible.role: Accessible.Button
                     Accessible.name: text

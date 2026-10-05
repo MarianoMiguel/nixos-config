@@ -9,4 +9,8 @@ command = direct:/run/current-system/sw/bin/zsh
 env = SHELL=/run/current-system/sw/bin/zsh
 
 font-family = IBM Plex Mono
+# Keep Plex letterforms and give both Ghostty and cmux explicit icon fallbacks.
+font-family = BlexMono Nerd Font
+font-family = Symbols Nerd Font Mono
+font-codepoint-map = U+E000-U+F8FF,U+F0000-U+FFFFD=Symbols Nerd Font Mono
 font-size = 12

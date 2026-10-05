@@ -64,6 +64,10 @@ def validate_render(name: str, outdir: Path, expect_mode: str) -> None:
     palette_lines = [ln for ln in ghostty.splitlines() if ln.startswith("palette =")]
     check(len(palette_lines) == 16, f"{prefix} ghostty palette lines = {len(palette_lines)}, want 16")
     check("{{" not in ghostty, f"{prefix} ghostty has unresolved tokens")
+    cmux = themeport.cmux_theme_colors(outdir / "ghostty/themes/themeport")
+    check(len(cmux["palette"]) == 16, f"{prefix} cmux missing ANSI colors")
+    check(cmux["bg"] == cmux["palette"]["0"], f"{prefix} cmux background differs from Ghostty")
+    check(cmux["fg"] == cmux["palette"]["7"], f"{prefix} cmux foreground differs from Ghostty")
 
     btop = (outdir / "btop/themes/themeport.theme").read_text()
     check('theme[main_bg]' in btop, f"{prefix} btop theme missing main_bg")

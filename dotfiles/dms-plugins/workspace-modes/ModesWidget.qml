@@ -85,7 +85,7 @@ PluginComponent {
     readonly property color pillColor: {
         if (!root.modesConnected)
             return Theme.surfaceVariantText;
-        return currentMode === "tile" ? Theme.surfaceText : Theme.primary;
+        return Theme.primary;
     }
 
     function setMode(mode) {

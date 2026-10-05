@@ -7,6 +7,7 @@
   dpkg,
   makeWrapper,
   patchelf,
+  python3,
   addDriverRunpath,
   alsa-lib,
   at-spi2-atk,
@@ -122,6 +123,9 @@ stdenvNoCC.mkDerivation (finalAttrs: {
     mkdir -p "$out/opt/cmux" "$out/bin" "$out/share"
     cp -a opt/cmux/browser "$out/opt/cmux/"
     cp -a usr/share/. "$out/share/"
+
+    ${python3}/bin/python3 ${./cmux-browser/disable-linux-direct-retry.py} \
+      "$out/opt/cmux/browser/chrome"
 
     # Desktop integration and updates belong to NixOS. Use the GTK backend
     # in Niri/GNOME and omit the optional Qt shims and Debian maintenance jobs.

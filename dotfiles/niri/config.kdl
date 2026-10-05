@@ -196,15 +196,7 @@ hotkey-overlay {
 prefer-no-csd
 screenshot-path "~/Pictures/Screenshots/Screenshot from %Y-%m-%d %H-%M-%S.png"
 animations {
-    // All animations off, by preference. It also settled the focus-mode
-    // "flash": a newly opened window shows as a real tiled column for a frame
-    // before the niri-modes daemon folds it into the centered tab group. That
-    // is niri committing the frame before it even reports the window, so no
-    // animation setting removes it — but disabling animations makes the whole
-    // system feel snappier, which is the look wanted here. The tuned per-
-    // animation values below are kept so deleting this one `off` line restores
-    // the original motion.
-    off
+    // Brief motion makes spatial changes readable without delaying input.
     workspace-switch {
         duration-ms 70
         curve "ease-out-expo"

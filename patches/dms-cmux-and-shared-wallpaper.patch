@@ -1,0 +1,69 @@
+--- a/Common/Paths.qml
++++ b/Common/Paths.qml
+@@ -66,6 +66,16 @@
+ 
+     function isSteamApp(appId: string): bool {
+         return appId && /^steam_app_\d+$/.test(appId);
++    }
++
++    // cmux 151's custom Wayland widget omits app_id. Its native title is fixed
++    // (optionally followed by CMUX_TAG); retain actual IDs for every other app.
++    function windowAppId(toplevel): string {
++        if (toplevel.appId)
++            return toplevel.appId;
++        if (/^cmux(?: ▸ .+)?$/.test(toplevel.title || ""))
++            return "cmux-browser";
++        return "unknown";
+     }
+ 
+     function moddedAppId(appId: string): string {
+--- a/Modules/Dock/DockApps.qml
++++ b/Modules/Dock/DockApps.qml
+@@ -175,7 +175,7 @@
+                     }
+ 
+                     sortedToplevels.forEach((toplevel, index) => {
+-                        const rawAppId = toplevel.appId || "unknown";
++                        const rawAppId = Paths.windowAppId(toplevel);
+                         let appId = Paths.moddedAppId(rawAppId);
+                         let coreAppData = null;
+ 
+@@ -273,7 +273,7 @@
+                             }
+                         }
+ 
+-                        const rawAppId = toplevel.appId || "unknown";
++                        const rawAppId = Paths.windowAppId(toplevel);
+                         const moddedAppId = Paths.moddedAppId(rawAppId);
+                         let coreAppData = null;
+                         let isCoreApp = false;
+--- a/Modules/Dock/DockAppButton.qml
++++ b/Modules/Dock/DockAppButton.qml
+@@ -99,7 +99,7 @@
+             const allToplevels = CompositorService.isAqueous && AqueousService.available ? CompositorService.sortedToplevels : ToplevelManager.toplevels.values;
+             for (let i = 0; i < allToplevels.length; i++) {
+                 const toplevel = allToplevels[i];
+-                if (toplevel.appId === appData.appId && toplevel.activated) {
++                if (Paths.moddedAppId(Paths.windowAppId(toplevel)) === appData.appId && toplevel.activated) {
+                     return true;
+                 }
+             }
+--- a/Services/WallpaperCyclingService.qml
++++ b/Services/WallpaperCyclingService.qml
+@@ -388,6 +388,16 @@
+             }
+         }
+ 
++        // A single IPC transaction shares the wallpaper with every display,
++        // including connectors that are attached after this call.
++        function setAll(path: string): string {
++            if (!path || !path.startsWith("/"))
++                return "ERROR: An absolute wallpaper path is required";
++            SessionData.setPerMonitorWallpaper(false);
++            SessionData.monitorWallpapers = {};
++            return set(path);
++        }
++
+         function clear(): string {
+             SessionData.setWallpaper("");
+             SessionData.setPerMonitorWallpaper(false);

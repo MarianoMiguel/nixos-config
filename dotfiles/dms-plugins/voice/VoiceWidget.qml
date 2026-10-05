@@ -198,7 +198,7 @@ PluginComponent {
                                 iconName: "check"
                                 text: "Approve"
                                 backgroundColor: Theme.primary
-                                textColor: Theme.onPrimary
+                                textColor: Theme.primaryText
                                 onClicked: Quickshell.execDetached(["voiceagent", "approve"])
                             }
 

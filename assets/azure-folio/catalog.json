@@ -2,16 +2,16 @@
   "version": 1,
   "collections": [
     {"id":"dore","name":"Doré","description":"Gustave Doré · Paradise Lost","art":[
-      {"id":"dore-nightfall","title":"Nightfall","file":"dore-nightfall.jpg","generated":false,"credit":"Gustave Doré · 1866","source":"https://commons.wikimedia.org/wiki/File:Paradise_Lost_26.jpg","license":"Public domain"},
-      {"id":"dore-descent","title":"The descent","file":"dore-descent.jpg","generated":false,"credit":"Gustave Doré · 1866","source":"https://commons.wikimedia.org/wiki/File:Paradise_Lost_12.jpg","license":"Public domain"}
+      {"id":"dore-nightfall","desktopFocus":[0.5,0.585],"title":"Nightfall","file":"dore-nightfall.jpg","generated":false,"credit":"Gustave Doré · 1866","source":"https://commons.wikimedia.org/wiki/File:Paradise_Lost_26.jpg","license":"Public domain"},
+      {"id":"dore-descent","desktopFocus":[0.5,0.365],"title":"The descent","file":"dore-descent.jpg","generated":false,"credit":"Gustave Doré · 1866","source":"https://commons.wikimedia.org/wiki/File:Paradise_Lost_12.jpg","license":"Public domain"}
     ]},
     {"id":"summer","name":"European Summer","description":"Riviera harbours, Sicilian terraces and yachts","art":[
-      {"id":"summer-riviera","title":"Riviera harbour","file":"summer-riviera.png","generated":true,"credit":"Azure Folio · Riviera study","license":"Original AI-generated illustration"},
-      {"id":"summer-sicily","title":"A Sicilian summer","file":"summer-sicily.png","generated":true,"credit":"Azure Folio · Sicily study","license":"Original AI-generated illustration"}
+      {"id":"summer-riviera","desktopFocus":[0.5,0.57],"title":"Riviera harbour","file":"summer-riviera.png","generated":true,"credit":"Azure Folio · Riviera study","license":"Original AI-generated illustration"},
+      {"id":"summer-sicily","desktopFocus":[0.5,0.48],"title":"A Sicilian summer","file":"summer-sicily.png","generated":true,"credit":"Azure Folio · Sicily study","license":"Original AI-generated illustration"}
     ]},
     {"id":"argentina","name":"Argentina","description":"Buenos Aires, mate, tango and Patagonia","art":[
-      {"id":"argentina-buenos-aires","title":"Una tarde porteña","file":"argentina-buenos-aires.png","generated":true,"credit":"Azure Folio · Buenos Aires study","license":"Original AI-generated illustration"},
-      {"id":"argentina-patagonia","title":"Patagonia","file":"argentina-patagonia.png","generated":true,"credit":"Azure Folio · Fitz Roy study","license":"Original AI-generated illustration"}
+      {"id":"argentina-buenos-aires","desktopFocus":[0.5,0.62],"title":"Una tarde porteña","file":"argentina-buenos-aires.png","generated":true,"credit":"Azure Folio · Buenos Aires study","license":"Original AI-generated illustration"},
+      {"id":"argentina-patagonia","desktopFocus":[0.5,0.34],"title":"Patagonia","file":"argentina-patagonia.png","generated":true,"credit":"Azure Folio · Fitz Roy study","license":"Original AI-generated illustration"}
     ]}
   ],
   "inks": {"azure":{"light":"#214c94","dark":"#adc7ed"},"cobalt":{"light":"#244fb8","dark":"#9dbbfa"},"slate":{"light":"#35556e","dark":"#adc3d2"}},

@@ -4,7 +4,9 @@ let
   artwork = runCommand "azure-folio-artwork-1.0.0" {
     nativeBuildInputs = [ python ];
   } ''
-    python ${../tools/azure-folio/build.py} ${../assets/azure-folio} "$out"
+    cp ${../tools/azure-folio/build.py} build.py
+    cp ${../tools/azure-folio/render.py} render.py
+    python build.py ${../assets/azure-folio} "$out"
   '';
   # Typography/layout and neutral-color edits never re-dither the artwork.
   palettes = runCommand "azure-folio-palettes-1.0.0" {
@@ -24,12 +26,14 @@ stdenvNoCC.mkDerivation {
     ln -s ${artwork}/art "$out/share/azure-folio/art"
     ln -s ${palettes} "$out/share/azure-folio/themes"
     cp ${artwork}/catalog.json "$out/share/azure-folio/"
+    cp -R ${../assets/azure-folio/sources} "$out/share/azure-folio/sources"
     cp ${../assets/azure-folio/generation-prompts.json} "$out/share/azure-folio/"
     cp -R ${../assets/azure-folio/fonts} "$out/share/azure-folio/fonts"
     cp ${../assets/azure-folio/fonts}/*.ttf "$out/share/fonts/truetype/"
     cp ${../tools/azure-folio/azure_folio.py} "$out/share/azure-folio/azure_folio.py"
+    cp ${../tools/azure-folio/render.py} "$out/share/azure-folio/render.py"
     substituteInPlace "$out/share/azure-folio/azure_folio.py" --replace-fail '@data@' "$out/share/azure-folio"
-    makeWrapper ${python3}/bin/python3 "$out/bin/azure-folio" --add-flags "$out/share/azure-folio/azure_folio.py"
+    makeWrapper ${python}/bin/python3 "$out/bin/azure-folio" --add-flags "$out/share/azure-folio/azure_folio.py"
     runHook postInstall
   '';
   meta = {

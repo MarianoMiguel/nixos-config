@@ -2,29 +2,9 @@
 """Build immutable blue-and-ivory art plates; UI palettes are built separately."""
 import json
 import sys
-from array import array
 from pathlib import Path
 from PIL import Image, ImageOps
-
-
-def atkinson(image):
-    w, h = image.size
-    gray = array('f', image.getdata())
-    output = bytearray(w*h)
-    for y in range(h):
-        for x in range(w):
-            i = y*w+x
-            tone = 255 if gray[i] > 127.5 else 0
-            output[i] = tone
-            error = (gray[i]-tone)/8
-            if x+1 < w: gray[i+1] += error
-            if x+2 < w: gray[i+2] += error
-            if y+1 < h:
-                if x: gray[i+w-1] += error
-                gray[i+w] += error
-                if x+1 < w: gray[i+w+1] += error
-            if y+2 < h: gray[i+2*w] += error
-    return Image.frombytes('L', (w,h), bytes(output))
+from render import atkinson, desktop_mask
 
 
 def masks(source, art):
@@ -37,8 +17,7 @@ def masks(source, art):
     portrait = ImageOps.fit(image, (700,875), centering=(.72 if art['generated'] else .5,.5))
     # Desktop art fills the entire monitor. Login/lock use the separate
     # portrait asset in their split page; never bake that split into wallpaper.
-    desktop = ImageOps.fit(image, (1400,875), centering=(.5,.5))
-    return {'desktop':atkinson(desktop),'portrait':atkinson(portrait)}
+    return {'desktop':desktop_mask(source, art, (3840,2400)),'portrait':atkinson(portrait)}
 
 
 def build(src, out):

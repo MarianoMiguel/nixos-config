@@ -9,9 +9,11 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
+from render import render_cached
 
 DATA = Path(os.environ.get('AZURE_FOLIO_DATA', '@data@'))
 STATE = Path.home()/'.local/state/nixos-config/azure-folio/selection.json'
+CACHE = Path(os.environ.get('XDG_CACHE_HOME', str(Path.home()/'.cache')))/'azure-folio/wallpapers'
 
 
 def catalog():
@@ -70,9 +72,53 @@ def ipc(*args,required=False):
         return None
 
 
-def set_wallpaper(path):
-    result=subprocess.run(['mariano-set-wallpaper',path],capture_output=True,text=True,timeout=30)
-    if result.returncode: raise RuntimeError(result.stdout+result.stderr)
+def display_targets(outputs):
+    """Include disabled connectors so the laptop's render is ready to undock."""
+    result = {}
+    for name, output in outputs.items():
+        modes = output.get('modes', [])
+        index = output.get('current_mode')
+        mode = modes[index] if type(index) is int and 0 <= index < len(modes) else next((m for m in modes if m.get('is_preferred')), None)
+        if not mode: continue
+        width, height = mode['width'], mode['height']
+        transform = (output.get('logical') or {}).get('transform', 'Normal')
+        if transform in ['90', '270', 'Flipped90', 'Flipped270']:
+            width, height = height, width
+        result[name] = (width, height)
+    return result
+
+
+def monitor_outputs():
+    if not os.environ.get('NIRI_SOCKET'): return {}
+    result = subprocess.run(['niri', 'msg', '-j', 'outputs'], capture_output=True, text=True, timeout=10, check=True)
+    return json.loads(result.stdout)
+
+
+def render_wallpapers(selection, outputs):
+    cat = catalog()
+    collection = next(c for c in cat['collections'] if c['id'] == selection['collection'])
+    art = collection['art'][selection['art']]
+    ink = cat['inks'][selection['ink']][selection['mode']]
+    paper = '#f7f4e9' if selection['mode'] == 'light' else '#101d33'
+    return {name: str(render_cached(DATA, CACHE, art, size, ink, paper))
+            for name, size in display_targets(outputs).items()}
+
+
+def set_wallpaper(selection):
+    selected = appearance(selection)['images'][selection['art']]['desktop']
+    wallpapers = render_wallpapers(selection, monitor_outputs())
+    result = ipc('folioWallpaper', 'apply', selected, json.dumps(wallpapers), required=True)
+    if not result.startswith('SUCCESS:'):
+        raise RuntimeError('DMS Folio wallpaper integration is not ready: ' + result)
+    return wallpapers
+
+
+def refresh_wallpapers(selection):
+    # Hotplug must not replace a personal wallpaper chosen outside Folio.
+    current = ipc('folioWallpaper', 'get')
+    selected = appearance(selection)['images'][selection['art']]['desktop']
+    if not current or Path(current).resolve() != Path(selected).resolve(): return
+    set_wallpaper(selection)
 
 
 def apply(selection, previous, force=False):
@@ -87,7 +133,7 @@ def apply(selection, previous, force=False):
         ipc('settings','set',key,value)
     selected=doc['images'][selection['art']]['desktop']
     if ipc('settings','get','currentThemeName') is not None:
-        set_wallpaper(selected)
+        set_wallpaper(selection)
     else:
         session=Path.home()/'.local/state/nixos-config/dotfiles/dms/session.json'
         raw=json.loads(session.read_text()) if session.exists() else {}
@@ -115,6 +161,7 @@ def main():
     s=sub.add_parser('set');s.add_argument('--collection',choices=['dore','summer','argentina']);s.add_argument('--mode',choices=['light','dark']);s.add_argument('--ink',choices=['azure','cobalt','slate']);s.add_argument('--art',type=int);s.add_argument('--force',action='store_true')
     sub.add_parser('next')
     sub.add_parser('restore')
+    sub.add_parser('refresh-wallpapers', help='Refresh per-display crops after a display change')
     q=sub.add_parser('publish');q.add_argument('--input',type=Path,required=True);q.add_argument('--output',type=Path,required=True)
     args=p.parse_args()
     if args.command=='catalog': print(json.dumps(catalog(),ensure_ascii=False));return
@@ -124,6 +171,7 @@ def main():
     with STATE.with_suffix('.lock').open('w') as lock:
         fcntl.flock(lock,fcntl.LOCK_EX)
         previous=read_selection(); selection=dict(previous)
+        if args.command=='refresh-wallpapers': refresh_wallpapers(selection);return
         if args.command=='set':
             for key in ['collection','mode','ink','art']:
                 if getattr(args,key) is not None: selection[key]=getattr(args,key)

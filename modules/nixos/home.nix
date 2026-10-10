@@ -254,7 +254,7 @@ in
             | .barConfigs = [.barConfigs[] | . + {
                 leftWidgets: ["launcherButton", "workspaceSwitcher", "focusedWindow"],
                 centerWidgets: ["clock"],
-                rightWidgets: ["systemTray",{id:"folioSidebar",enabled:true}],
+                rightWidgets: ["systemTray", "battery", {id:"folioSidebar",enabled:true}],
                 spacing: 8, innerPadding: 2, bottomGap: 0,
                 transparency: 1, widgetTransparency: 0,
                 squareCorners: false, noBackground: false,

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""One desktop family: three art collections, two modes, three blue inks."""
+"""One desktop family: four art collections, two modes, three blue inks."""
 import argparse
 import fcntl
 import json
@@ -158,7 +158,7 @@ def publish(input_path,output):
 def main():
     p=argparse.ArgumentParser(description=__doc__);sub=p.add_subparsers(dest='command',required=True)
     sub.add_parser('status');sub.add_parser('catalog')
-    s=sub.add_parser('set');s.add_argument('--collection',choices=['dore','summer','argentina']);s.add_argument('--mode',choices=['light','dark']);s.add_argument('--ink',choices=['azure','cobalt','slate']);s.add_argument('--art',type=int);s.add_argument('--force',action='store_true')
+    s=sub.add_parser('set');s.add_argument('--collection',choices=[c['id'] for c in catalog()['collections']]);s.add_argument('--mode',choices=['light','dark']);s.add_argument('--ink',choices=['azure','cobalt','slate']);s.add_argument('--art',type=int);s.add_argument('--force',action='store_true')
     sub.add_parser('next')
     sub.add_parser('restore')
     sub.add_parser('refresh-wallpapers', help='Refresh per-display crops after a display change')

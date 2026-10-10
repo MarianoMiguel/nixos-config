@@ -13,7 +13,8 @@ QtObject {
     readonly property var collections: [
         {id:"dore",name:"Doré",art:"dore-nightfall",description:"Paradise Lost · engraved plates"},
         {id:"summer",name:"European Summer",art:"summer-riviera",description:"Riviera, Sicily and yachts"},
-        {id:"argentina",name:"Argentina",art:"argentina-buenos-aires",description:"Buenos Aires, mate, tango and Patagonia"}
+        {id:"argentina",name:"Argentina",art:"argentina-buenos-aires",description:"Buenos Aires, mate, tango and Patagonia"},
+        {id:"ronin",name:"Ronin",art:"ronin-crossing",description:"Wandering samurai, mountain mist and Japanese shrine paths"}
     ]
     property FileView stateFile: FileView {
         path: Quickshell.env("HOME") + "/.local/state/nixos-config/azure-folio/selection.json"
@@ -42,7 +43,7 @@ QtObject {
     function executeItem(item) {
         if (!item?.action) return;
         const parts = item.action.split(":");
-        const allowed = {collection:["dore","summer","argentina"],mode:["light","dark"],ink:["azure","cobalt","slate"]};
+        const allowed = {collection:collections.map(c => c.id),mode:["light","dark"],ink:["azure","cobalt","slate"]};
         if (!allowed[parts[0]]?.includes(parts[1])) return;
         Quickshell.execDetached(["/run/current-system/sw/bin/azure-folio","set","--"+parts[0],parts[1]]);
         ToastService.showInfo("Azure Folio", "Applying " + item.name.replace("✓ ", "") + "…");

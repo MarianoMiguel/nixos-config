@@ -11,7 +11,7 @@ QtObject {
     signal itemsChanged
 
     readonly property var actions: [
-        { name: "Azure Folio Appearance", icon: "palette", section: "Appearance", detail: "Three art collections, light or dark, and three blue inks", action: "theme", keywords: "colors style dore summer argentina azure cobalt slate" },
+        { name: "Azure Folio Appearance", icon: "palette", section: "Appearance", detail: "Four art collections, light or dark, and three blue inks", action: "theme", keywords: "colors style dore summer argentina ronin samurai japanese azure cobalt slate" },
         { name: "Choose Wallpaper", icon: "wallpaper", section: "Appearance", detail: "Choose a plate from the active art collection", action: "wallpaper", keywords: "background image artwork" },
         { name: "Toggle Window Gaps", icon: "border_outer", section: "Appearance", detail: "Turn Niri window spacing on or off", action: "style-gaps", keywords: "layout spacing" },
         { name: "Toggle Window Borders", icon: "select_all", section: "Appearance", detail: "Turn Niri window borders on or off", action: "style-border", keywords: "layout outline" },

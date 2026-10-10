@@ -11,7 +11,7 @@ folio=importlib.util.module_from_spec(spec);spec.loader.exec_module(folio)
 class AppearanceTests(unittest.TestCase):
     def test_all_choices_resolve_to_shipped_artwork(self):
         cat=folio.catalog()
-        self.assertEqual([x['id'] for x in cat['collections']],['dore','summer','argentina'])
+        self.assertEqual([x['id'] for x in cat['collections']],['dore','summer','argentina','ronin'])
         for collection in cat['collections']:
             for mode in ['light','dark']:
                 for ink in ['azure','cobalt','slate']:

@@ -1,8 +1,8 @@
 {
   "id": "themePicker",
   "name": "Azure Folio",
-  "description": "Azure Folio: three art collections, light or dark, and three blue inks",
-  "version": "2.0.0",
+  "description": "Azure Folio: four art collections, light or dark, and three blue inks",
+  "version": "2.1.0",
   "author": "Mariano Miguel",
   "type": "launcher",
   "trigger": "theme",

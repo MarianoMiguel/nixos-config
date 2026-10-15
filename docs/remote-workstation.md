@@ -218,10 +218,11 @@ Known audit findings:
 - Root and swap are LUKS encrypted. After a cold boot or relevant recovery path,
   the Comet must display the boot/disk-unlock prompt and send keyboard input.
   Tailscale on Linux only becomes available after the disk is unlocked.
-- Backups are scheduled but skipped: the configured restic destination/password
-  are absent. Choose an encrypted off-machine target, run a snapshot, and restore
-  a test file before departure. Git alone does not back up local chats, untracked
-  work or agent credentials.
+- Backups are scheduled but skipped: the system journal specifically reports the
+  missing `/var/lib/restic/password`. The root-only destination configuration has
+  not been verified. Confirm an encrypted off-machine target, finish its credentials,
+  run a snapshot and restore a test file before departure. Git alone does not back
+  up local chats, untracked work or agent credentials.
 
 Complete these real tests while someone is still physically present:
 

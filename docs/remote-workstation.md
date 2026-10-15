@@ -41,6 +41,25 @@ It does not preserve a running process through a reboot. Keep a phone SSH client
 configured as a second controller. Test both controllers on cellular/hotspot,
 not only on the same Wi-Fi.
 
+The travel controllers are an Apple Silicon M5 Max MacBook Pro and an iPhone.
+On 2026-10-15 the Mac at `100.115.44.59` answered a Tailscale ping and offered
+OpenSSH; its SSH host key matched Bonhart's existing known-hosts entry. Login
+from Bonhart is still awaiting authorization on the Mac. Reachability is not a
+completed administration test.
+
+For the iPhone, use an SSH app such as Blink, generate a separate Ed25519 key
+**on the phone**, and add only its public key to
+`users.users.mariano.openssh.authorizedKeys.keys` in `modules/nixos/users.nix`.
+Configure host `bonhart-3.taile97d70.ts.net`, port `22`, user `mariano`, and the
+phone's key. Bonhart's verified Ed25519 host-key fingerprint is
+`SHA256:wRqmKZpUVNsjKwcUh+AL5n0HFO4BgZ1EW4RsGNgFFho`.
+Keep the private key on the phone. Verify `ssh`, `sudo -v`, and reconnecting to
+the same `tmux` session while the phone uses cellular data. Save the Comet's
+independent Tailscale address in Safari once it is connected; that address has
+not yet been established here.
+
+Reference: [Blink host configuration](https://docs.blink.sh/basics/hosts).
+
 For files, use SFTP or `rsync` over the same SSH alias. Keep source repositories
 in Git. For a one-off transfer, `scp HANDOFF.md bonhart-agent:~/Handoff/` works
 after `ssh bonhart-agent 'mkdir -p ~/Handoff'`. Do not mirror live agent SQLite
@@ -124,6 +143,14 @@ over the Comet; retain SSH as the independent route because sign-out may disable
 agent remote access. This installed Codex Linux desktop is a community package
 with remote-control patches, so verify its pairing flow on this exact build.
 
+To start with one subscription and finish with another, stop the first agent,
+keep the same checkout/worktree, then launch the second profile in that exact
+directory with a handoff summary. The second agent sees the current files,
+including uncommitted changes, but does not automatically inherit the previous
+conversation. `resume` only searches the selected profile's history. The wrapper
+does not currently implement cross-profile transcript migration. Avoid two
+agents editing the same working tree concurrently.
+
 References: [Codex auth and device login](https://learn.chatgpt.com/docs/auth),
 [Codex state directory](https://learn.chatgpt.com/docs/config-file/env-vars),
 [Claude multiple accounts](https://code.claude.com/docs/en/authentication).
@@ -194,13 +221,72 @@ References: [Superhuman setup and multiple inboxes](https://help.superhuman.com/
   its port publicly. Comet virtual keyboard/storage support alone is not evidence
   of arbitrary USB/FIDO forwarding.
 
+The key is a **USB-C YubiKey 5C**, and the first forwarding trial will use the
+MacBook as the USB server, Bonhart as the USB client:
+
+```text
+YubiKey plugged into Mac -> VirtualHere Mac server -> SSH over Tailscale
+                        -> VirtualHere Linux client -> Bonhart browser
+```
+
+Touch still happens on the physical key beside the Mac. This is a compatibility
+trial, not a verified WebAuthn path yet. Ordinary SSH agent forwarding is not
+part of this browser-authentication path. No working iPhone USB-export path has
+been established, so phone-only administration must not depend on that capability.
+
+VirtualHere currently supplies a universal Mac server and a Linux client. This
+flake packages the GUI and console client at version 6.0.3, with SHA-256-pinned
+downloads. Build and command-line startup have been checked on Bonhart:
+
+```sh
+cd ~/Development/personal/nixos-config
+nix run 'path:.#virtualhere-client' -- -e
+```
+
+`-e` disables automatic server discovery. No USB device is automatically claimed,
+no firewall port is opened, and no background client service is installed by this
+package. Bonhart's 6.18.50 kernel includes `vhci_hcd`; loading it requires admin
+access. The forwarded FIDO HID interface must also receive the correct udev
+permissions before a non-root browser can use it. These runtime steps remain
+part of the physical-key trial.
+
+The intended tunnel, initiated on the Mac after configuring its `bonhart-agent`
+SSH alias, is:
+
+```sh
+ssh -N -T -o ExitOnForwardFailure=yes \
+  -R 127.0.0.1:17575:127.0.0.1:7575 bonhart-agent
+```
+
+The Linux client then adds `127.0.0.1:17575` as a manually specified hub and
+selects only the YubiKey. Configure the Mac server's `AllowedDevices=1050` to
+limit export to Yubico devices and disable discovery with `UseAVAHI=0`.
+Verify those settings against the actual Mac server before use.
+
+**Licensing and network binding:** the server's graphical trial allows one
+device, but the console client daemon needs a purchased server license. The
+vendor also lists `NetworkInterface` (used to bind the server to loopback) as a
+licensed setting. A tunnel alone does not protect a server listening on all Mac
+interfaces. Before a trial, verify firewall isolation on the Mac; for the licensed
+setup, set and verify `NetworkInterface=127.0.0.1`. Do not assume an unlicensed
+server honors that option. No license has been purchased or unattended service
+enabled by this configuration.
+
+The acceptance test must include a real security-key login in Bonhart's browser,
+a physical touch on the Mac, a disconnected/reconnected tunnel, a disconnect
+during a prompt, and a second test through an internet connection outside the
+home LAN. Confirm the key becomes usable locally again after release. Until
+those pass, the remote-browser requirement remains open.
+
 Keep a separately enrolled backup key and service recovery codes accessible while
-traveling. The exact phone/USB/NFC options depend on the YubiKey model. No key-touch
-requirement is disabled by this configuration.
+traveling. No key-touch requirement is disabled by this configuration.
 
 References: [Yubico FIDO SSH](https://developers.yubico.com/SSH/Securing_SSH_with_FIDO2.html),
 [FIDO cross-device proximity](https://fidoalliance.org/passkeys/),
-[USB Network Gate platform support](https://www.eltima.com/products/usb-over-ethernet/).
+[VirtualHere Mac server](https://www.virtualhere.com/osx_server_software),
+[VirtualHere Linux client](https://www.virtualhere.com/usb_client_software),
+[Console license requirement](https://www.virtualhere.com/linux_console),
+[Server restrictions and configuration](https://www.virtualhere.com/configuration_faq).
 
 ## Departure gate and recovery
 
@@ -209,7 +295,8 @@ Known audit findings:
 - Tailscale was disconnected despite `tailscaled` being active. Reconnected with
   `tailscale up`; it now reports Running/Online. The current node key expires
   2027-02-27. Review key expiry for **both** Bonhart and the Comet. An initial ping
-  to the Mac timed out, so two-way reachability is not yet verified.
+  to the Mac timed out; a later ping to `100.115.44.59` succeeded. SSH login and
+  an outside-network recovery test are still pending.
 - `sshd` runs at boot and the MacBook's public key is configured. User lingering
   is enabled. This is not a completed Mac-to-Bonhart login test.
 - This change makes AC lid-close ignore the lid in logind and GNOME. DMS already

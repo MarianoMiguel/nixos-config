@@ -2,6 +2,10 @@
 
 Personal NixOS workstation and installer configuration.
 
+For remote administration, the four Claude/Codex subscription profiles, chat
+handoff, connectors and pre-departure recovery tests, see
+[Bonhart remote workstation](docs/remote-workstation.md).
+
 ## Systems
 
 - `#standard`: portable workstation install for new machines.

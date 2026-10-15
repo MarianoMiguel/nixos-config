@@ -311,6 +311,11 @@ in
     ++ [
       davinciResolve
       codexDesktop
+      # SSH starts a login shell without the desktop app's injected PATH.
+      # Expose the matching bundled CLI for remote projects and admin sessions.
+      (pkgs.writeShellScriptBin "codex" ''
+        exec ${codexDesktop}/opt/codex-desktop/resources/codex "$@"
+      '')
       cmuxBrowser
       granola
       herdr

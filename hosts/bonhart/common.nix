@@ -29,6 +29,7 @@ in
     ../../modules/nixos/intervals.nix
     ../../modules/nixos/overfly.nix
     ../../modules/nixos/power.nix
+    ../../modules/nixos/remote-workstation.nix
     ../../modules/nixos/battery.nix
     ../../modules/nixos/tv-remotes.nix
   ]

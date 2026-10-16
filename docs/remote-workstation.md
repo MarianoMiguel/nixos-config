@@ -59,8 +59,7 @@ phone's key. Bonhart's verified Ed25519 host-key fingerprint is
 `SHA256:wRqmKZpUVNsjKwcUh+AL5n0HFO4BgZ1EW4RsGNgFFho`.
 Keep the private key on the phone. Verify `ssh`, `sudo -v`, and reconnecting to
 the same `tmux` session while the phone uses cellular data. Save the Comet's
-independent Tailscale address in Safari once it is connected; that address has
-not yet been established here.
+independent Tailscale address, `https://glkvm.taile97d70.ts.net`, in Safari.
 
 Reference: [Blink host configuration](https://docs.blink.sh/basics/hosts).
 
@@ -240,18 +239,123 @@ References: [Superhuman setup and multiple inboxes](https://help.superhuman.com/
   its port publicly. Comet virtual keyboard/storage support alone is not evidence
   of arbitrary USB/FIDO forwarding.
 
-The key is a **USB-C YubiKey 5C**, and the first forwarding trial will use the
-MacBook as the USB server, Bonhart as the USB client:
+### Current path: open-source FIDO bridge
+
+The **USB-C YubiKey 5C** can now authenticate in Bonhart's Chrome while remaining
+plugged into the Mac. The bridge carries only FIDO HID reports through an
+authenticated SSH session over Tailscale:
+
+```text
+Bonhart browser -> virtual FIDO device -> SSH -> Mac HID API -> physical YubiKey
+```
+
+On Bonhart:
+
+```sh
+remote-yubikey list        # Read the compatible keys currently attached to the Mac
+remote-yubikey start       # Connect the 5C (1050:0407); administrator dialog on Bonhart
+remote-yubikey status      # Distinguishes waiting for authentication from a connected key
+remote-yubikey stop        # Remove the virtual key and release the Mac connection
+
+# To select the other reviewed FIDO key instead:
+remote-yubikey stop
+remote-yubikey start 0402
+```
+
+Keep the Mac awake, connected to Tailscale, and the selected key plugged in.
+Start the bridge before the website's security-key prompt, and touch the key
+beside the Mac when requested. Enter a FIDO PIN into the browser's own prompt if
+required. The bridge does not save PINs or credentials. Stop it after use.
+After a key/network disconnect, run `start` again and retry the website prompt;
+the bridge deliberately does not reconnect or claim a key automatically.
+
+The Mac helper is installed under
+`~/Library/Application Support/Bonhart/fido-bridge`. To reproduce the installation
+on this Apple Silicon Mac, copy `scripts/fido-bridge` from this checkout to the
+Mac and run its `setup-mac.sh`. It uses Homebrew Python 3.14 and `uv`, a private
+virtual environment, and hash-checked dependencies in `requirements.lock`.
+It opens no TCP port and needs no administrator access or background service.
+Bonhart initiates SSH to `mariano@100.115.44.59` using its existing verified host
+key and SSH credentials. The helper's absolute path is part of the reviewed
+launcher; update it if the Mac username/address changes.
+
+On Linux, `pkexec` is used only to open `/dev/uhid`; the process permanently drops
+root and supplementary groups before launching SSH or processing network data.
+The descriptor is fixed to the FIDO usage page. Existing systemd udev rules grant
+the active user access to the resulting `/dev/hidraw*` node. No broad device
+permission, passwordless policy, listening port, or boot-time bridge is enabled.
+`uhid` is loaded at boot, and `remote-yubikey` is included in the system packages.
+
+The Mac relay validates report sizes, assembles bounded CTAP messages, separates
+its channel IDs from other Mac HID clients, and refuses key reset, PIN changes,
+credential-management and vendor commands. It allows browser registration,
+authentication, capability queries and PIN authentication. PIV, OpenPGP and OTP
+interfaces are not forwarded. Only one bridge can use each selected key at once;
+avoid authenticating locally on the Mac with that same key during a remote prompt.
+
+Verification on 2026-10-15:
+
+- Both physical keys passed CTAPHID initialization, CTAP2 GetInfo and PING through
+  the SSH relay as the ordinary Mac user.
+- The 5C appeared on Bonhart as `Bonhart Remote YubiKey`; libfido2 opened it and
+  read its capabilities through the normal Linux FIDO interface. Its device ACL
+  granted `mariano` access, and the forwarding process ran as `mariano`, not root.
+- Bonhart's real Chrome passed registration and a subsequent authentication with
+  physical touches on the Mac. The local test server verified the assertion
+  signature, challenge, origin and user presence. No external account was used;
+  the test requested a non-discoverable credential and kept public data in memory.
+- Terminating the bridge's SSH transport removed the virtual device. The physical
+  key then answered GetInfo locally on the Mac. Starting the installed command
+  again recreated the device, and GetInfo and PING passed through that connection.
+- Thirteen unit tests cover message fragmentation, size/channel validation,
+  blocked administrative commands, PIN-operation restrictions and the UHID ABI,
+  including the zero report-ID prefix observed on this kernel.
+- The Nix package and full Bonhart system build passed. Activation completed, and
+  `/run/current-system/sw/bin/remote-yubikey` is installed.
+
+For another browser test, run `scripts/fido-bridge/browser-test.py` with a Python
+environment containing `fido2`, then open `http://localhost:8790` **in Bonhart's
+Chrome**, keep the tab focused, and use its two buttons. Stop the test server when
+finished; its state is ephemeral. A second test from an outside network and
+long-duration use remain part of the departure checklist. The second key has
+passed transport checks but has not yet passed this full browser test.
+
+### iPhone scope
+
+The current bridge requires the key to be plugged into the Mac. An iPhone can
+control Bonhart through agent remote access or GLKVM while that bridge is running,
+but plugging the key into the phone or tapping it over NFC does not forward it
+to Bonhart. There is no iPhone helper in this configuration.
+
+For a login completed directly in iPhone Safari, Yubico documents USB-C support
+for the 5C on compatible USB-C iPhones, and USB-C/NFC support for the **5C NFC**.
+The plain 5C has no NFC. This local phone authentication can complete an agent's
+OAuth/device-login flow where supported; it does not answer an arbitrary WebAuthn
+prompt in Bonhart's browser.
+
+A dedicated NFC companion app is a possible future extension: Yubico's iOS SDK
+exposes NFC FIDO operations. It would require an authenticated transport, changes
+to the Bonhart bridge and physical-device testing. SDK access to USB-C differs
+from Safari's native WebAuthn support, so neither phone transport is established
+by the working Mac implementation.
+
+References: [Yubico iOS compatibility](https://developers.yubico.com/WebAuthn/Supporting_FIDO2_Security_Keys_on_iOS_or_iPadOS/Security_Key_Compatibility.html),
+[YubiKit iOS connection interfaces](https://github.com/Yubico/yubikit-ios#enable-tksmartcard-support),
+[YubiKit NFC integration](https://github.com/Yubico/yubikit-ios/blob/main/docs/NFC-Notes.md).
+
+### Historical VirtualHere trial (license blocked)
+
+The earlier full-USB forwarding trial used this path:
 
 ```text
 YubiKey plugged into Mac -> VirtualHere Mac server -> SSH over Tailscale
                         -> VirtualHere Linux client -> Bonhart browser
 ```
 
-Touch still happens on the physical key beside the Mac. This is a compatibility
-trial, not a verified WebAuthn path yet. Ordinary SSH agent forwarding is not
-part of this browser-authentication path. No working iPhone USB-export path has
-been established, so phone-only administration must not depend on that capability.
+The VirtualHere path never completed a browser login. Ordinary SSH agent
+forwarding is not part of either browser-authentication path. No working iPhone
+USB-export path has been established, so phone-only administration must not depend
+on that capability.
 
 VirtualHere currently supplies a universal Mac server and a Linux client. This
 flake packages the GUI and console client at version 6.0.3, with SHA-256-pinned
@@ -335,34 +439,32 @@ that the needed DriverKit entitlement was denied. The other candidate,
 macOS HID ownership limitations. Neither is a verified replacement for this
 YubiKey path.
 
-A more promising software approach is to forward **FIDO/CTAP only** over SSH,
+A software alternative is to forward **FIDO/CTAP only** over SSH,
 with a virtual FIDO HID device on Bonhart and the physical key accessed through
 macOS's HID API. [Qubes' CTAP proxy](https://github.com/QubesOS/qubes-app-u2f)
 provides prior art, but depends on Qubes RPC and is not a drop-in Mac/NixOS tool.
 [Yubico's python-fido2](https://github.com/Yubico/python-fido2) provides a
-maintained, open-source Mac backend. Adapting these components requires
-implementation and end-to-end testing; no bridge is installed yet.
+maintained, open-source Mac backend. The bridge described above implements that
+approach with an original small relay and Yubico's HID backend; it does not depend
+on Qubes or copy Qubes' implementation.
 
 On the actual Mac, `python-fido2==2.0.0` was run through an isolated `uv`
 environment with Homebrew Python 3.14. It opened both `1050:0407` and `1050:0402`
 as the normal `mariano` user over SSH, completed CTAPHID initialization, and
 successfully read CTAP2 GetInfo. No root prompt, PIN entry, credential enrollment,
 or key reset was involved. This verifies the Mac-side access needed by the
-proposed bridge; it does **not** verify a Bonhart browser login or physical touch.
+bridge. Subsequent end-to-end results are recorded above.
 
-The bridge should expose no network listener, carry traffic through the existing
-host-key-verified SSH connection, restrict access to selected FIDO interfaces,
-avoid logging authentication payloads, and release its virtual device on
-disconnect. Its scope would be browser FIDO/U2F, not PIV, OpenPGP, or OTP export.
 An alternative requiring additional travel hardware is a Linux USB/IP server
 with the key physically attached to it, tunneled over SSH/Tailscale; that also
 needs a real browser test before it can be relied upon.
 
-The acceptance test must include a real security-key login in Bonhart's browser,
-a physical touch on the Mac, a disconnected/reconnected tunnel, a disconnect
-during a prompt, and a second test through an internet connection outside the
-home LAN. Confirm the key becomes usable locally again after release. Until
-those pass, the remote-browser requirement remains open.
+The departure acceptance test includes a real security-key login in Bonhart's
+browser, a physical touch on the Mac, a disconnected/reconnected tunnel, a
+disconnect during a prompt, and a second test through an internet connection
+outside the home LAN. Confirm the key becomes usable locally again after release.
+Do not equate the successful local browser test with completing every recovery
+and outside-network test.
 
 Keep a separately enrolled backup key and service recovery codes accessible while
 traveling. No key-touch requirement is disabled by this configuration.

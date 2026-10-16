@@ -192,6 +192,7 @@
         cmux-browser = self.nixosConfigurations.bonhart.pkgs.callPackage ./packages/cmux-browser.nix { };
         granola = self.nixosConfigurations.bonhart.pkgs.callPackage ./packages/granola-linux { };
         virtualhere-client = self.nixosConfigurations.bonhart.pkgs.callPackage ./packages/virtualhere-client.nix { };
+        fido-bridge = self.nixosConfigurations.bonhart.pkgs.callPackage ./packages/fido-bridge.nix { };
         librepods = inputs.librepods-rust.packages.${system}.default;
         niri-pip = self.nixosConfigurations.bonhart.pkgs.callPackage ./packages/niri-pip.nix {
           src = inputs.niri-pip;

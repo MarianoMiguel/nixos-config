@@ -70,13 +70,12 @@ Reference: [Blink host configuration](https://docs.blink.sh/basics/hosts).
 serves Overfly; it is not the Comet. The Comet must join the tailnet separately
 so its console remains reachable when Linux is offline.
 
-The Comet was discovered at `http://glkvm.local`, LAN IP `192.168.68.60`.
-Open that address from the Mac, log in, then select **Apps Center > Tailscale**,
-enable it, and complete binding to the same tailnet as Bonhart and the Mac.
-The Comet will receive its own `100.x.x.x` address; open that address for KVM.
-Record the actual MagicDNS name after enrollment rather than guessing it.
-Enrollment, remote video/keyboard, and preboot disk-unlock access still need
-verification. Keep the Comet powered independently of Bonhart.
+The Comet is enrolled in the tailnet as `glkvm.taile97d70.ts.net`, IP
+`100.86.90.3`. Its HTTP endpoint responds and redirects to HTTPS. Open
+`https://glkvm.taile97d70.ts.net` for its console. Its LAN address is
+`192.168.68.60` (`glkvm.local`). Remote video/keyboard and preboot disk-unlock
+access still need end-to-end verification. Keep the Comet powered independently
+of Bonhart.
 
 Reference: [Comet Pro Tailscale setup](https://docs.gl-inet.com/kvm/en/user_guide/gl-rm10/quick_setup_guide/#tailscale).
 
@@ -286,8 +285,10 @@ selects only the YubiKey. Configure the Mac server's `AllowedDevices=1050` to
 limit export to Yubico devices and disable discovery with `UseAVAHI=0`.
 Verify those settings against the actual Mac server before use.
 
-**Licensing and network binding:** the server's graphical trial allows one
-device, but the console client daemon needs a purchased server license. The
+**Licensing and network binding:** the vendor advertises a one-device graphical
+trial, but this Mac-server/Linux-GUI-client trial refused attachment with
+"you need to purchase a license for your server". Both keys were discoverable;
+neither attached. The separate console daemon also requires a server license. The
 vendor also lists `NetworkInterface` (used to bind the server to loopback) as a
 licensed setting. A tunnel alone does not protect a server listening on all Mac
 interfaces. Before a trial, verify firewall isolation on the Mac; for the licensed
@@ -311,14 +312,51 @@ Trial progress on 2026-10-15:
   trial. Do not describe this runtime server as loopback-bound or as having
   retained the device allowlist. Fix and recheck startup before making it
   persistent.
-- A temporary Bonhart user unit, `bonhart-yubikey-tunnel`, initiates SSH **from
+- A temporary Bonhart user unit, `bonhart-yubikey-tunnel`, initiated SSH **from
   Bonhart to the Mac** and maps local `127.0.0.1:17575` to Mac `127.0.0.1:7575`.
   This trial direction uses the verified SSH login and does not need the Mac's
-  encrypted SSH key unlocked. Stop it with
-  `systemctl --user stop bonhart-yubikey-tunnel`.
-- The root Linux GUI client is awaiting administrator authentication. USB
-  attachment and a browser login have **not** passed yet. No unattended USB
-  service has been enabled.
+  encrypted SSH key unlocked. The unit has now been stopped.
+- Administrator authentication succeeded, and the root Linux GUI client
+  discovered both keys through that tunnel. Attempts to attach each key failed;
+  the user reported the server-license error. Neither `lsusb` nor `fido2-token`
+  detected an imported key. This establishes a licensing blocker, not a hardware
+  compatibility result.
+- All local device-use requests were stopped, the Linux client exited through
+  its API, and the tunnel was stopped. The Mac server remains running behind its
+  blocking application-firewall rule; it has no active forwarding connection.
+  No unattended USB service has been enabled.
+
+### Open-source alternative assessment
+
+The Mac implementation [usbipd-mac](https://github.com/beriberikix/usbipd-mac)
+explicitly excludes HID devices held by Apple's drivers. Its maintainer reports
+that the needed DriverKit entitlement was denied. The other candidate,
+[usbipd-python](https://github.com/abrinkman/usbipd-python), also documents
+macOS HID ownership limitations. Neither is a verified replacement for this
+YubiKey path.
+
+A more promising software approach is to forward **FIDO/CTAP only** over SSH,
+with a virtual FIDO HID device on Bonhart and the physical key accessed through
+macOS's HID API. [Qubes' CTAP proxy](https://github.com/QubesOS/qubes-app-u2f)
+provides prior art, but depends on Qubes RPC and is not a drop-in Mac/NixOS tool.
+[Yubico's python-fido2](https://github.com/Yubico/python-fido2) provides a
+maintained, open-source Mac backend. Adapting these components requires
+implementation and end-to-end testing; no bridge is installed yet.
+
+On the actual Mac, `python-fido2==2.0.0` was run through an isolated `uv`
+environment with Homebrew Python 3.14. It opened both `1050:0407` and `1050:0402`
+as the normal `mariano` user over SSH, completed CTAPHID initialization, and
+successfully read CTAP2 GetInfo. No root prompt, PIN entry, credential enrollment,
+or key reset was involved. This verifies the Mac-side access needed by the
+proposed bridge; it does **not** verify a Bonhart browser login or physical touch.
+
+The bridge should expose no network listener, carry traffic through the existing
+host-key-verified SSH connection, restrict access to selected FIDO interfaces,
+avoid logging authentication payloads, and release its virtual device on
+disconnect. Its scope would be browser FIDO/U2F, not PIV, OpenPGP, or OTP export.
+An alternative requiring additional travel hardware is a Linux USB/IP server
+with the key physically attached to it, tunneled over SSH/Tailscale; that also
+needs a real browser test before it can be relied upon.
 
 The acceptance test must include a real security-key login in Bonhart's browser,
 a physical touch on the Mac, a disconnected/reconnected tunnel, a disconnect

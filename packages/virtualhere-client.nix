@@ -12,6 +12,8 @@
   libx11,
   libsm,
   makeDesktopItem,
+  runtimeShell,
+  coreutils,
 }:
 
 stdenv.mkDerivation rec {
@@ -65,6 +67,30 @@ stdenv.mkDerivation rec {
     mkdir -p "$out/share/applications"
     cp ${builtins.head desktopItems}/share/applications/* "$out/share/applications/"
     runHook postInstall
+  '';
+
+  # Linux USB/IP attachment requires root. Keep the GTK environment wrapper
+  # intact, and request normal administrator authentication from the launcher.
+  # This does not install a passwordless polkit rule or a background service.
+  postFixup = ''
+    mv "$out/bin/virtualhere-client" "$out/bin/virtualhere-client-gui"
+    cat > "$out/bin/virtualhere-client" <<'SH'
+#!${runtimeShell}
+set -eu
+case "''${1:-}" in
+  -h|--help) exec @out@/bin/virtualhere-client-gui "$@" ;;
+esac
+if [ "$EUID" -eq 0 ]; then
+  exec @out@/bin/virtualhere-client-gui "$@"
+fi
+exec /run/wrappers/bin/pkexec ${coreutils}/bin/env \
+  DISPLAY="''${DISPLAY:-}" \
+  WAYLAND_DISPLAY="''${WAYLAND_DISPLAY:-}" \
+  XDG_RUNTIME_DIR="''${XDG_RUNTIME_DIR:-}" \
+  @out@/bin/virtualhere-client-gui "$@"
+SH
+    substituteInPlace "$out/bin/virtualhere-client" --replace-fail '@out@' "$out"
+    chmod +x "$out/bin/virtualhere-client"
   '';
 
   meta = {

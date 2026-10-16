@@ -44,8 +44,12 @@ not only on the same Wi-Fi.
 The travel controllers are an Apple Silicon M5 Max MacBook Pro and an iPhone.
 On 2026-10-15 the Mac at `100.115.44.59` answered a Tailscale ping and offered
 OpenSSH; its SSH host key matched Bonhart's existing known-hosts entry. Login
-from Bonhart is still awaiting authorization on the Mac. Reachability is not a
-completed administration test.
+from Bonhart to the Mac is verified as `mariano`. The Mac now has the
+`bonhart-agent` SSH alias, with Bonhart's directly verified host key in
+`~/.ssh/bonhart_known_hosts`; the previous SSH config was saved as
+`~/.ssh/config.before-bonhart`. Bonhart accepts the Mac's existing SSH key, but
+the encrypted private key still needs an interactive unlock on the Mac before
+the reverse login can be verified. No passphrase was copied or removed.
 
 For the iPhone, use an SSH app such as Blink, generate a separate Ed25519 key
 **on the phone**, and add only its public key to
@@ -59,6 +63,22 @@ independent Tailscale address in Safari once it is connected; that address has
 not yet been established here.
 
 Reference: [Blink host configuration](https://docs.blink.sh/basics/hosts).
+
+### Comet Pro's independent address
+
+`bonhart-3.taile97d70.ts.net` belongs to the Linux host. Its existing web endpoint
+serves Overfly; it is not the Comet. The Comet must join the tailnet separately
+so its console remains reachable when Linux is offline.
+
+The Comet was discovered at `http://glkvm.local`, LAN IP `192.168.68.60`.
+Open that address from the Mac, log in, then select **Apps Center > Tailscale**,
+enable it, and complete binding to the same tailnet as Bonhart and the Mac.
+The Comet will receive its own `100.x.x.x` address; open that address for KVM.
+Record the actual MagicDNS name after enrollment rather than guessing it.
+Enrollment, remote video/keyboard, and preboot disk-unlock access still need
+verification. Keep the Comet powered independently of Bonhart.
+
+Reference: [Comet Pro Tailscale setup](https://docs.gl-inet.com/kvm/en/user_guide/gl-rm10/quick_setup_guide/#tailscale).
 
 For files, use SFTP or `rsync` over the same SSH alias. Keep source repositories
 in Git. For a one-off transfer, `scp HANDOFF.md bonhart-agent:~/Handoff/` works
@@ -243,12 +263,15 @@ cd ~/Development/personal/nixos-config
 nix run 'path:.#virtualhere-client' -- -e
 ```
 
-`-e` disables automatic server discovery. No USB device is automatically claimed,
+The GUI launcher requests normal administrator authentication, because the Linux
+client cannot attach USB/IP devices as an ordinary user. `-e` disables automatic
+server discovery. No USB device is automatically claimed,
 no firewall port is opened, and no background client service is installed by this
-package. Bonhart's 6.18.50 kernel includes `vhci_hcd`; loading it requires admin
-access. The forwarded FIDO HID interface must also receive the correct udev
-permissions before a non-root browser can use it. These runtime steps remain
-part of the physical-key trial.
+package. Bonhart's 6.18.50 kernel includes `vhci_hcd`, and it has been loaded for
+the trial. The installed systemd rules already identify FIDO HID devices and
+grant active-session access (`60-fido-id.rules` and `70-uaccess.rules`). Verify
+the resulting device ACL when a key is attached; no broad HID permission rule
+has been added.
 
 The intended tunnel, initiated on the Mac after configuring its `bonhart-agent`
 SSH alias, is:
@@ -271,6 +294,31 @@ interfaces. Before a trial, verify firewall isolation on the Mac; for the licens
 setup, set and verify `NetworkInterface=127.0.0.1`. Do not assume an unlicensed
 server honors that option. No license has been purchased or unattended service
 enabled by this configuration.
+
+Trial progress on 2026-10-15:
+
+- Mac server 4.8.8 installed at `~/Applications/VirtualHereServerUniversal.app`.
+  Apple's signature and notarization assessments passed. The Mac runs macOS
+  27.0.1 on arm64.
+- macOS sees two Yubico devices: `1050:0407` (OTP/FIDO/CCID) and `1050:0402`
+  (FIDO). No key's interfaces, PIN, or stored credentials were changed.
+- The Mac administrator blocked incoming connections to the server application
+  with the macOS application firewall. Data connections from both Bonhart's LAN
+  and Tailscale addresses were reset, while Mac localhost remained reachable.
+- The Mac GUI's administrator relaunch dropped the custom `-c`/`-r` arguments:
+  its initial process used the restricted config, but the elevated process
+  listened on a wildcard address. The firewall remains essential for this
+  trial. Do not describe this runtime server as loopback-bound or as having
+  retained the device allowlist. Fix and recheck startup before making it
+  persistent.
+- A temporary Bonhart user unit, `bonhart-yubikey-tunnel`, initiates SSH **from
+  Bonhart to the Mac** and maps local `127.0.0.1:17575` to Mac `127.0.0.1:7575`.
+  This trial direction uses the verified SSH login and does not need the Mac's
+  encrypted SSH key unlocked. Stop it with
+  `systemctl --user stop bonhart-yubikey-tunnel`.
+- The root Linux GUI client is awaiting administrator authentication. USB
+  attachment and a browser login have **not** passed yet. No unattended USB
+  service has been enabled.
 
 The acceptance test must include a real security-key login in Bonhart's browser,
 a physical touch on the Mac, a disconnected/reconnected tunnel, a disconnect

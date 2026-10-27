@@ -31,7 +31,7 @@
       "status": "built",
       "where": "pond-interface shell/Sidebar.qml via modules/nixos/pond.nix",
       "upstream": "bflycomputer/pond-interface:shell/Sidebar.qml",
-      "checked": "2026-10-27 nested preview on Bonhart",
+      "checked": "2026-10-27 real session on Bonhart (seen, not yet used)",
       "notes": "Preview: clock, minimap, notifications card and bottom controls render; collapse works over IPC."
     },
     {
@@ -43,7 +43,7 @@
       "status": "built",
       "where": "pond-interface shell/minimap",
       "upstream": "bflycomputer/pond-interface:shell/minimap/Map.qml",
-      "checked": "2026-10-27 nested preview on Bonhart",
+      "checked": "2026-10-27 real session on Bonhart (seen, not yet used)",
       "notes": ""
     },
     {
@@ -67,7 +67,7 @@
       "status": "built",
       "where": "pond-interface shell/notifications",
       "upstream": "bflycomputer/pond-interface:shell/notifications",
-      "checked": "2026-10-27 nested preview on Bonhart",
+      "checked": "2026-10-27 real session on Bonhart (seen, not yet used)",
       "notes": ""
     },
     {
@@ -155,6 +155,18 @@
       "notes": ""
     },
     {
+      "id": "displays",
+      "area": "Settings",
+      "capability": "Display layout in the Pond session",
+      "source": "pond",
+      "tier": "consume",
+      "status": "built",
+      "where": "~/.config/pond/niri/cfg/display.kdl (Pond's display settings)",
+      "upstream": "bflycomputer/pond-interface:config/niri/cfg/display.kdl",
+      "checked": "2026-10-27 real session on Bonhart (seen, not yet used)",
+      "notes": "Pond manages its own layout. Decision 2026-10-27: the laptop panel stays on in Pond, unlike the DMS session, which turns it off when docked."
+    },
+    {
       "id": "timezone-setting",
       "area": "Settings",
       "capability": "Change the time zone from settings",
@@ -175,7 +187,7 @@
       "status": "built",
       "where": "pond-interface shell/settings/appearance, Pond.Wallpaper, Pond.Daylight",
       "upstream": "bflycomputer/pond-interface:wallpaper",
-      "checked": "2026-10-27 nested preview on Bonhart",
+      "checked": "2026-10-27 real session on Bonhart (seen, not yet used)",
       "notes": ""
     },
     {
@@ -187,7 +199,7 @@
       "status": "built",
       "where": "pond-interface shell/settings/manual",
       "upstream": "bflycomputer/pond-interface:shell/settings/manual",
-      "checked": "2026-10-27 nested preview on Bonhart",
+      "checked": "2026-10-27 real session on Bonhart (seen, not yet used)",
       "notes": "The Pond Manual desktop entry is packaged but not on the system path, so it does not appear in the DMS launcher."
     },
     {
@@ -239,6 +251,18 @@
       "notes": "Functional placeholder that does not look like Pond. Omarchy's Quickshell polkit plugin is the reference for a Pond-styled one."
     },
     {
+      "id": "dms-isolation",
+      "area": "Session",
+      "capability": "DMS never starts inside the Pond session",
+      "source": "ours",
+      "tier": "native",
+      "status": "built",
+      "where": "modules/nixos/pond.nix (ExecCondition on dms.service)",
+      "upstream": null,
+      "checked": "2026-10-27 real session on Bonhart (runtime drop-in; permanent after rebuild)",
+      "notes": "The first real login showed DMS's bar, dock and wallpaper over Pond: librepods.service starts with every graphical session and wants dms.service. dms.service now skips itself while pond-niri.service runs."
+    },
+    {
       "id": "greeter",
       "area": "Session",
       "capability": "Login screen",
@@ -283,7 +307,7 @@
       "status": "built",
       "where": "packages/pond-vicinae.nix, pond-vicinae.service",
       "upstream": "bflycomputer/vicinae",
-      "checked": "2026-10-27 nested preview on Bonhart",
+      "checked": "2026-10-27 real session on Bonhart (seen, not yet used)",
       "notes": "Built from nixos-unstable's Vicinae 0.29 recipe (input nixpkgs-pond). Shares ~/.config/vicinae with GNOME's Vicinae. Preview: the server starts and shows Vicinae's own first-run onboarding, which Pond's binary also contains."
     },
     {
@@ -368,7 +392,7 @@
       "where": null,
       "upstream": "omacom/omarchy:shell/plugins/bar",
       "checked": null,
-      "notes": "LibrePods still starts in the Pond session but has nowhere to show."
+      "notes": "LibrePods and the Tailscale tray still start with every graphical session but have no tray to show in."
     },
     {
       "id": "focus",

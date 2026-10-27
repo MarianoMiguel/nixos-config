@@ -2,19 +2,19 @@
 
 Generated from `parity.json` by `scripts/workshop render`. Do not edit by hand.
 
-**built** 24 · **missing** 15 · **deviation** 5 · **watching** 4 · **rejected** 2
+**built** 26 · **missing** 15 · **deviation** 5 · **watching** 4 · **rejected** 2
 
 ## Shell
 
 | Capability | Status | Source | Tier | Where | Notes |
 |---|---|---|---|---|---|
-| Sidebar with clock, calendar, media, notifications and quick controls <sub>`sidebar`</sub> | built (2026-10-27 nested preview on Bonhart) | pond | consume | `pond-interface shell/Sidebar.qml via modules/nixos/pond.nix` | Preview: clock, minimap, notifications card and bottom controls render; collapse works over IPC. |
-| Workspace minimap; drag windows between workspaces <sub>`minimap`</sub> | built (2026-10-27 nested preview on Bonhart) | pond | consume | `pond-interface shell/minimap` |  |
+| Sidebar with clock, calendar, media, notifications and quick controls <sub>`sidebar`</sub> | built (2026-10-27 real session on Bonhart (seen, not yet used)) | pond | consume | `pond-interface shell/Sidebar.qml via modules/nixos/pond.nix` | Preview: clock, minimap, notifications card and bottom controls render; collapse works over IPC. |
+| Workspace minimap; drag windows between workspaces <sub>`minimap`</sub> | built (2026-10-27 real session on Bonhart (seen, not yet used)) | pond | consume | `pond-interface shell/minimap` |  |
 | Claude Code / Codex terminal state on the minimap (working, needs input, unread) <sub>`agent-dots`</sub> | built | pond | consume | `pond-interface shell/NiriMsg.qml` | Matches kitty windows only and reads Pond's fish title format. Works when agents run in the Pond session's kitty; Ghostty needs a patch in our fork. |
-| Notification toasts, centre and sidebar card <sub>`notifications`</sub> | built (2026-10-27 nested preview on Bonhart) | pond | consume | `pond-interface shell/notifications` |  |
+| Notification toasts, centre and sidebar card <sub>`notifications`</sub> | built (2026-10-27 real session on Bonhart (seen, not yet used)) | pond | consume | `pond-interface shell/notifications` |  |
 | Volume, brightness and keyboard-layout feedback <sub>`osd`</sub> | built | pond | consume | `pond-interface shell/*Feedback.qml, shell/Slider.qml` | External monitors use ddcutil; hardware.i2c is enabled by pond.nix. |
 | Update card and restart-recommended badge <sub>`updates`</sub> | missing | pond | port | `pond-interface shell/updates (calls pm -a)` | Needs a pm-compatible shim over mariano-system-update-all. |
-| System tray (StatusNotifier) for LibrePods and others <sub>`tray`</sub> | missing | ours | port |  | LibrePods still starts in the Pond session but has nowhere to show. |
+| System tray (StatusNotifier) for LibrePods and others <sub>`tray`</sub> | missing | ours | port |  | LibrePods and the Tailscale tray still start with every graphical session but have no tray to show in. |
 | Focus: do not disturb, stay awake, reminders <sub>`focus`</sub> | missing | ours | port | `dotfiles/dms-plugins/focus` | Reminder timers keep firing; only the UI is missing. |
 | Night Light <sub>`night-light`</sub> | missing | ours | port | `DMS session` |  |
 | Claude/Codex quota <sub>`ai-quota`</sub> | missing | ours | port | `dms-codexbar plugin` | Omarchy 4 ships a model-usage widget; ours is CodexBar on DMS. |
@@ -39,9 +39,10 @@ Generated from `parity.json` by `scripts/workshop render`. Do not edit by hand.
 |---|---|---|---|---|---|
 | Display arrangement, modes, scale, rotation <sub>`display-settings`</sub> | built | pond | consume | `pond-interface shell/settings/display; writes ~/.config/pond/niri/cfg/display.kdl` | Patched at build time to honour POND_NIRI_CONFIG_DIR so the DMS session's ~/.config/niri is never touched. |
 | Keyboard layouts and mouse/touchpad settings <sub>`keyboard-settings`</sub> | built | pond | consume | `pond-interface shell/settings/system; writes ~/.config/pond/niri/cfg/input.kdl` |  |
+| Display layout in the Pond session <sub>`displays`</sub> | built (2026-10-27 real session on Bonhart (seen, not yet used)) | pond | consume | `~/.config/pond/niri/cfg/display.kdl (Pond's display settings)` | Pond manages its own layout. Decision 2026-10-27: the laptop panel stays on in Pond, unlike the DMS session, which turns it off when docked. |
 | Change the time zone from settings <sub>`timezone-setting`</sub> | deviation | nixos | native | `time.timeZone in hosts/*/common.nix` | Pond runs sudo -n timedatectl, which needs a passwordless sudo rule. NixOS sets the zone declaratively, so the button reports an error instead. |
-| Daylight / Unthemed look and wallpaper picker <sub>`appearance`</sub> | built (2026-10-27 nested preview on Bonhart) | pond | consume | `pond-interface shell/settings/appearance, Pond.Wallpaper, Pond.Daylight` |  |
-| First-run manual and navigation tutorial <sub>`manual`</sub> | built (2026-10-27 nested preview on Bonhart) | pond | consume | `pond-interface shell/settings/manual` | The Pond Manual desktop entry is packaged but not on the system path, so it does not appear in the DMS launcher. |
+| Daylight / Unthemed look and wallpaper picker <sub>`appearance`</sub> | built (2026-10-27 real session on Bonhart (seen, not yet used)) | pond | consume | `pond-interface shell/settings/appearance, Pond.Wallpaper, Pond.Daylight` |  |
+| First-run manual and navigation tutorial <sub>`manual`</sub> | built (2026-10-27 real session on Bonhart (seen, not yet used)) | pond | consume | `pond-interface shell/settings/manual` | The Pond Manual desktop entry is packaged but not on the system path, so it does not appear in the DMS launcher. |
 
 ## Session
 
@@ -51,6 +52,7 @@ Generated from `parity.json` by `scripts/workshop render`. Do not edit by hand.
 | Fingerprint unlock (Bonhart) <sub>`fingerprint-unlock`</sub> | missing | ours | port | `modules/nixos/fingerprint.nix (DMS session only)` | pond-lock has fprintAuth off because Pond's lock screen only drives a password conversation. Omarchy 4 does fingerprint on its Quickshell lock screen; reference for a port. |
 | Idle lock, screens off, hibernate on battery <sub>`idle`</sub> | built | ours | native | `modules/nixos/pond.nix (swayidle + pond-idle)` | Pond has no idle handling. Mirrors the DMS policy: lock at 5 min on battery / 10 min on AC, hibernate after 15 min on battery. |
 | Polkit authentication dialogs <sub>`polkit-agent`</sub> | built | ours | native | `modules/nixos/pond.nix (polkit-gnome)` | Functional placeholder that does not look like Pond. Omarchy's Quickshell polkit plugin is the reference for a Pond-styled one. |
+| DMS never starts inside the Pond session <sub>`dms-isolation`</sub> | built (2026-10-27 real session on Bonhart (runtime drop-in; permanent after rebuild)) | ours | native | `modules/nixos/pond.nix (ExecCondition on dms.service)` | The first real login showed DMS's bar, dock and wallpaper over Pond: librepods.service starts with every graphical session and wants dms.service. dms.service now skips itself while pond-niri.service runs. |
 | Login screen <sub>`greeter`</sub> | missing | pond | consume | `DMS greeter (greetd) for every session today` | Pond's greeter runs under SDDM. Switching display managers affects every session, so it waits for the cut-over. |
 
 ## Boot
@@ -64,7 +66,7 @@ Generated from `parity.json` by `scripts/workshop render`. Do not edit by hand.
 
 | Capability | Status | Source | Tier | Where | Notes |
 |---|---|---|---|---|---|
-| Pond's Vicinae fork (Mod+Space) <sub>`launcher`</sub> | built (2026-10-27 nested preview on Bonhart) | pond | consume | `packages/pond-vicinae.nix, pond-vicinae.service` | Built from nixos-unstable's Vicinae 0.29 recipe (input nixpkgs-pond). Shares ~/.config/vicinae with GNOME's Vicinae. Preview: the server starts and shows Vicinae's own first-run onboarding, which Pond's binary also contains. |
+| Pond's Vicinae fork (Mod+Space) <sub>`launcher`</sub> | built (2026-10-27 real session on Bonhart (seen, not yet used)) | pond | consume | `packages/pond-vicinae.nix, pond-vicinae.service` | Built from nixos-unstable's Vicinae 0.29 recipe (input nixpkgs-pond). Shares ~/.config/vicinae with GNOME's Vicinae. Preview: the server starts and shows Vicinae's own first-run onboarding, which Pond's binary also contains. |
 | Clipboard history (Mod+V) <sub>`clipboard`</sub> | built | pond | consume | `pond-vicinae` |  |
 | Install apps from the launcher <sub>`app-install`</sub> | missing | pond | port |  | Pond's pm and its Vicinae extension are not published. A NixOS version would search nixpkgs/Flatpak and add to the config. |
 | Searchable system actions (Super+Space in DMS) <sub>`system-actions`</sub> | missing | ours | port | `modules/nixos/system-actions.nix` | Pond uses Mod+Space for its launcher. Likely becomes a Vicinae extension, like the GNOME one. |

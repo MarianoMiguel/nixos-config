@@ -37,6 +37,29 @@
         "watching": 4,
         "rejected": 2
       }
+    },
+    {
+      "version": 2,
+      "date": "2026-10-27",
+      "title": "First real login: pure Pond",
+      "summary": "The first login to the Pond session on Bonhart showed DMS's bar, dock and wallpaper over Pond, because librepods.service (started by every graphical session) wants dms.service. dms.service now skips itself while the Pond session runs. The laptop panel stays on in Pond by choice.",
+      "tag": "workshop-v2",
+      "base": "892e566",
+      "captures": [
+        {
+          "file": "captures/v2/real-session.png",
+          "title": "Real session, both displays",
+          "note": "Laptop panel (left) with the first-run manual; the KVM display (right) with the bare Pond desktop."
+        }
+      ],
+      "studies": [],
+      "parity": {
+        "built": 26,
+        "missing": 15,
+        "deviation": 5,
+        "watching": 4,
+        "rejected": 2
+      }
     }
   ]
 }

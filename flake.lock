@@ -336,6 +336,22 @@
         "type": "github"
       }
     },
+    "nixpkgs-pond": {
+      "locked": {
+        "lastModified": 1792773339,
+        "narHash": "sha256-rZLrzrC6i+jnTAlvPZHogKDulY7WWDEv9hJeHieO7Zw=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "3ec636362e1816bc2f0888fa0fa2c69f1bc9e504",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "3ec636362e1816bc2f0888fa0fa2c69f1bc9e504",
+        "type": "github"
+      }
+    },
     "nixpkgs-unstable": {
       "locked": {
         "lastModified": 1788179007,
@@ -400,6 +416,38 @@
         "type": "github"
       }
     },
+    "pond-interface": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1793050147,
+        "narHash": "sha256-4qT+cOCCUF4T5sTJ5RN2hkLWeO/nSjrOShbeQoXkZ6c=",
+        "owner": "MarianoMiguel",
+        "repo": "pond-interface",
+        "rev": "df65f7e6134269dd2a67ea0f4525ff9db76942e1",
+        "type": "github"
+      },
+      "original": {
+        "owner": "MarianoMiguel",
+        "repo": "pond-interface",
+        "type": "github"
+      }
+    },
+    "pond-vicinae": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1792456908,
+        "narHash": "sha256-xyH3rIgJCKtUKpGS9UrNORWGKT9hKjVqxgzlyhA3dig=",
+        "owner": "MarianoMiguel",
+        "repo": "pond-vicinae",
+        "rev": "2e0eac1e4bb0df926652119aa5947fd2dbd67fe3",
+        "type": "github"
+      },
+      "original": {
+        "owner": "MarianoMiguel",
+        "repo": "pond-vicinae",
+        "type": "github"
+      }
+    },
     "quickshell": {
       "inputs": {
         "nixpkgs": [
@@ -433,7 +481,10 @@
         "librepods-rust": "librepods-rust",
         "niri-pip": "niri-pip",
         "nixpkgs": "nixpkgs_4",
+        "nixpkgs-pond": "nixpkgs-pond",
         "nixpkgs-unstable": "nixpkgs-unstable",
+        "pond-interface": "pond-interface",
+        "pond-vicinae": "pond-vicinae",
         "quickshell": "quickshell"
       }
     },

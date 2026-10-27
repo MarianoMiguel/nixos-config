@@ -47,6 +47,20 @@
       url = "github:librepods-org/librepods?ref=linux/rust";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    # Pond's desktop and launcher, through our forks so the reviewed source
+    # survives upstream changes. Tracked in workshop/UPSTREAMS.md.
+    pond-interface = {
+      url = "github:MarianoMiguel/pond-interface";
+      flake = false;
+    };
+    pond-vicinae = {
+      url = "github:MarianoMiguel/pond-vicinae";
+      flake = false;
+    };
+    # Pond's runtime: Qt 6.12 and Quickshell 0.3.2 (its QML needs 6.12), plus
+    # the Vicinae 0.29 recipe its launcher fork builds with. Only the Pond
+    # session uses this set; DMS stays on nixos-26.05.
+    nixpkgs-pond.url = "github:NixOS/nixpkgs/3ec636362e1816bc2f0888fa0fa2c69f1bc9e504";
   };
 
   outputs =
@@ -54,6 +68,7 @@
       self,
       nixpkgs,
       nixpkgs-unstable,
+      nixpkgs-pond,
       home-manager,
       dank-greeter,
       dms,
@@ -70,8 +85,9 @@
         inherit system;
         config.allowUnfree = true;
       };
+      pkgsPond = import nixpkgs-pond { inherit system; };
       specialArgs = inputs // {
-        inherit pkgsUnstable;
+        inherit pkgsUnstable pkgsPond;
       };
       sharedModules = [
         home-manager.nixosModules.home-manager
@@ -196,6 +212,15 @@
         librepods = inputs.librepods-rust.packages.${system}.default;
         niri-pip = self.nixosConfigurations.bonhart.pkgs.callPackage ./packages/niri-pip.nix {
           src = inputs.niri-pip;
+        };
+        pond-fonts = self.nixosConfigurations.bonhart.pkgs.callPackage ./packages/pond-fonts.nix { };
+        pond-vicinae = self.nixosConfigurations.bonhart.pkgs.callPackage ./packages/pond-vicinae.nix {
+          inherit pkgsPond;
+          src = inputs.pond-vicinae;
+        };
+        pond-interface = pkgsPond.callPackage ./packages/pond-interface.nix {
+          src = inputs.pond-interface;
+          vicinae = self.packages.${system}.pond-vicinae;
         };
         installerIso = self.nixosConfigurations.installer.config.system.build.isoImage;
         installerIsoBalerion =

@@ -125,6 +125,16 @@ applet, Discover and PackageKit are deliberately not installed as competing
 control surfaces. KDE applications such as Dolphin, Krita and Kdenlive remain
 available and follow the same GTK-derived light/dark appearance.
 
+### Pond workshop session
+
+Bonhart also offers a **Pond** login session: [Pond](https://github.com/bflycomputer)'s
+shell, lock screen and launcher on niri, built from our forks with Pond's own
+Qt 6.12 / Quickshell 0.3.2 runtime. It keeps its niri config in
+`~/.config/pond/niri` and never touches the DMS session's. `pond-preview`
+opens it in a nested window from any session. Its progress toward replacing
+DMS is tracked in [`workshop/`](workshop/README.md); run
+`scripts/workshop serve` to browse it.
+
 cmux Browser is installed with the workstation applications. Launch `cmux`
 or `cmux-browser`, or search for cmux in the app launcher; `cmux-tui` exposes
 its terminal control CLI. The Nix package pins the official Linux nightly's

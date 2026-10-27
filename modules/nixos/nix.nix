@@ -1,3 +1,5 @@
+{ nixpkgs-tailscale, ... }:
+
 {
   nix.settings = {
     experimental-features = [
@@ -32,6 +34,7 @@
   nixpkgs.overlays = [
     (import ../../overlays/crates-io-static-mirror.nix)
     (import ../../overlays/niri-mod-shift-drag-resize.nix)
+    (import ../../overlays/tailscale-from-unstable.nix nixpkgs-tailscale)
   ];
 
   # Keep workstation builds independent of the generated NixOS manual. The

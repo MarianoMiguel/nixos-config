@@ -20,6 +20,10 @@
     # 21.0.4 revision fixed: Blackmagic replaced the 21.1 archive in place, so
     # the current nixos-unstable expression fails its source integrity check.
     nixpkgs-unstable.url = "github:NixOS/nixpkgs/34ab99075ac4f7e40cf037eef32cb1c360bb85e9";
+    # Only Tailscale comes from this package set (overlays/tailscale-from-unstable.nix).
+    # It tracks nixos-unstable so `mariano-system-update-all` keeps the VPN
+    # daemon current; the stable branch lags several releases behind.
+    nixpkgs-tailscale.url = "github:NixOS/nixpkgs/nixos-unstable";
     quickshell = {
       url = "github:quickshell-mirror/quickshell";
       inputs.nixpkgs.follows = "nixpkgs";

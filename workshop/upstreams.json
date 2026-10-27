@@ -1,0 +1,83 @@
+{
+  "upstreams": [
+    {
+      "id": "pond-interface",
+      "repo": "bflycomputer/pond-interface",
+      "fork": "MarianoMiguel/pond-interface",
+      "branch": "main",
+      "flakeInput": "pond-interface",
+      "role": "Design reference and the Pond session's shell, lock screen, screenshot and wallpaper",
+      "tier": "consume",
+      "track": "commits",
+      "watermark": "df65f7e6134269dd2a67ea0f4525ff9db76942e1",
+      "reviewed": "2026-10-27"
+    },
+    {
+      "id": "pond-vicinae",
+      "repo": "bflycomputer/vicinae",
+      "fork": "MarianoMiguel/pond-vicinae",
+      "branch": "main",
+      "flakeInput": "pond-vicinae",
+      "role": "Pond's launcher and clipboard",
+      "tier": "consume",
+      "track": "commits",
+      "watermark": "2e0eac1e4bb0df926652119aa5947fd2dbd67fe3",
+      "reviewed": "2026-10-27"
+    },
+    {
+      "id": "pond-installer",
+      "repo": "bflycomputer/iso-installer",
+      "branch": "main",
+      "role": "Release signal: a new ROOTFS_SHA256 in src/backend/model.py is a new Pond system image to inspect",
+      "tier": "reference",
+      "track": "commits",
+      "watermark": "3c0f21880bdb5cc5d78c202a455cc6970d1e98e3",
+      "reviewed": "2026-10-27",
+      "watchFiles": [
+        "src/backend/model.py"
+      ]
+    },
+    {
+      "id": "omarchy",
+      "repo": "omacom/omarchy",
+      "branch": "quattro",
+      "role": "Feature reference (ideas; its window code is Hyprland-specific)",
+      "tier": "port",
+      "track": "releases",
+      "watermark": "v4.5.0-rc1",
+      "reviewed": "2026-10-27"
+    },
+    {
+      "id": "dms",
+      "repo": "AvengeMedia/DankMaterialShell",
+      "branch": "master",
+      "flakeInput": "dms",
+      "role": "Current default shell, retired once the parity board is green",
+      "tier": "consume",
+      "track": "lock",
+      "watermark": null,
+      "reviewed": "2026-10-27"
+    },
+    {
+      "id": "quickshell",
+      "repo": "quickshell-mirror/quickshell",
+      "branch": "master",
+      "flakeInput": "quickshell",
+      "role": "Runtime for both shells; Pond targets Quickshell 0.3.2",
+      "tier": "consume",
+      "track": "lock",
+      "watermark": null,
+      "reviewed": "2026-10-27"
+    },
+    {
+      "id": "niri",
+      "repo": "niri-wm/niri",
+      "branch": "main",
+      "role": "Compositor, from nixpkgs (26.04 on both Pond and here)",
+      "tier": "consume",
+      "track": "releases",
+      "watermark": "v26.04",
+      "reviewed": "2026-10-27"
+    }
+  ]
+}

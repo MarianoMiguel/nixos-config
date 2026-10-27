@@ -1,0 +1,42 @@
+{
+  "versions": [
+    {
+      "version": 1,
+      "date": "2026-10-27",
+      "title": "Pond runs on NixOS",
+      "summary": "Pond's shell, lock screen, wallpaper, screenshot preview and launcher packaged from our forks and offered as a second login session next to DMS. Pond's own runtime (Qt 6.12, Quickshell 0.3.2) comes from a pinned nixos-unstable; DMS is untouched. Captured from a nested preview on Bonhart; not yet activated.",
+      "tag": "workshop-v1",
+      "base": "a0a1a4e",
+      "captures": [
+        {
+          "file": "captures/v1/first-run.png",
+          "title": "First run",
+          "note": "Pond's manual over Vicinae's onboarding, Daylight sky at dusk."
+        },
+        {
+          "file": "captures/v1/desktop.png",
+          "title": "Desktop",
+          "note": "Sidebar: clock, minimap, notifications, bottom controls."
+        },
+        {
+          "file": "captures/v1/sidebar-collapsed.png",
+          "title": "Sidebar collapsed",
+          "note": "Toggled over Pond's sidebar IPC."
+        },
+        {
+          "file": "captures/v1/lockscreen.png",
+          "title": "Lock screen",
+          "note": "Shape-grid password field, Wi-Fi from the Pond.WifiStatus plugin."
+        }
+      ],
+      "studies": [],
+      "parity": {
+        "built": 24,
+        "missing": 15,
+        "deviation": 5,
+        "watching": 4,
+        "rejected": 2
+      }
+    }
+  ]
+}

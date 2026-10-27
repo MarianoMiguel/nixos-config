@@ -1,0 +1,273 @@
+#!/usr/bin/env python3
+"""Desktop workshop tooling. See workshop/README.md.
+
+  workshop status                 parity counts
+  workshop render                 regenerate workshop/PARITY.md from parity.json
+  workshop digest [--write] [--advance]
+                                  what changed upstream since the last review
+  workshop version TITLE [--summary TEXT]
+                                  open the next workshop version
+  workshop capture NAME [--version N] [--host H] [--display D] [--output O] [--title T]
+                                  screenshot a real session into the version
+  workshop serve [--port P]       browse workshop/index.html locally
+
+Needs only Python and, for digest, an authenticated `gh` CLI.
+"""
+import argparse
+import datetime
+import http.server
+import json
+import functools
+import shlex
+import subprocess
+import sys
+from collections import Counter
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+WORKSHOP = ROOT / "workshop"
+PARITY = WORKSHOP / "parity.json"
+UPSTREAMS = WORKSHOP / "upstreams.json"
+SESSIONS = WORKSHOP / "sessions.json"
+STATUS_ORDER = ["verified", "built", "building", "study", "missing", "deviation", "watching", "rejected"]
+
+
+def load(path):
+    return json.loads(path.read_text())
+
+
+def save(path, data):
+    path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n")
+
+
+def today():
+    return datetime.date.today().isoformat()
+
+
+def counts():
+    found = Counter(item["status"] for item in load(PARITY)["items"])
+    return {status: found[status] for status in STATUS_ORDER if found[status]}
+
+
+def cmd_status(_args):
+    total = sum(counts().values())
+    for status, number in counts().items():
+        print(f"{status:<10} {number:>3}")
+    print(f"{'total':<10} {total:>3}")
+
+
+def cmd_render(_args):
+    parity = load(PARITY)
+    lines = [
+        "# Pond session parity",
+        "",
+        "Generated from `parity.json` by `scripts/workshop render`. Do not edit by hand.",
+        "",
+        " · ".join(f"**{status}** {number}" for status, number in counts().items()),
+        "",
+    ]
+    areas = {}
+    for item in parity["items"]:
+        areas.setdefault(item["area"], []).append(item)
+    for area, items in areas.items():
+        lines += [f"## {area}", "", "| Capability | Status | Source | Tier | Where | Notes |", "|---|---|---|---|---|---|"]
+        for item in items:
+            cells = [
+                f"{item['capability']} <sub>`{item['id']}`</sub>",
+                item["status"] + (f" ({item['checked']})" if item.get("checked") else ""),
+                item["source"],
+                item["tier"],
+                f"`{item['where']}`" if item.get("where") else "",
+                item.get("notes", ""),
+            ]
+            lines.append("| " + " | ".join(cell.replace("|", "\\|") for cell in cells) + " |")
+        lines.append("")
+    (WORKSHOP / "PARITY.md").write_text("\n".join(lines))
+
+    if SESSIONS.exists():
+        sessions = load(SESSIONS)
+        if sessions["versions"]:
+            sessions["versions"][-1]["parity"] = counts()
+            save(SESSIONS, sessions)
+    print("wrote workshop/PARITY.md")
+
+
+def gh(path):
+    result = subprocess.run(["gh", "api", path], capture_output=True, text=True)
+    if result.returncode:
+        raise RuntimeError(f"gh api {path}: {result.stderr.strip()}")
+    return json.loads(result.stdout)
+
+
+def locked_rev(flake_input):
+    nodes = load(ROOT / "flake.lock")["nodes"]
+    return nodes.get(flake_input, {}).get("locked", {}).get("rev")
+
+
+def ported_paths(repo):
+    """Upstream files the parity board says we consume or port."""
+    paths = set()
+    for item in load(PARITY)["items"]:
+        ref = item.get("upstream") or ""
+        if ref.startswith(repo + ":"):
+            paths.add(ref.split(":", 1)[1])
+    return paths
+
+
+def digest_commits(upstream, out):
+    repo, branch, mark = upstream["repo"], upstream["branch"], upstream["watermark"]
+    compare = gh(f"repos/{repo}/compare/{mark}...{branch}")
+    commits = compare["commits"]
+    out.append(f"{compare['ahead_by']} new commit(s) since `{mark[:7]}`.\n")
+    for commit in commits[-40:]:
+        date = commit["commit"]["committer"]["date"][:10]
+        subject = commit["commit"]["message"].splitlines()[0]
+        out.append(f"- {date} `{commit['sha'][:7]}` {subject}")
+    if len(commits) > 40:
+        out.append(f"- ... and {len(commits) - 40} earlier")
+    files = compare.get("files", [])
+    watched = ported_paths(repo) | set(upstream.get("watchFiles", []))
+    touched = [f for f in files if any(f["filename"] == p or f["filename"].startswith(p.rstrip("/") + "/") for p in watched)]
+    if touched:
+        out.append("\nFiles the parity board depends on:\n")
+        for f in touched:
+            out.append(f"- `{f['filename']}` {f['status']} +{f['additions']}/-{f['deletions']}")
+            if f["filename"] in upstream.get("watchFiles", []) and f.get("patch"):
+                out.append("\n```diff\n" + "\n".join(f["patch"].splitlines()[:30]) + "\n```")
+    if upstream.get("fork"):
+        owner = upstream["fork"].split("/")[0]
+        fork = gh(f"repos/{repo}/compare/{owner}:{branch}...{branch}")
+        out.append(f"\nFork `{upstream['fork']}` is {fork['ahead_by']} commit(s) behind upstream"
+                   f" and carries {fork['behind_by']} of its own.")
+    if upstream.get("flakeInput"):
+        out.append(f"flake.lock pins `{upstream['flakeInput']}` at `{(locked_rev(upstream['flakeInput']) or '?')[:7]}`.")
+    return commits[-1]["sha"] if commits else mark
+
+
+def digest_releases(upstream, out):
+    releases = gh(f"repos/{upstream['repo']}/releases?per_page=20")
+    fresh = []
+    for release in releases:
+        if release["tag_name"] == upstream["watermark"]:
+            break
+        fresh.append(release)
+    out.append(f"{len(fresh)} release(s) since `{upstream['watermark']}`.\n")
+    for release in reversed(fresh):
+        out.append(f"### {release['tag_name']} ({release['published_at'][:10]}) {release.get('name') or ''}\n")
+        body = [line for line in (release.get("body") or "").splitlines() if line.strip()]
+        out.extend(body[:25])
+        if len(body) > 25:
+            out.append(f"\n... {len(body) - 25} more lines: {release['html_url']}")
+        out.append("")
+    return fresh[0]["tag_name"] if fresh else upstream["watermark"]
+
+
+def digest_lock(upstream, out):
+    rev = locked_rev(upstream["flakeInput"])
+    compare = gh(f"repos/{upstream['repo']}/compare/{rev}...{upstream['branch']}")
+    out.append(f"flake.lock pins `{rev[:7]}`; upstream is {compare['ahead_by']} commit(s) ahead.\n")
+    for commit in compare["commits"][-20:]:
+        out.append(f"- `{commit['sha'][:7]}` {commit['commit']['message'].splitlines()[0]}")
+    return None
+
+
+def cmd_digest(args):
+    data = load(UPSTREAMS)
+    out = [f"# Upstream digest {today()}", ""]
+    for upstream in data["upstreams"]:
+        out += [f"## {upstream['id']} ({upstream['repo']})", "", f"_{upstream['role']}_", ""]
+        try:
+            handler = {"commits": digest_commits, "releases": digest_releases, "lock": digest_lock}[upstream["track"]]
+            head = handler(upstream, out)
+            if args.advance and head:
+                upstream["watermark"] = head
+                upstream["reviewed"] = today()
+        except (RuntimeError, KeyError, TypeError) as error:
+            out.append(f"Could not read: {error}")
+        out.append("")
+    text = "\n".join(out)
+    print(text)
+    if args.write:
+        path = WORKSHOP / "digests" / f"{today()}.md"
+        path.parent.mkdir(exist_ok=True)
+        path.write_text(text)
+        print(f"wrote {path.relative_to(ROOT)}", file=sys.stderr)
+    if args.advance:
+        save(UPSTREAMS, data)
+        print("advanced watermarks in workshop/upstreams.json", file=sys.stderr)
+
+
+def cmd_version(args):
+    sessions = load(SESSIONS)
+    number = max((v["version"] for v in sessions["versions"]), default=0) + 1
+    base = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "--short", "HEAD"],
+                          capture_output=True, text=True).stdout.strip()
+    sessions["versions"].append({
+        "version": number, "date": today(), "title": args.title, "summary": args.summary or "",
+        "tag": f"workshop-v{number}", "base": base, "captures": [], "studies": [], "parity": counts(),
+    })
+    save(SESSIONS, sessions)
+    print(f"opened workshop v{number}; commit the work, then: git tag workshop-v{number}")
+
+
+def cmd_capture(args):
+    sessions = load(SESSIONS)
+    version = args.version or max(v["version"] for v in sessions["versions"])
+    entry = next((v for v in sessions["versions"] if v["version"] == version), None)
+    if entry is None:
+        sys.exit(f"no workshop v{version}; run `workshop version` first")
+    grim = ["grim"] + (["-o", args.output] if args.output else []) + ["-"]
+    if args.host:
+        env = f"XDG_RUNTIME_DIR=/run/user/$(id -u) WAYLAND_DISPLAY={shlex.quote(args.display)}"
+        command = ["ssh", args.host, f"{env} {shlex.join(grim)}"]
+    else:
+        command = grim
+    image = subprocess.run(command, capture_output=True, check=True).stdout
+    path = WORKSHOP / "captures" / f"v{version}" / f"{args.name}.png"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(image)
+    relative = str(path.relative_to(WORKSHOP))
+    entry["captures"] = [c for c in entry["captures"] if c["file"] != relative]
+    entry["captures"].append({"file": relative, "title": args.title or args.name, "note": args.note or ""})
+    save(SESSIONS, sessions)
+    print(f"captured {path.relative_to(ROOT)}")
+
+
+def cmd_serve(args):
+    handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(WORKSHOP))
+    with http.server.ThreadingHTTPServer(("127.0.0.1", args.port), handler) as server:
+        print(f"workshop at http://127.0.0.1:{args.port}/  (Ctrl+C to stop)")
+        server.serve_forever()
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    sub = parser.add_subparsers(dest="command", required=True)
+    sub.add_parser("status").set_defaults(func=cmd_status)
+    sub.add_parser("render").set_defaults(func=cmd_render)
+    digest = sub.add_parser("digest")
+    digest.add_argument("--write", action="store_true", help="save to workshop/digests/DATE.md")
+    digest.add_argument("--advance", action="store_true", help="move watermarks to what was just reviewed")
+    digest.set_defaults(func=cmd_digest)
+    version = sub.add_parser("version")
+    version.add_argument("title")
+    version.add_argument("--summary")
+    version.set_defaults(func=cmd_version)
+    capture = sub.add_parser("capture")
+    capture.add_argument("name")
+    capture.add_argument("--version", type=int)
+    capture.add_argument("--host", help="ssh host running the session, e.g. bonhart-agent")
+    capture.add_argument("--display", default="wayland-1", help="WAYLAND_DISPLAY on the host")
+    capture.add_argument("--output", help="grim output name, e.g. eDP-1")
+    capture.add_argument("--title")
+    capture.add_argument("--note")
+    capture.set_defaults(func=cmd_capture)
+    serve = sub.add_parser("serve")
+    serve.add_argument("--port", type=int, default=8765)
+    serve.set_defaults(func=cmd_serve)
+    args = parser.parse_args()
+    args.func(args)
+
+
+if __name__ == "__main__":
+    main()

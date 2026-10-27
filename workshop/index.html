@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Desktop Workshop</title>
+<style>
+  /* Pond's palette and metrics (pond-interface shell/Theme.qml). */
+  :root {
+    --bg: #141414;
+    --surface: #1d1d1d;
+    --surface-2: #242424;
+    --line: #303030;
+    --divider: #383838;
+    --text: #f8f9f9;
+    --muted: #9a9a9a;
+    --lilac: #cba6f7;
+    --orange: #ff9f67;
+    --lime: #cbe25b;
+    --pink: #fa6d80;
+    --yellow: #ffe51d;
+    --radius: 16px;
+    --gap: 6px;
+    --font: "Onest", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+    --link: var(--lilac);
+    color-scheme: dark;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg: #f2f1ee; --surface: #ffffff; --surface-2: #f6f5f2; --line: #e2e0db;
+      --divider: #e8e6e1; --text: #1d1d1d; --muted: #6b6b6b; --link: #6f42b0; color-scheme: light;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 var(--font); }
+  main { max-width: 1100px; margin: 0 auto; padding: 28px 16px 64px; }
+  header { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; }
+  h1 { font-size: 28px; font-weight: 600; margin: 0; letter-spacing: -0.01em; }
+  .sub { color: var(--muted); margin: 2px 0 0; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px;
+          background: var(--surface-2); border: 1px solid var(--line); font-size: 13px; white-space: nowrap; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+  .stats { display: flex; flex-wrap: wrap; gap: var(--gap); margin: 18px 0 8px; }
+  nav { display: flex; gap: 4px; margin: 18px 0; padding: 4px; background: var(--surface); border: 1px solid var(--line);
+        border-radius: var(--radius); width: fit-content; max-width: 100%; overflow-x: auto; }
+  nav button { font: inherit; color: var(--muted); background: none; border: 0; padding: 6px 14px; border-radius: 12px; cursor: pointer; }
+  nav button[aria-selected="true"] { color: var(--text); background: var(--surface-2); }
+  .filters { display: flex; flex-wrap: wrap; gap: var(--gap); align-items: center; margin-bottom: 14px; }
+  .filters input, .filters select { font: inherit; color: var(--text); background: var(--surface); border: 1px solid var(--line);
+        border-radius: 12px; padding: 6px 12px; min-width: 0; }
+  .filters input { flex: 1 1 220px; }
+  .filters .chip { cursor: pointer; user-select: none; }
+  .filters .chip[aria-pressed="false"] { opacity: 0.45; }
+  h2 { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 26px 0 8px; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; margin-bottom: var(--gap); }
+  .row { display: grid; grid-template-columns: 1fr auto; gap: 4px 16px; }
+  .row .title { font-weight: 500; }
+  .row .meta { display: flex; flex-wrap: wrap; gap: 6px; justify-content: end; align-items: start; }
+  .row .detail { grid-column: 1 / -1; color: var(--muted); font-size: 13.5px; }
+  code, .mono { font-family: var(--mono); font-size: 12.5px; }
+  .id { color: var(--muted); margin-left: 6px; }
+  a { color: var(--link); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; margin-top: 12px; }
+  figure { margin: 0; background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  figure img { display: block; width: 100%; height: auto; cursor: zoom-in; }
+  figcaption { padding: 8px 10px; font-size: 13px; color: var(--muted); }
+  figcaption strong { color: var(--text); font-weight: 500; display: block; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--divider); vertical-align: top; }
+  th { color: var(--muted); font-weight: 500; font-size: 12.5px; }
+  .table-wrap { overflow-x: auto; }
+  .empty { color: var(--muted); padding: 20px 0; }
+  .bar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: var(--surface-2); margin-top: 10px; }
+  dialog { border: 0; padding: 0; background: transparent; max-width: 96vw; max-height: 96vh; }
+  dialog::backdrop { background: rgba(0, 0, 0, 0.8); }
+  dialog img { max-width: 96vw; max-height: 92vh; border-radius: 12px; display: block; }
+  .error { color: var(--pink); }
+  @media (max-width: 640px) {
+    .row { grid-template-columns: 1fr; }
+    .row .meta { justify-content: start; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div>
+      <h1>Desktop Workshop</h1>
+      <p class="sub">Pond's polish, Omarchy's features, NixOS underneath.</p>
+    </div>
+    <span class="chip" id="current">loading</span>
+  </header>
+  <div class="stats" id="stats"></div>
+  <nav role="tablist">
+    <button role="tab" data-tab="parity" aria-selected="true">Parity</button>
+    <button role="tab" data-tab="versions" aria-selected="false">Versions</button>
+    <button role="tab" data-tab="upstreams" aria-selected="false">Upstreams</button>
+    <button role="tab" data-tab="studies" aria-selected="false">Studies</button>
+  </nav>
+  <section id="parity"></section>
+  <section id="versions" hidden></section>
+  <section id="upstreams" hidden></section>
+  <section id="studies" hidden></section>
+</main>
+<dialog id="zoom"><img alt=""></dialog>
+<script>
+const COLORS = {
+  verified: "var(--lime)", built: "var(--lilac)", building: "var(--orange)", study: "var(--yellow)",
+  missing: "var(--pink)", deviation: "#7fa7d9", watching: "var(--muted)", rejected: "var(--divider)",
+};
+const ORDER = Object.keys(COLORS);
+const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const pill = (status) => `<span class="chip"><span class="dot" style="background:${COLORS[status] || "var(--muted)"}"></span>${esc(status)}</span>`;
+const state = { statuses: new Set(ORDER), source: "", query: "" };
+
+function upstreamLink(ref) {
+  const match = /^([\w.-]+\/[\w.-]+):(.+)$/.exec(ref || "");
+  if (!match) return ref ? `<span class="mono">${esc(ref)}</span>` : "";
+  return `<a class="mono" href="https://github.com/${match[1]}/blob/HEAD/${match[2]}">${esc(ref)}</a>`;
+}
+
+async function load(name, fallback) {
+  try {
+    const response = await fetch(name, { cache: "no-store" });
+    if (!response.ok) throw new Error(response.status);
+    return await response.json();
+  } catch (error) {
+    if (fallback !== undefined) return fallback;
+    throw new Error(`${name}: ${error.message}. Serve this folder with scripts/workshop serve.`);
+  }
+}
+
+function renderStats(items) {
+  const counts = Object.fromEntries(ORDER.map((s) => [s, items.filter((i) => i.status === s).length]));
+  document.getElementById("stats").innerHTML = ORDER.filter((s) => counts[s])
+    .map((s) => `<span class="chip"><span class="dot" style="background:${COLORS[s]}"></span>${s} <strong>${counts[s]}</strong></span>`).join("");
+}
+
+function renderParity(parity) {
+  const sources = [...new Set(parity.items.map((i) => i.source))];
+  const visible = parity.items.filter((i) => state.statuses.has(i.status)
+    && (!state.source || i.source === state.source)
+    && (!state.query || JSON.stringify(i).toLowerCase().includes(state.query)));
+  const areas = {};
+  for (const item of visible) (areas[item.area] ||= []).push(item);
+  const filters = `<div class="filters">
+      <input type="search" id="q" placeholder="Search capabilities, files, notes" value="${esc(state.query)}" aria-label="Search">
+      <select id="source" aria-label="Source"><option value="">All sources</option>${sources.map((s) => `<option ${s === state.source ? "selected" : ""}>${esc(s)}</option>`).join("")}</select>
+      ${ORDER.map((s) => `<span class="chip" role="button" tabindex="0" data-status="${s}" aria-pressed="${state.statuses.has(s)}" title="${esc(parity.statuses[s] || "")}"><span class="dot" style="background:${COLORS[s]}"></span>${s}</span>`).join("")}
+    </div>`;
+  const body = Object.entries(areas).map(([area, items]) => `<h2>${esc(area)}</h2>` + items.map((i) => `
+      <div class="card row">
+        <div class="title">${esc(i.capability)}<code class="id">${esc(i.id)}</code></div>
+        <div class="meta">${pill(i.status)}<span class="chip" title="${esc(parity.sources[i.source] || "")}">${esc(i.source)}</span><span class="chip" title="${esc(parity.tiers[i.tier] || "")}">${esc(i.tier)}</span></div>
+        <div class="detail">
+          ${i.where ? `<div><span class="mono">${esc(i.where)}</span></div>` : ""}
+          ${i.upstream ? `<div>Upstream: ${upstreamLink(i.upstream)}</div>` : ""}
+          ${i.checked ? `<div>Checked: ${esc(i.checked)}</div>` : ""}
+          ${i.notes ? `<div>${esc(i.notes)}</div>` : ""}
+        </div>
+      </div>`).join("")).join("") || `<p class="empty">Nothing matches.</p>`;
+  const root = document.getElementById("parity");
+  root.innerHTML = filters + body;
+  const q = root.querySelector("#q");
+  q.addEventListener("input", () => { state.query = q.value.toLowerCase(); renderParity(parity); root.querySelector("#q").focus(); });
+  root.querySelector("#source").addEventListener("change", (e) => { state.source = e.target.value; renderParity(parity); });
+  root.querySelectorAll("[data-status]").forEach((chip) => {
+    const toggle = () => { const s = chip.dataset.status; state.statuses.has(s) ? state.statuses.delete(s) : state.statuses.add(s); renderParity(parity); };
+    chip.addEventListener("click", toggle);
+    chip.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); } });
+  });
+}
+
+function renderVersions(sessions) {
+  const versions = [...sessions.versions].reverse();
+  document.getElementById("versions").innerHTML = versions.map((v) => {
+    const total = Object.values(v.parity || {}).reduce((a, b) => a + b, 0) || 1;
+    const bar = ORDER.filter((s) => v.parity?.[s]).map((s) => `<span title="${s} ${v.parity[s]}" style="width:${(100 * v.parity[s]) / total}%;background:${COLORS[s]}"></span>`).join("");
+    return `<div class="card">
+      <div class="row"><div class="title">v${v.version} · ${esc(v.title)}</div>
+        <div class="meta"><span class="chip">${esc(v.date)}</span><span class="chip mono">${esc(v.tag)}</span></div>
+        <div class="detail">${esc(v.summary)}</div></div>
+      <div class="bar">${bar}</div>
+      ${v.captures?.length ? `<div class="grid">${v.captures.map((c) => `<figure><img src="${esc(c.file)}" alt="${esc(c.title)}" loading="lazy"><figcaption><strong>${esc(c.title)}</strong>${esc(c.note)}</figcaption></figure>`).join("")}</div>` : `<p class="empty">No captures yet.</p>`}
+    </div>`;
+  }).join("") || `<p class="empty">No versions yet. Run scripts/workshop version "title".</p>`;
+}
+
+function renderUpstreams(data) {
+  document.getElementById("upstreams").innerHTML = `<div class="card table-wrap"><table>
+    <thead><tr><th>Upstream</th><th>Role</th><th>Tier</th><th>Tracks</th><th>Watermark</th><th>Reviewed</th></tr></thead>
+    <tbody>${data.upstreams.map((u) => `<tr>
+      <td><a href="https://github.com/${esc(u.repo)}">${esc(u.repo)}</a>${u.fork ? `<div class="mono"><a href="https://github.com/${esc(u.fork)}">fork: ${esc(u.fork)}</a></div>` : ""}</td>
+      <td>${esc(u.role)}</td><td>${esc(u.tier)}</td><td>${esc(u.track)}</td>
+      <td class="mono">${esc((u.watermark || "flake.lock").slice(0, 12))}</td><td>${esc(u.reviewed)}</td></tr>`).join("")}</tbody>
+  </table></div><p class="sub">Run <code>scripts/workshop digest</code> to see what changed since each watermark.</p>`;
+}
+
+function renderStudies(index) {
+  const studies = index.studies || [];
+  document.getElementById("studies").innerHTML = studies.length ? studies.map((s) => `<div class="card row">
+      <div class="title"><a href="studies/${esc(s.file)}">${esc(s.title)}</a><code class="id">${esc(s.id)}</code></div>
+      <div class="meta"><span class="chip">v${esc(s.version)}</span><span class="chip">${esc(s.date)}</span></div>
+      <div class="detail">${esc(s.notes)}</div></div>`).join("")
+    : `<p class="empty">No studies yet. See studies/README.md.</p>`;
+}
+
+document.querySelectorAll("nav button").forEach((button) => button.addEventListener("click", () => {
+  document.querySelectorAll("nav button").forEach((b) => b.setAttribute("aria-selected", b === button));
+  document.querySelectorAll("main > section").forEach((s) => { s.hidden = s.id !== button.dataset.tab; });
+}));
+const zoom = document.getElementById("zoom");
+document.addEventListener("click", (e) => {
+  if (e.target.matches("figure img")) { zoom.querySelector("img").src = e.target.src; zoom.showModal(); }
+  else if (e.target.closest("dialog")) zoom.close();
+});
+
+(async () => {
+  try {
+    const [parity, sessions, upstreams, studies] = await Promise.all([
+      load("parity.json"), load("sessions.json"), load("upstreams.json"), load("studies/index.json", { studies: [] }),
+    ]);
+    const latest = sessions.versions.at(-1);
+    document.getElementById("current").textContent = latest ? `v${latest.version} · ${latest.date}` : "no versions";
+    renderStats(parity.items);
+    renderParity(parity);
+    renderVersions(sessions);
+    renderUpstreams(upstreams);
+    renderStudies(studies);
+  } catch (error) {
+    document.getElementById("parity").innerHTML = `<p class="error">${esc(error.message)}</p>`;
+  }
+})();
+</script>
+</body>
+</html>

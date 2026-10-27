@@ -1,5 +1,9 @@
 # NixOS Desktop Experience Design System
 
+Scope: this describes the DMS session. Since 2026-10-27 the desktop is moving
+to Pond's design, copied directly: the **Pond** session follows Pond's own
+`shell/Theme.qml`, and Azure Folio retires with DMS. See `workshop/README.md`.
+
 ## 1. Atmosphere & Identity
 
 A quiet, immediate command center. DMS owns the shell, Niri owns windows, and Alt+Space is the single searchable entry point. The signature is restrained density: useful system state is visible without duplicating controls or turning the bar and lock screen into dashboards.

@@ -1,0 +1,80 @@
+/*
+ * Pond tokens for HTML studies, copied from pond-interface (BSD-3-Clause):
+ * shell/Theme.qml, shell/PanelStyle.qml, shell/settings/Style.qml,
+ * shell/Motion.qml. When Pond changes these files, `scripts/workshop digest`
+ * lists them; update the values here by hand.
+ */
+:root {
+  /* PanelStyle.qml */
+  --pond-surface: #1d1d1d;
+  --pond-back-surface: #131313;
+  --pond-border: #3d3d3d;
+  --pond-hover: #262626;
+  --pond-pressed: #303030;
+  --pond-accent: #cba6f7;
+  --pond-accent-text: #4f3d64;
+  --pond-enabled-surface: #0c3723;
+  --pond-enabled-mark: #b0ff4f;
+  --pond-panel-width: 316px;
+  --pond-field-width: 276px;
+  --pond-field-height: 44px;
+  --pond-row-width: 300px;
+  --pond-row-height: 44px;
+  --pond-panel-radius: 16px;
+  --pond-row-radius: 12px;
+  --pond-page-duration: 350ms;
+  --pond-open-duration: 220ms;
+  --pond-control-duration: 120ms;
+  --pond-panel-shadow:
+    0 -21px 33.5px rgba(0, 0, 0, 0.06), 0 23px 27.5px rgba(0, 0, 0, 0.08),
+    0 -6px 24.5px rgba(0, 0, 0, 0.12), 0 -2px 23px rgba(0, 0, 0, 0.16),
+    0 6px 10px rgba(0, 0, 0, 0.19);
+
+  /* Theme.qml: sidebar */
+  --pond-sidebar-bg: #1d1d1d;
+  --pond-sidebar-border: #303030;
+  --pond-sidebar-divider: #383838;
+  --pond-sidebar-control: #303030;
+  --pond-sidebar-fg: #f8f9f9;
+  --pond-card-outline: rgba(255, 255, 255, 0.1);
+  --pond-card-fill: rgba(0, 0, 0, 0.1);
+  --pond-hover-fill: rgba(255, 255, 255, 0.04);
+  --pond-sidebar-margin: 10px;
+  --pond-card-width: 156px;
+  --pond-card-width-collapsed: 48px;
+  --pond-card-radius: 16px;
+  --pond-card-gap: 6px;
+  --pond-row-padding: 16px;
+  --pond-simple-row-height: 48px;
+  --pond-workspace-control: 40px;
+  --pond-workspace-gap: 8px;
+  --pond-hover-duration: 120ms;
+  --pond-switch-duration: 180ms;
+
+  /* settings/Style.qml */
+  --pond-overlay: rgba(16, 16, 16, 0.7);
+  --pond-settings-card: #1d1d1d;
+  --pond-settings-radius: 12px;
+
+  /* Motion.qml: 300 ms on the emphasized curve */
+  --pond-motion: 300ms cubic-bezier(0.2, 0, 0, 1);
+
+  /* Accents seen in the minimap, boot splash and manual */
+  --pond-lilac: #cba6f7;
+  --pond-orange: #ff9f67;
+  --pond-lime: #cbe25b;
+  --pond-pink: #fa6d80;
+  --pond-yellow: #ffe51d;
+
+  /* Theme.qml fonts; Pond Gramercy is proprietary, so studies fall back to a serif */
+  --pond-font: "Onest", system-ui, sans-serif;
+  --pond-title-font: "Pond Gramercy", Georgia, serif;
+  --pond-mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+
+body {
+  margin: 0;
+  background: var(--pond-back-surface);
+  color: var(--pond-sidebar-fg);
+  font: 14px/1.4 var(--pond-font);
+}

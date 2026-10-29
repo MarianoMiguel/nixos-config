@@ -29,7 +29,7 @@ let
         --preserve-new-lines \
         --width "$render_width" \
         --pager \
-        ${lib.escapeShellArg (toString manifestoDocument)}
+        ${lib.escapeShellArg "${manifestoDocument}"}
     '';
   };
 

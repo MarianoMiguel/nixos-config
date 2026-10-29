@@ -1,0 +1,98 @@
+#!/usr/bin/env python3
+"""Folio launcher's emoji list, built from Unicode's own data.
+
+  folio-emoji OUT [--emoji-test FILE] [--cldr DIR] [--max-version N]
+
+Reads emoji-test.txt (nixpkgs `unicode-emoji`: share/unicode/emoji) for the
+emoji, their names and groups, and CLDR's English annotations (nixpkgs
+`cldr-annotations`: share/unicode/cldr/common) for search keywords. Without
+--emoji-test or --cldr it asks Nix for those packages (build time only; the
+shell never downloads anything). Skin-tone variants are left out: the base
+emoji stands for them.
+
+OUT is JSON: {"version", "groups": [names], "emoji": [[char, name, keywords
+joined by "|", group index, emoji version]]}, written atomically. scripts/folio-harness and
+packages/folio-shell.nix run this; the file is git-ignored.
+"""
+import argparse
+import json
+import os
+import re
+import subprocess
+import sys
+import xml.etree.ElementTree as ET
+
+SKIN_TONES = {0x1F3FB, 0x1F3FC, 0x1F3FD, 0x1F3FE, 0x1F3FF}
+
+
+def nix_path(attr):
+    out = subprocess.run(["nix", "build", "--no-link", "--print-out-paths", "nixpkgs#" + attr],
+                         check=True, capture_output=True, text=True).stdout.split()
+    return out[-1]
+
+
+def annotations(path):
+    """{emoji: [keywords]} from one CLDR annotations file (tts names skipped)."""
+    out = {}
+    if not os.path.exists(path):
+        return out
+    for a in ET.parse(path).getroot().iter("annotation"):
+        if a.get("type") == "tts" or not a.text:
+            continue
+        out[a.get("cp")] = [w.strip() for w in a.text.split("|") if w.strip()]
+    return out
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    ap.add_argument("out")
+    ap.add_argument("--emoji-test", help="emoji-test.txt (default: from nixpkgs#unicode-emoji)")
+    ap.add_argument("--cldr", help="CLDR common/ directory (default: from nixpkgs#cldr-annotations)")
+    ap.add_argument("--max-version", type=float, default=99.0,
+                    help="leave out emoji newer than this Emoji version (fonts lag behind)")
+    args = ap.parse_args()
+
+    test = args.emoji_test or os.path.join(nix_path("unicode-emoji"), "share/unicode/emoji/emoji-test.txt")
+    cldr = args.cldr or os.path.join(nix_path("cldr-annotations"), "share/unicode/cldr/common")
+
+    words = annotations(os.path.join(cldr, "annotationsDerived", "en.xml"))
+    words.update(annotations(os.path.join(cldr, "annotations", "en.xml")))
+
+    groups, emoji, version = [], [], ""
+    line_re = re.compile(r"^([0-9A-F ]+?)\s*;\s*([a-z-]+)\s*#\s*(\S+)\s+E(\d+\.\d+)\s+(.+)$")
+    with open(test, encoding="utf-8") as f:
+        for line in f:
+            line = line.rstrip("\n")
+            if line.startswith("# Version:"):
+                version = line.split(":", 1)[1].strip()
+            elif line.startswith("# group:"):
+                groups.append(line.split(":", 1)[1].strip())
+            m = line_re.match(line)
+            if not m or m.group(2) != "fully-qualified":
+                continue
+            cps = [int(c, 16) for c in m.group(1).split()]
+            if SKIN_TONES & set(cps):
+                continue
+            ev = float(m.group(4))
+            if ev > args.max_version:
+                continue
+            char = "".join(chr(c) for c in cps)
+            name = m.group(5).strip()
+            kw = words.get(char) or words.get(char.replace("️", "")) or []
+            # Keywords the name already says are noise.
+            name_words = set(re.split(r"[\s:,]+", name.lower()))
+            extra = [w for w in kw if w.lower() not in name_words and w.lower() != name.lower()]
+            emoji.append([char, name, "|".join(extra), max(0, len(groups) - 1), ev])
+
+    if not emoji:
+        sys.exit("folio-emoji: no emoji read from " + test)
+    tmp = args.out + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump({"version": version, "groups": groups, "emoji": emoji}, f, ensure_ascii=False, separators=(",", ":"))
+        f.write("\n")
+    os.replace(tmp, args.out)
+    print("folio-emoji: %d emoji (Unicode %s) -> %s" % (len(emoji), version, args.out))
+
+
+if __name__ == "__main__":
+    main()

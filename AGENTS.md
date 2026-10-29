@@ -7,11 +7,13 @@ desktop), a guided offline installer, and the desktop they run. Start with
 ## Where things are decided
 
 - `README.md`: systems, installer, the desktop's everyday features.
-- `DESIGN.md`: design system of the DMS session (Azure Folio).
-- `workshop/`: the desktop's direction. The target is Pond's look, Omarchy's
-  features and NixOS underneath. `workshop/README.md` is the process,
-  `workshop/parity.json` the state, `workshop/UPSTREAMS.md` the rules for
-  taking code and ideas from upstreams.
+- `DESIGN.md`: design system of the DMS session (Folio).
+- `workshop/`: the desktop's direction: one native, coherent desktop in one
+  design language, Folio. Never present Pond, Omarchy or other sources as
+  styles or looks; they are only where ideas came from. `workshop/README.md`
+  is the process and decisions, `workshop/taste.json` what is wanted and not,
+  `workshop/looks/` saved looks, `workshop/UPSTREAMS.md` the rules for taking
+  code and ideas from upstreams.
 - `docs/remote-workstation.md`: Bonhart runs unattended for weeks; read it
   before touching networking, SSH, Tailscale or power.
 
@@ -19,12 +21,17 @@ desktop), a guided offline installer, and the desktop they run. Start with
 
 - Commit messages carry no AI attribution: no `Co-Authored-By` or session
   trailers, no mention of the assistant.
-- DMS is the default session until the parity board says otherwise. Do not
-  remove it, Azure Folio or themeport before then.
-- Pond's code comes in through our forks (`MarianoMiguel/pond-interface`,
-  `MarianoMiguel/pond-vicinae`). NixOS plumbing belongs in
-  `packages/pond-interface.nix` (it fails the build on any unrewritten Arch
-  path); behaviour changes are small commits on the fork.
+- Two shells, one at a time: Folio (`dotfiles/quickshell/folio`, built from
+  the studies) and DMS, the fallback. `mariano-shell use folio|dms` switches
+  and remembers; niri starts the chosen one. Do not remove DMS, Folio's
+  palette (`azure-folio`) or themeport.
+- Folio shell work: read `dotfiles/quickshell/folio/README.md` (module
+  contract, design rules) and test only in `scripts/folio-harness`, never
+  against the live session.
+- Pond is a design reference only (`pond-preview`), not a session. Check
+  `workshop/taste.json` before proposing anything from Pond or Omarchy: a
+  `dislike` there is a decision.
+- Looks never change colors; colors belong to Folio's palette and themeport.
 - Never adopt runtime-downloaded code, Hyprland-only code, passwordless sudo,
   or unencrypted installs.
 - Don't propose a GNOME-only desktop; it was tried and reverted.
@@ -43,5 +50,7 @@ desktop), a guided offline installer, and the desktop they run. Start with
   gives `pond-preview`, Pond in a nested niri window. When running it on the
   live session over SSH, use an empty workspace, then close it and restore
   the previous focus.
+- `scripts/workshop look apply NAME` changes the owner's live session. Agents
+  save looks; they apply one only when asked.
 - `scripts/workshop capture <name> --host bonhart-agent --display wayland-N`
   screenshots a session into the current workshop version.

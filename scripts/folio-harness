@@ -1,0 +1,165 @@
+#!/usr/bin/env bash
+# Test harness for the Folio shell (dotfiles/quickshell/folio): a headless sway
+# with its own runtime directory and D-Bus session, so the shell can be run,
+# driven and screenshotted without touching the live desktop.
+#
+#   folio-harness start [WxH]      headless sway, 1920x1200 by default
+#   folio-harness run [MODULES]    start the shell; MODULES limits what loads,
+#                                  e.g. "Wallpaper,Bar" (all when omitted)
+#   folio-harness ipc TARGET FN [ARGS...]
+#                                  call the shell's IPC (qs ipc call)
+#   folio-harness shot FILE        screenshot the output
+#   folio-harness key KEYS...      type with wtype (e.g. "-k Return", "hello")
+#   folio-harness click X Y [BTN]  move the pointer and click (button1, button2, button3)
+#   folio-harness hover X Y        move the pointer
+#   folio-harness exec CMD...      run a command inside the harness environment
+#   folio-harness log              the shell's log
+#   folio-harness restart [MODULES]  stop the shell and run it again
+#   folio-harness stop             stop everything
+#
+# FOLIO_HARNESS_DIR picks the harness directory, so several harnesses can run
+# side by side (one per person or agent working on a module).
+set -euo pipefail
+
+ROOT=$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)
+SHELL_DIR=${FOLIO_SHELL_DIR:-$ROOT/dotfiles/quickshell/folio}
+H=${FOLIO_HARNESS_DIR:-${XDG_RUNTIME_DIR:-/tmp}/folio-harness}
+RUN=$H/run
+
+tool() {  # tool NAME ATTR: a binary from PATH or from nixpkgs
+  command -v "$1" 2>/dev/null && return
+  echo "$(nix build --no-link --print-out-paths "nixpkgs#$2" 2>/dev/null | tail -1)/bin/$1"
+}
+
+# The shell and everything its services started.
+stop_shell() {
+  [ -f "$H/qs.pid" ] || return 0
+  kill -- "-$(cat "$H/qs.pid")" 2>/dev/null || kill "$(cat "$H/qs.pid")" 2>/dev/null || true
+  rm -f "$H/qs.pid"
+}
+
+envfile() {
+  # shellcheck disable=SC1091
+  [ -f "$H/env" ] || { echo "folio-harness: not started" >&2; exit 1; }
+  . "$H/env"
+}
+
+# A module folder is loaded by URL, which Quickshell's scanner never visits;
+# a qmldir listing its files makes them types to each other. Generated here
+# and by the Nix package, never committed.
+module_qmldirs() {
+  local dir
+  for dir in "$SHELL_DIR"/Modules/*/; do
+    (cd "$dir" && shopt -s nullglob && for f in *.qml; do echo "${f%.qml} 1.0 $f"; done) >"$dir/qmldir"
+  done
+}
+
+compile_shaders() {
+  local qsb
+  qsb=$(tool qsb qt6.qtshadertools)
+  shopt -s nullglob
+  for frag in "$SHELL_DIR"/shaders/*.frag; do
+    local out="${frag}.qsb"
+    if [ ! -f "$out" ] || [ "$frag" -nt "$out" ]; then
+      "$qsb" --glsl "300 es,330" -o "$out" "$frag"
+    fi
+  done
+}
+
+# The launcher's emoji list (git-ignored), from Unicode's data in nixpkgs.
+emoji_data() {
+  local out="$SHELL_DIR/Modules/Launcher/emoji.json"
+  [ -f "$out" ] && [ "$out" -nt "$ROOT/scripts/folio-emoji" ] && return
+  "$(tool python3 python3)" -I "$ROOT/scripts/folio-emoji" "$out" >/dev/null || echo "folio-harness: no emoji list (scripts/folio-emoji failed)" >&2
+}
+
+case "${1:-}" in
+  start)
+    size=${2:-1920x1200}
+    [ -f "$H/sway.pid" ] && kill -0 "$(cat "$H/sway.pid")" 2>/dev/null && { echo "already running in $H"; exit 0; }
+    mkdir -p "$RUN"; chmod 700 "$RUN"
+    sway=$(tool sway sway)
+    dbus-daemon --session --fork --print-address=3 --print-pid=4 3>"$H/bus" 4>"$H/dbus.pid" --address="unix:path=$H/bus.sock"
+    cat > "$H/sway.conf" <<EOF
+output HEADLESS-1 resolution $size scale 1
+default_border none
+focus_follows_mouse no
+seat * hide_cursor 3000
+EOF
+    (env -i HOME="$HOME" PATH="$PATH" XDG_RUNTIME_DIR="$RUN" DBUS_SESSION_BUS_ADDRESS="$(cat "$H/bus")" \
+      WLR_BACKENDS=headless WLR_LIBINPUT_NO_DEVICES=1 "$sway" -c "$H/sway.conf" >"$H/sway.log" 2>&1 & echo $! >"$H/sway.pid")
+    for _ in $(seq 50); do [ -S "$RUN/wayland-1" ] && break; sleep 0.1; done
+    [ -S "$RUN/wayland-1" ] || { echo "sway did not start; see $H/sway.log" >&2; exit 1; }
+    cat > "$H/env" <<EOF
+export XDG_RUNTIME_DIR="$RUN" WAYLAND_DISPLAY=wayland-1 DBUS_SESSION_BUS_ADDRESS="$(cat "$H/bus")"
+export QT_QPA_PLATFORM=wayland XDG_CURRENT_DESKTOP=folio-harness FOLIO_HARNESS=1
+# Services read the real PipeWire; tests must not change volume. niri is
+# off unless FOLIO_HARNESS_NIRI=1 (read-only use of the live session's niri).
+[ "\${FOLIO_HARNESS_NIRI:-}" = 1 ] || unset NIRI_SOCKET
+# Services read the real PipeWire; tests must not change volume.
+export PIPEWIRE_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$UID}"
+EOF
+    echo "harness at $H ($size)"
+    ;;
+  run)
+    envfile
+    compile_shaders
+    emoji_data
+    module_qmldirs
+    export FOLIO_MODULES="${2:-}"
+    # Its own process group, so stopping it also stops what its services
+    # started (nmcli monitor, udevadm, gdbus).
+    nohup setsid qs -p "$SHELL_DIR" >"$H/qs.log" 2>&1 & echo $! >"$H/qs.pid"
+    sleep "${FOLIO_HARNESS_SETTLE:-2.5}"
+    if ! kill -0 "$(cat "$H/qs.pid")" 2>/dev/null; then echo "shell exited:"; tail -30 "$H/qs.log"; exit 1; fi
+    grep -E "WARN|ERROR|error|TypeError|ReferenceError|is not" "$H/qs.log" | grep -v "Fontconfig" | tail -20 || true
+    ;;
+  restart)
+    stop_shell
+    sleep 0.4
+    exec "$0" run "${2:-}"
+    ;;
+  ipc)
+    envfile; shift
+    qs ipc -p "$SHELL_DIR" call "$@"
+    ;;
+  shot)
+    envfile
+    grim "${2:?file}"
+    ;;
+  key)
+    envfile; shift
+    # Each call creates a virtual keyboard; give it time to bind before the
+    # first key (otherwise that key is lost) and pace the rest.
+    "$(tool wtype wtype)" -s 200 -d 15 "$@"
+    ;;
+  click|hover)
+    # Limited: the headless seat has no pointer device, so clients only see
+    # the pointer while a virtual one exists, and presses race with it. Drive
+    # interactions over IPC; check real clicks on a real session.
+    envfile
+    swaymsg=$(tool swaymsg sway)
+    sock=$(ls "$RUN"/sway-ipc.*.sock | head -1)
+    SWAYSOCK=$sock "$swaymsg" -q "seat seat0 cursor set $2 $3"
+    if [ "$1" = click ]; then
+      sleep 0.05
+      SWAYSOCK=$sock "$swaymsg" -q "seat seat0 cursor press ${4:-button1}"
+      SWAYSOCK=$sock "$swaymsg" -q "seat seat0 cursor release ${4:-button1}"
+    fi
+    ;;
+  exec)
+    envfile; shift
+    "$@"
+    ;;
+  log)
+    cat "$H/qs.log"
+    ;;
+  stop)
+    stop_shell
+    for p in sway dbus; do [ -f "$H/$p.pid" ] && kill "$(cat "$H/$p.pid")" 2>/dev/null || true; rm -f "$H/$p.pid"; done
+    rm -f "$H/env"
+    ;;
+  *)
+    sed -n '2,22p' "$0"
+    ;;
+esac

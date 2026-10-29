@@ -1,0 +1,35 @@
+// Keybinds for the Folio shell. mariano-shell copies this file to
+// ~/.config/niri/shell-binds.kdl when Folio is the shell (and empties it for
+// DMS); config.kdl includes it after DMS's binds, so these win.
+binds {
+    Mod+Space repeat=false hotkey-overlay-title="Search and Actions" { spawn "mariano-shell" "ipc" "launcher" "toggle"; }
+    Super+Period repeat=false hotkey-overlay-title="Search and Actions" { spawn "mariano-shell" "ipc" "launcher" "toggle"; }
+    Alt+Space repeat=false hotkey-overlay-title="Search and Actions" { spawn "mariano-shell" "ipc" "launcher" "open" ""; }
+    Mod+V repeat=false hotkey-overlay-title="Clipboard History" { spawn "mariano-shell" "ipc" "launcher" "open" "clip "; }
+    Mod+N repeat=false hotkey-overlay-title="Sidebar" { spawn "mariano-shell" "ipc" "sidebar" "toggle"; }
+    Mod+Ctrl+N repeat=false hotkey-overlay-title="Notifications" { spawn "mariano-shell" "ipc" "sidebar" "open" "notifications"; }
+    Mod+Comma repeat=false hotkey-overlay-title="Settings" { spawn "mariano-shell" "ipc" "settings" "toggle"; }
+    Mod+Y repeat=false hotkey-overlay-title="Wallpapers" { spawn "mariano-shell" "ipc" "settings" "open" "wallpaper"; }
+    // Mod+P mirrors to the KVM (DMS's binds); this steps through the layouts saved for the displays connected.
+    Mod+Ctrl+P repeat=false hotkey-overlay-title="Next Display Layout" { spawn "mariano-shell" "ipc" "displays" "cycle"; }
+    Super+X repeat=false hotkey-overlay-title="Power" { spawn "mariano-shell" "ipc" "sidebar" "open" "power"; }
+    Mod+Alt+L hotkey-overlay-title="Lock" { spawn "mariano-shell" "ipc" "lock" "lock"; }
+
+    XF86AudioRaiseVolume allow-when-locked=true { spawn "mariano-shell" "ipc" "osd" "volumeUp"; }
+    XF86AudioLowerVolume allow-when-locked=true { spawn "mariano-shell" "ipc" "osd" "volumeDown"; }
+    XF86AudioMute allow-when-locked=true { spawn "mariano-shell" "ipc" "osd" "mute"; }
+    XF86AudioMicMute allow-when-locked=true { spawn "mariano-shell" "ipc" "osd" "micMute"; }
+    XF86AudioPlay allow-when-locked=true { spawn "playerctl" "play-pause"; }
+    XF86AudioPause allow-when-locked=true { spawn "playerctl" "play-pause"; }
+    XF86AudioPrev allow-when-locked=true { spawn "playerctl" "previous"; }
+    XF86AudioNext allow-when-locked=true { spawn "playerctl" "next"; }
+    XF86MonBrightnessUp allow-when-locked=true { spawn "mariano-shell" "ipc" "osd" "brightnessUp"; }
+    XF86MonBrightnessDown allow-when-locked=true { spawn "mariano-shell" "ipc" "osd" "brightnessDown"; }
+}
+
+// Clamshell: with the lid closed and another display on, Folio turns the
+// built-in display off (Settings › Displays); it comes back when the lid opens.
+switch-events {
+    lid-close { spawn "mariano-shell" "ipc" "displays" "lid" "true"; }
+    lid-open { spawn "mariano-shell" "ipc" "displays" "lid" "false"; }
+}

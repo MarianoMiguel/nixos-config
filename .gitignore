@@ -10,3 +10,8 @@ __pycache__/
 .omo/
 hosts/*/storage.nix
 *.iso
+# Folio shell shaders are compiled by scripts/folio-harness and the Nix package.
+dotfiles/quickshell/folio/shaders/*.qsb
+dotfiles/quickshell/folio/Modules/*/qmldir
+# Built from nixpkgs' unicode-emoji and cldr-annotations by scripts/folio-emoji.
+dotfiles/quickshell/folio/Modules/Launcher/emoji.json

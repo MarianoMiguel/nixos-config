@@ -158,6 +158,11 @@ layer-rule {
     match namespace="^quickshell$"
     place-within-backdrop true
 }
+// Folio's living plate is the backdrop of the overview too.
+layer-rule {
+    match namespace="^folio:wallpaper$"
+    place-within-backdrop true
+}
 // Quality settings for niri's native blur (dual kawase). Blur only renders
 // where a window/layer rule (or the ext-background-effect protocol) asks
 // for it — see the catch-all background-effect window rule below.
@@ -184,7 +189,8 @@ environment {
   QT_QPA_PLATFORMTHEME "kde"
   QT_QPA_PLATFORMTHEME_QT6 "kde"
 }
-spawn-at-startup "systemctl" "--user" "start" "dms.service"
+// The shell: DMS or Folio, whichever mariano-shell last chose.
+spawn-at-startup "mariano-shell" "start"
 // LibrePods exposes AirPods battery and Apple-only controls through DMS's tray.
 spawn-at-startup "systemctl" "--user" "start" "librepods.service"
 // Wallpaper click surface (its own Quickshell instance on the Bottom layer):
@@ -338,8 +344,19 @@ include "dms/colors.kdl"
 include "dms/layout.kdl"
 include "dms/alttab.kdl"
 include "dms/binds.kdl"
-include "dms/outputs.kdl"
+// Folio's binds when Folio is the shell (empty for DMS); after DMS's, so they win.
+include optional=true "shell-binds.kdl"
+// The display layout of whichever shell runs: mariano-shell points this at
+// dms/outputs.kdl or at folio-outputs.kdl (written by Folio's Settings).
+include optional=true "shell-outputs.kdl"
+// Keyboard, mouse and touchpad preferences from Folio's Settings. Pointing
+// device sections replace the ones above whole, so Folio writes them complete.
+include optional=true "folio-input.kdl"
 include "dms/cursor.kdl"
+
+// The workshop's current look (window motion, shadows), written by
+// `scripts/workshop look apply`. Empty or missing means this file as is.
+include optional=true "look.kdl"
 
 // User-controlled layout toggles load last so they can temporarily override
 // DMS values without modifying DMS's generated files.

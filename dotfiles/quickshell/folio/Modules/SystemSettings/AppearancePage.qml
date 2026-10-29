@@ -1,0 +1,222 @@
+import QtQuick
+import QtQuick.Layouts
+import Quickshell
+import qs.Common
+import qs.Services
+import qs.Widgets
+import "../../Common/Sun.js" as Sun
+
+// Appearance: how the whole desktop looks (the Appearance study). Mode, ink
+// and plate go through azure-folio, which re-themes apps with themeport;
+// everything else is Folio's Settings. "Sunset" mode follows the sun at
+// Settings' weather place (SystemSettings runs it whether this page is open or not).
+SettingsPage {
+    id: page
+    title: "Appearance"
+    description: "How the whole desktop looks, in one place. Every change applies at once."
+
+    function folio(args) { Quickshell.execDetached(["azure-folio", "set"].concat(args)); }
+    function setMode(m) {
+        Settings.set("mode.auto", m === "sunset");
+        if (m !== "sunset" && m !== Theme.mode) folio(["--mode", m]);
+    }
+    readonly property var place: Settings.get("weather.place") || ["Campana", -34.16, -58.96]
+    readonly property string sunLine: {
+        const t = Sun.times(new Date(), place[1], place[2]);
+        if (!t) return "";
+        const f = d => d.toLocaleTimeString(Qt.locale("es_AR"), "HH:mm");
+        return "Dark from " + f(t.sunset) + " to " + f(t.sunrise) + " in " + place[0] + ".";
+    }
+
+    Item { Layout.preferredHeight: 10 }
+    Rectangle {
+        Layout.fillWidth: true; Layout.preferredHeight: width / 1.7; radius: 16; clip: true; color: Theme.wash
+        border.color: Theme.rule
+        MiniDesktop { anchors.fill: parent; anchors.margins: 1; breathe: Settings.get("plates.breathe") }
+        Rectangle { x: 12; anchors.bottom: parent.bottom; anchors.bottomMargin: 12; width: tag.implicitWidth + 20; height: 26; radius: 9; color: Theme.sheetStrong; border.color: Theme.rule
+            Cap { id: tag; anchors.centerIn: parent; text: { const p = Art.plate(Art.current); return p ? p.collectionName + " · " + p.title : ""; } } }
+    }
+
+    // Mode
+    Label { text: "Mode"; font.weight: Font.DemiBold; font.pixelSize: 15; Layout.topMargin: 28 }
+    Label { text: page.sunLine ? "Sunset follows the sun. " + page.sunLine : "Light, dark, or following the sun."; color: Theme.text2; font.pixelSize: Theme.fsS; Layout.fillWidth: true; Layout.bottomMargin: 10 }
+    RowLayout {
+        Layout.fillWidth: true; spacing: 10
+        Repeater {
+            model: [{ "id": "light", "t": "Light", "s": "Ink on paper" }, { "id": "dark", "t": "Dark", "s": "Moonlit plates on night" }, { "id": "sunset", "t": "Sunset", "s": "Light by day, dark at night" }]
+            OptionCard {
+                required property var modelData
+                title: modelData.t; subtitle: modelData.s
+                selected: modelData.id === "sunset" ? Settings.get("mode.auto") === true : (Settings.get("mode.auto") !== true && Theme.mode === modelData.id)
+                onChosen: page.setMode(modelData.id)
+                Plate { anchors.fill: parent; plate: Art.current; forceMode: modelData.id === "sunset" ? "light" : modelData.id; textureWidth: 960; developOnLoad: false }
+                // Sunset: the right half of the same plate at night.
+                Item {
+                    visible: modelData.id === "sunset"
+                    x: parent.width * 0.5; width: parent.width * 0.5; height: parent.height; clip: true
+                    Plate { x: -parent.x; width: parent.parent.width; height: parent.height; plate: Art.current; forceMode: "dark"; textureWidth: 960; developOnLoad: false }
+                }
+            }
+        }
+    }
+
+    // Ink
+    Label { text: "Ink"; font.weight: Font.DemiBold; font.pixelSize: 15; Layout.topMargin: 28 }
+    Label { text: "One ink for everything: art, controls, Chrome, the terminal."; color: Theme.text2; font.pixelSize: Theme.fsS; Layout.fillWidth: true; Layout.bottomMargin: 10 }
+    RowLayout {
+        Layout.fillWidth: true; spacing: 10
+        Repeater {
+            model: ["azure", "cobalt", "slate"]
+            OptionCard {
+                required property string modelData
+                title: modelData.charAt(0).toUpperCase() + modelData.slice(1)
+                previewRatio: 16 / 7
+                selected: Theme.inkName === modelData
+                onChosen: if (Theme.inkName !== modelData) page.folio(["--ink", modelData])
+                Row {
+                    anchors.fill: parent
+                    Rectangle { width: parent.width / 2; height: parent.height; color: Theme.inks[modelData][0]
+                        Cap { anchors { left: parent.left; bottom: parent.bottom; margins: 8 } text: Theme.inks[modelData][0]; color: "#f7f4e9" } }
+                    Rectangle { width: parent.width / 2; height: parent.height; color: "#101d33"
+                        Cap { anchors { left: parent.left; bottom: parent.bottom; margins: 8 } text: Theme.inks[modelData][1]; color: Theme.inks[modelData][1] } }
+                }
+            }
+        }
+    }
+
+    // Wallpaper
+    Label { text: "Wallpaper"; font.weight: Font.DemiBold; font.pixelSize: 15; Layout.topMargin: 32; Component.onCompleted: page.mark("wallpaper", this) }
+    Label { text: "A collection is a theme bundle: its plates and its lock art. Plates print in the current ink."; color: Theme.text2; font.pixelSize: Theme.fsS; Layout.fillWidth: true; Layout.bottomMargin: 10 }
+    GridLayout {
+        Layout.fillWidth: true; columns: 4; columnSpacing: 10; rowSpacing: 10
+        Repeater {
+            model: Art.collections
+            OptionCard {
+                required property var modelData
+                title: modelData.name; subtitle: modelData.description
+                previewRatio: 16 / 9
+                selected: Theme.selection.collection === modelData.id
+                onChosen: if (!selected) page.folio(["--collection", modelData.id, "--art", "0"])
+                Row {
+                    anchors.fill: parent; spacing: 4
+                    Repeater { model: modelData.art.slice(0, 2)
+                        Plate { required property var modelData; width: (parent.width - 4) / 2; height: parent.height; plate: modelData.id; textureWidth: 640; zoom: 1.6; developOnLoad: false } }
+                }
+            }
+        }
+    }
+    RowLayout {
+        Layout.fillWidth: true; Layout.topMargin: 10; spacing: 10
+        Repeater {
+            model: (Art.collections.find(c => c.id === Theme.selection.collection) || { "art": [] }).art
+            OptionCard {
+                required property var modelData
+                required property int index
+                title: modelData.title; subtitle: modelData.credit
+                selected: (Theme.selection.art || 0) === index
+                onChosen: if (!selected) page.folio(["--art", String(index)])
+                Plate { anchors.fill: parent; plate: modelData.id; textureWidth: 1280; developOnLoad: false }
+            }
+        }
+    }
+    Rectangle {
+        Layout.fillWidth: true; Layout.topMargin: 12; radius: Theme.rM; color: Theme.well; border.color: Theme.rule
+        implicitHeight: wpRows.implicitHeight
+        ColumnLayout {
+            id: wpRows; width: parent.width; spacing: 0
+            SettingRow { icon: "sparkle"; label: "Moving dither"; hint: "The plate keeps re-printing itself, in a quiet loop."
+                Toggle { checked: Settings.get("plates.breathe") > 0; onToggled: v => Settings.set("plates.breathe", v ? 1 : 0) } }
+            SettingRow { icon: "moon"; label: "Plates in dark mode"; hint: "Moonlit keeps the picture's tones; Negative prints it light on night."
+                Choice { options: [{ "value": "moonlit", "label": "Moonlit" }, { "value": "negative", "label": "Negative" }]; value: Settings.get("plates.dark"); onChosen: v => Settings.set("plates.dark", v) } }
+        }
+    }
+
+    // Motion
+    Label { text: "Motion"; font.weight: Font.DemiBold; font.pixelSize: 15; Layout.topMargin: 32; Component.onCompleted: page.mark("motion", this) }
+    Label { text: "How much the desktop moves."; color: Theme.text2; font.pixelSize: Theme.fsS; Layout.fillWidth: true; Layout.bottomMargin: 10 }
+    RowLayout {
+        Layout.fillWidth: true; spacing: 10
+        Repeater {
+            model: [{ "id": "full", "t": "Full", "s": "Develop, bleed, leaf, stamp", "ms": 520 }, { "id": "gentle", "t": "Gentle", "s": "Half the time, half the travel", "ms": 260 }, { "id": "still", "t": "Still", "s": "Changes cut; plates appear whole", "ms": 1 }]
+            OptionCard {
+                id: mcard
+                required property var modelData
+                title: modelData.t; subtitle: modelData.s
+                selected: Settings.get("motion") === modelData.id
+                onChosen: Settings.set("motion", modelData.id)
+                Rectangle { anchors.fill: parent; color: Theme.wash
+                    Rectangle { x: parent.width * 0.06; y: parent.height * 0.14; width: parent.width * 0.38; height: parent.height * 0.56; radius: 10; color: Theme.sheetBase; border.color: Theme.rule }
+                    Rectangle {
+                        id: demo
+                        y: parent.height * 0.1; height: parent.height * 0.8; width: parent.width * 0.46
+                        x: parent.width * 0.5; radius: 14; color: Theme.sheetStrong; border.color: Theme.rule
+                        transform: Rotation { id: rot; origin.x: demo.width; origin.y: demo.height / 2; axis { x: 0; y: 1; z: 0 } angle: 0 }
+                        Column { anchors.fill: parent; anchors.margins: 10; spacing: 6
+                            Rectangle { width: parent.width * 0.6; height: 8; radius: 4; color: Theme.ink }
+                            Repeater { model: 2; Rectangle { width: parent.width; height: 8; radius: 4; color: Theme.wellStrong } } }
+                    }
+                    HoverHandler { onHoveredChanged: if (hovered) play.restart() }
+                    SequentialAnimation {
+                        id: play
+                        ParallelAnimation {
+                            NumberAnimation { target: rot; property: "angle"; from: -18; to: 0; duration: mcard.modelData.ms; easing.type: Easing.BezierSpline; easing.bezierCurve: [0.2, 0, 0, 1, 1, 1] }
+                            NumberAnimation { target: demo; property: "opacity"; from: 0; to: 1; duration: mcard.modelData.ms }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Lock & screensaver
+    Label { text: "Lock & screensaver"; font.weight: Font.DemiBold; font.pixelSize: 15; Layout.topMargin: 32; Component.onCompleted: page.mark("lock", this) }
+    Label { text: "The screensaver is the plate, moving harder, with the clock drifting over it. Touch anything and it lifts away."; color: Theme.text2; font.pixelSize: Theme.fsS; Layout.fillWidth: true; Layout.bottomMargin: 10 }
+    Rectangle {
+        Layout.fillWidth: true; Layout.preferredHeight: width / 2.6; radius: 14; clip: true; color: Theme.paper; border.color: Theme.rule
+        Plate { anchors.fill: parent; anchors.margins: 1; plate: Art.current; breathe: 1; textureWidth: 1600; developOnLoad: false }
+        Rectangle {
+            id: drift
+            width: driftText.implicitWidth + 28; height: driftText.implicitHeight + 10; radius: 14; color: Theme.sheetStrong
+            Text { id: driftText; anchors.centerIn: parent; text: Qt.formatTime(clock.date, "HH:mm"); font.family: Theme.hero; font.pixelSize: 54; color: Theme.ink }
+            SequentialAnimation on x { loops: Animation.Infinite; NumberAnimation { from: 30; to: 420; duration: 26000; easing.type: Easing.InOutSine } NumberAnimation { from: 420; to: 30; duration: 26000; easing.type: Easing.InOutSine } }
+            SequentialAnimation on y { loops: Animation.Infinite; NumberAnimation { from: 20; to: 110; duration: 17000; easing.type: Easing.InOutSine } NumberAnimation { from: 110; to: 20; duration: 17000; easing.type: Easing.InOutSine } }
+        }
+        SystemClock { id: clock; precision: SystemClock.Minutes }
+    }
+    Rectangle {
+        Layout.fillWidth: true; Layout.topMargin: 12; radius: Theme.rM; color: Theme.well; border.color: Theme.rule
+        implicitHeight: lockRows.implicitHeight
+        ColumnLayout {
+            id: lockRows; width: parent.width; spacing: 0
+            SettingRow { icon: "sparkle"; label: "Start the screensaver after"
+                Choice { options: [{ "value": 0, "label": "Never" }, { "value": 120, "label": "2 min" }, { "value": 300, "label": "5 min" }, { "value": 600, "label": "10 min" }]; value: Settings.get("screensaver.after"); onChosen: v => Settings.set("screensaver.after", v) } }
+            SettingRow { icon: "battery"; label: "Lock on battery after"
+                Choice { options: [{ "value": 120, "label": "2 min" }, { "value": 300, "label": "5 min" }, { "value": 600, "label": "10 min" }]; value: Settings.get("idle.lockBattery"); onChosen: v => Settings.set("idle.lockBattery", v) } }
+            SettingRow { icon: "bolt"; label: "Lock when plugged in after"
+                Choice { options: [{ "value": 300, "label": "5 min" }, { "value": 600, "label": "10 min" }, { "value": 1800, "label": "30 min" }]; value: Settings.get("idle.lockAC"); onChosen: v => Settings.set("idle.lockAC", v) } }
+            SettingRow { icon: "moon"; label: "Hibernate on battery after"; hint: "The lock screen goes up first."
+                Choice { options: [{ "value": 900, "label": "15 min" }, { "value": 1800, "label": "30 min" }, { "value": 0, "label": "Never" }]; value: Settings.get("idle.hibernateBattery"); onChosen: v => Settings.set("idle.hibernateBattery", v) } }
+        }
+    }
+
+    // Desktop & dock
+    Label { text: "Desktop & dock"; font.weight: Font.DemiBold; font.pixelSize: 15; Layout.topMargin: 32; Component.onCompleted: page.mark("desktop", this) }
+    Label { text: "The island, the sidebar and the dock."; color: Theme.text2; font.pixelSize: Theme.fsS; Layout.fillWidth: true; Layout.bottomMargin: 10 }
+    Rectangle {
+        Layout.fillWidth: true; radius: Theme.rM; color: Theme.well; border.color: Theme.rule
+        implicitHeight: deskRows.implicitHeight
+        ColumnLayout {
+            id: deskRows; width: parent.width; spacing: 0
+            SettingRow { icon: "grid"; label: "Magnify the dock"
+                Toggle { checked: Settings.get("dock.magnify"); onToggled: v => Settings.set("dock.magnify", v) } }
+            SettingRow { icon: "image"; label: "App icons"; hint: "As shipped, on paper plates when not square, or printed in the ink."
+                Choice { options: [{ "value": "original", "label": "Original" }, { "value": "plated", "label": "Plated" }, { "value": "printed", "label": "Printed" }]; value: Settings.get("dock.icons"); onChosen: v => Settings.set("dock.icons", v) } }
+            SettingRow { icon: "sidebar"; label: "Sidebar opens from"
+                Choice { options: [{ "value": "left", "label": "Left" }, { "value": "right", "label": "Right" }]; value: Settings.get("sidebar.side"); onChosen: v => Settings.set("sidebar.side", v) } }
+            SettingRow { icon: "music"; label: "Live activities in the island"; hint: "Music, focus and recording rest there; volume and brightness always show."
+                Toggle { checked: Settings.get("island.live"); onToggled: v => Settings.set("island.live", v) } }
+            SettingRow { icon: "sparkle"; label: "Play the login"; hint: "Plate, bar, dock and windows arrive in sequence."
+                Toggle { checked: Settings.get("login.score"); onToggled: v => Settings.set("login.score", v) } }
+        }
+    }
+}

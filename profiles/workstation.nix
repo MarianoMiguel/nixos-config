@@ -14,6 +14,7 @@
     ../modules/nixos/niri-pip.nix
     ../modules/nixos/nix.nix
     ../modules/nixos/pond.nix
+    ../modules/nixos/folio-shell.nix
     ../modules/nixos/reminders.nix
     ../modules/nixos/system-actions.nix
     ../modules/nixos/themeport.nix

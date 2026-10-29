@@ -628,8 +628,9 @@ in
     librepods = {
       description = "LibrePods AirPods integration";
       partOf = [ "graphical-session.target" ];
-      wants = [ "dms.service" ];
-      after = [ "dms.service" ];
+      # Ordered after whichever shell runs (its tray is what ExecStartPre waits
+      # for); it must not pull DMS in, or switching to Folio would stop.
+      after = [ "dms.service" "folio-shell.service" ];
       unitConfig.ConditionEnvironment = "XDG_CURRENT_DESKTOP=niri";
       serviceConfig = {
         ExecStartPre = waitForStatusNotifierWatcher;

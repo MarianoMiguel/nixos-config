@@ -127,11 +127,14 @@ Scope {
         WlrLayershell.keyboardFocus: root.open ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
         // While closing, clicks already pass through to what is behind.
         mask: Region { item: root.open ? catcher : null }
-        // Frost only while settled: the leaf's curl cannot be a region. The
-        // region stays and goes empty, so niri is told "no blur" in the same
-        // commit; swapping it for null left the last frost behind.
-        BackgroundEffect.blurRegion: Region { item: root.settled ? sheet : null; radius: root.radius + frost.extra }
-        BlurNudge { id: frost; key: root.settled }
+        // Frost where the sheet lands, from a third of the way in (the curl
+        // itself cannot be a region, so the region follows an untransformed
+        // stand-in) until it starts to leave. The region stays and goes empty
+        // rather than being swapped for null, which left frost behind.
+        readonly property bool frosted: root.open && root.leaf > 35
+        BackgroundEffect.blurRegion: Region { item: win.frosted ? landing : null; radius: root.radius + frost.extra }
+        BlurNudge { id: frost; key: win.frosted }
+        Item { id: landing; x: page.x; y: page.y; width: page.width; height: page.height }
 
         // Outside the sheet: a click closes.
         MouseArea {

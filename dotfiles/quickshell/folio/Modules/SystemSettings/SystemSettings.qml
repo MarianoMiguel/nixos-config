@@ -40,7 +40,7 @@ Scope {
     readonly property var place: Settings.get("weather.place") || ["Campana", -34.16, -58.96]
     function applySun() {
         const want = Sun.isNight(new Date(), place[1], place[2]) ? "dark" : "light";
-        if (want !== Theme.mode) Quickshell.execDetached(["azure-folio", "set", "--mode", want]);
+        if (want !== Theme.mode) Theming.set({ "mode": want }, want + " mode");
     }
     Timer { interval: 60000; repeat: true; running: Settings.get("mode.auto") === true; triggeredOnStart: true; onTriggered: root.applySun() }
 
@@ -59,6 +59,8 @@ Scope {
         function toggle(): void { Shell.toggleSettings("appearance"); }
         function open(section: string): void { Shell.openSettings(section || "appearance"); }
         function close(): void { Shell.closeAll(); }
+        // Tests: choose mode, ink, collection or art as a click would.
+        function look(key: string, value: string): string { const p = {}; p[key] = key === "art" ? +value : value; Theming.set(p, value); return JSON.stringify({ "busy": Theming.busy, "pending": Theme.pending, "log": Sys.log.length }); }
     }
 
     LazyLoader {

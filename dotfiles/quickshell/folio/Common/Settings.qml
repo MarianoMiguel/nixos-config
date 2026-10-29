@@ -14,6 +14,7 @@ Singleton {
         "motion": "full",                       // full | gentle | still
         "dock.icons": "original",               // original | plated | printed
         "dock.magnify": true,
+        "dock.reserve": true,                   // windows stop above the dock
         "dock.pinned": ["org.gnome.Nautilus", "google-chrome", "com.mitchellh.ghostty", "spotify", "code"],
         "sidebar.side": "right",
         "world.cities": [["Campana", "America/Argentina/Buenos_Aires"], ["New York", "America/New_York"], ["Los Angeles", "America/Los_Angeles"], ["Sydney", "Australia/Sydney"]],

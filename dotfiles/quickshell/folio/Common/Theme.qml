@@ -10,7 +10,12 @@ Singleton {
     id: root
 
     readonly property string selectionPath: Quickshell.env("HOME") + "/.local/state/nixos-config/azure-folio/selection.json"
-    property var selection: ({})
+    // The selection azure-folio saved, with what was just chosen on top
+    // (Services/Theming sets `pending` at the click and azure-folio catches up
+    // seconds later), so Folio itself changes at once.
+    property var saved: ({})
+    property var pending: ({})
+    readonly property var selection: Object.assign({}, saved, pending)
     // Tests and previews can pin a mode or ink without touching the selection.
     property string forceMode: Quickshell.env("FOLIO_MODE") || ""
     property string forceInk: Quickshell.env("FOLIO_INK") || ""
@@ -20,7 +25,11 @@ Singleton {
         watchChanges: true
         onFileChanged: reload()
         onLoaded: {
-            try { root.selection = JSON.parse(text()); } catch (e) { console.warn("Theme: unreadable selection", e); }
+            try { root.saved = JSON.parse(text()); } catch (e) { console.warn("Theme: unreadable selection", e); return; }
+            // What azure-folio has now written is no longer pending.
+            const p = {};
+            for (const k in root.pending) if (root.saved[k] !== root.pending[k]) p[k] = root.pending[k];
+            root.pending = p;
         }
     }
 

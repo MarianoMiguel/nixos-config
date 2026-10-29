@@ -20,6 +20,7 @@ Item {
     property var probe: null
     property real base: 50
     property real gap: 8
+    property real corner: 0.3              // tile corner / icon size (the dock's concentric radius)
     property real s: 1
     property real appear: fresh ? 0 : 1
     readonly property real maxScale: 1.62
@@ -65,7 +66,7 @@ Item {
         anchors.bottomMargin: root.hop - spread
         width: root.size * root.press + spread * 2
         height: width
-        radius: root.size * root.press * 0.26 + spread
+        radius: root.size * root.press * root.corner + spread
         color: "transparent"
         border.width: spread
         border.color: Theme.rgba(Theme.ink, 0.4 * (1 - spread / 14))
@@ -89,6 +90,7 @@ Item {
             mode: root.mode
             shape: root.shape
             unit: root.maxScale
+            corner: root.corner
             probe: root.probe
         }
     }

@@ -90,7 +90,11 @@ PanelWindow {
     Rectangle {
         id: pill
         x: (win.width - width) / 2
-        y: 4
+        // Compact faces sit in the middle of the bar (34 px), with as much
+        // room above as below; taller ones (a message, the player) hang from
+        // the same 2 px inset as the 30 px faces.
+        readonly property real band: 34
+        y: height <= 30 ? (band - height) / 2 : 2
         width: win.size[0]
         height: win.size[1]
         radius: win.face === "player" ? Theme.rXl : win.size[1] / 2

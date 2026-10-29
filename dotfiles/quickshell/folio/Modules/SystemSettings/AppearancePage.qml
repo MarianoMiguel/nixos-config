@@ -13,12 +13,14 @@ import "../../Common/Sun.js" as Sun
 SettingsPage {
     id: page
     title: "Appearance"
-    description: "How the whole desktop looks, in one place. Every change applies at once."
+    description: Theming.busy
+        ? "Applying " + Theming.label + " to your apps: GTK, Qt, Chrome and the terminal follow in a moment."
+        : "How the whole desktop looks, in one place. Every change applies at once."
 
-    function folio(args) { Quickshell.execDetached(["azure-folio", "set"].concat(args)); }
+    // The desktop changes at the click; apps follow when azure-folio is done.
     function setMode(m) {
         Settings.set("mode.auto", m === "sunset");
-        if (m !== "sunset" && m !== Theme.mode) folio(["--mode", m]);
+        if (m !== "sunset" && m !== Theme.mode) Theming.set({ "mode": m }, m + " mode");
     }
     readonly property var place: Settings.get("weather.place") || ["Campana", -34.16, -58.96]
     readonly property string sunLine: {
@@ -48,6 +50,7 @@ SettingsPage {
                 required property var modelData
                 title: modelData.t; subtitle: modelData.s
                 selected: modelData.id === "sunset" ? Settings.get("mode.auto") === true : (Settings.get("mode.auto") !== true && Theme.mode === modelData.id)
+                busy: selected && Theming.busy && "mode" in Theme.pending
                 onChosen: page.setMode(modelData.id)
                 Plate { anchors.fill: parent; plate: Art.current; forceMode: modelData.id === "sunset" ? "light" : modelData.id; textureWidth: 960; developOnLoad: false }
                 // Sunset: the right half of the same plate at night.
@@ -72,7 +75,8 @@ SettingsPage {
                 title: modelData.charAt(0).toUpperCase() + modelData.slice(1)
                 previewRatio: 16 / 7
                 selected: Theme.inkName === modelData
-                onChosen: if (Theme.inkName !== modelData) page.folio(["--ink", modelData])
+                busy: selected && Theming.busy && "ink" in Theme.pending
+                onChosen: if (Theme.inkName !== modelData) Theming.set({ "ink": modelData }, title)
                 Row {
                     anchors.fill: parent
                     Rectangle { width: parent.width / 2; height: parent.height; color: Theme.inks[modelData][0]
@@ -96,7 +100,8 @@ SettingsPage {
                 title: modelData.name; subtitle: modelData.description
                 previewRatio: 16 / 9
                 selected: Theme.selection.collection === modelData.id
-                onChosen: if (!selected) page.folio(["--collection", modelData.id, "--art", "0"])
+                busy: selected && Theming.busy && "collection" in Theme.pending
+                onChosen: if (!selected) Theming.set({ "collection": modelData.id, "art": 0 }, modelData.name)
                 Row {
                     anchors.fill: parent; spacing: 4
                     Repeater { model: modelData.art.slice(0, 2)
@@ -114,7 +119,8 @@ SettingsPage {
                 required property int index
                 title: modelData.title; subtitle: modelData.credit
                 selected: (Theme.selection.art || 0) === index
-                onChosen: if (!selected) page.folio(["--art", String(index)])
+                busy: selected && Theming.busy && "art" in Theme.pending
+                onChosen: if (!selected) Theming.set({ "art": index }, "“" + modelData.title + "”")
                 Plate { anchors.fill: parent; plate: modelData.id; textureWidth: 1280; developOnLoad: false }
             }
         }
@@ -209,6 +215,8 @@ SettingsPage {
             id: deskRows; width: parent.width; spacing: 0
             SettingRow { icon: "grid"; label: "Magnify the dock"
                 Toggle { checked: Settings.get("dock.magnify"); onToggled: v => Settings.set("dock.magnify", v) } }
+            SettingRow { icon: "display"; label: "Keep windows clear of the dock"; hint: "Windows stop above it, as on a Mac. Off, they reach the bottom edge and the dock floats over them."
+                Toggle { checked: Settings.get("dock.reserve") !== false; onToggled: v => Settings.set("dock.reserve", v) } }
             SettingRow { icon: "image"; label: "App icons"; hint: "As shipped, on paper plates when not square, or printed in the ink."
                 Choice { options: [{ "value": "original", "label": "Original" }, { "value": "plated", "label": "Plated" }, { "value": "printed", "label": "Printed" }]; value: Settings.get("dock.icons"); onChosen: v => Settings.set("dock.icons", v) } }
             SettingRow { icon: "sidebar"; label: "Sidebar opens from"

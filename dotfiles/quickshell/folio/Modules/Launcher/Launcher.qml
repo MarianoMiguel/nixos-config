@@ -253,10 +253,10 @@ Scope {
                 () => { act("Focus.start(50)", () => Focus.start(50)); close(); }, "Focus · 50 min"),
             sys("dark", "Dark mode", "moon", "dark mode night theme appearance", "Switch", Theme.dark ? "Current" : "Appearance",
                 Theme.dark ? "The desktop is already dark." : "Night paper and moonlit plates. Apps follow.",
-                () => { sh(["azure-folio", "set", "--mode", "dark"]); close(); }, "azure-folio set --mode dark"),
+                () => { act("Theming.set(dark)", () => Theming.set({ "mode": "dark" }, "dark mode"), true); close(); }, "azure-folio set --mode dark"),
             sys("light", "Light mode", "sun", "light mode day theme appearance", "Switch", Theme.dark ? "Appearance" : "Current",
                 Theme.dark ? "Ink on paper. Apps follow." : "The desktop is already light.",
-                () => { sh(["azure-folio", "set", "--mode", "light"]); close(); }, "azure-folio set --mode light"),
+                () => { act("Theming.set(light)", () => Theming.set({ "mode": "light" }, "light mode"), true); close(); }, "azure-folio set --mode light"),
             sys("appearance", "Appearance…", "palette", "appearance settings theme ink mode wallpaper plates motion look", "Open", "Settings",
                 "Mode, ink, plates and motion, in one place.",
                 () => { act("Shell.openAppearance()", () => Shell.openAppearance(), true); }, "Folio · Appearance"),
@@ -301,7 +301,7 @@ Scope {
             const n = ((Theme.selection.art || 0) + 1) % col.art.length;
             list.push(Object.assign(sys("plate", "Next plate", "image", "next plate wallpaper background art picture shuffle", "Print", col.art[n].title,
                 "Prints “" + col.art[n].title + "” from " + col.name + ".",
-                () => { sh(["azure-folio", "set", "--art", String(n)]); close(); }, "azure-folio set --art " + n), { "plate": col.art[n].id }));
+                () => { act("Theming.set(art " + n + ")", () => Theming.set({ "art": n }, "“" + col.art[n].title + "”"), true); close(); }, "azure-folio set --art " + n), { "plate": col.art[n].id }));
         }
         list.push(Network.wifiOn
             ? sys("wifi", "Turn Wi-Fi off", "wifi", "wifi wi-fi wireless network internet radio off", "Turn off", Network.ssid || "On",

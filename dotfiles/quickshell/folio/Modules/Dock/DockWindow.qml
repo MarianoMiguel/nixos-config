@@ -7,8 +7,10 @@ import qs.Widgets
 
 // One screen's dock: 10 px from the bottom, 68 px tall, radius 24. Icons
 // are 50 px and shrink when there are many, so the dock (magnified too)
-// always fits. Magnification is a gaussian of the pointer's distance from
-// each icon's resting centre (up to 1.62 over ~105 px), eased every frame.
+// always fits. They sit 9 px in from every edge, and their tiles' corners
+// are the dock's less that inset (Theme.inner), so the curves are concentric.
+// Magnification is a gaussian of the pointer's distance from each icon's
+// resting centre (up to 1.62 over ~105 px), eased every frame.
 PanelWindow {
     id: win
 
@@ -16,20 +18,28 @@ PanelWindow {
 
     property var dock
     readonly property real gap: 8
-    readonly property real pad: 6                  // + half a gap = 10 px
+    readonly property real radius: 24
+    readonly property real inset: 9                // icon to dock edge, on every side
+    readonly property real pad: inset - gap / 2    // + half a gap = the inset
+    // Tile corners as a share of the icon: 15 px on a 50 px icon.
+    readonly property real corner: Theme.inner(radius, inset) / 50
     readonly property real sepSlot: 15             // rule 1 px, 3 px margins, a gap each side
     readonly property real maxScale: 1.62
 
     WlrLayershell.layer: WlrLayer.Top
     WlrLayershell.namespace: "folio:dock"
-    exclusionMode: ExclusionMode.Ignore
+    // Windows stop above the dock's band (10 px margin + 68 px), as on a Mac,
+    // unless Settings says they may run under it. Magnified icons still rise
+    // over windows. A zone of 0 reserves nothing.
+    exclusionMode: ExclusionMode.Normal
+    exclusiveZone: Settings.get("dock.reserve") !== false ? 78 : 0
     anchors { bottom: true; left: true; right: true }
     implicitHeight: 200
     color: "transparent"
     mask: Region { item: zone }
     BackgroundEffect.blurRegion: Region {
         item: sheet
-        radius: 24
+        radius: win.radius
         Region { item: tip.opacity > 0.5 ? tip : null; radius: Theme.rS }
     }
 
@@ -93,7 +103,7 @@ PanelWindow {
     // Input and hover: the sheet, plus whatever the icons grew above it.
     Item {
         id: zone
-        readonly property real grow: Math.max(0, win.base * win.peak + 9 - 68)
+        readonly property real grow: Math.max(0, win.base * win.peak + win.inset - 68)
         width: sheet.width
         x: Math.round((win.width - width) / 2)
         height: 68 + grow
@@ -110,13 +120,13 @@ PanelWindow {
             anchors.bottom: parent.bottom
             width: win.pad * 2 + row.width
             height: 68
-            radius: 24
+            radius: win.radius
         }
 
         Row {
             id: row
             x: win.pad
-            y: zone.height - 9 - win.base
+            y: zone.height - win.inset - win.base
             height: win.base
 
             Repeater {
@@ -124,6 +134,7 @@ PanelWindow {
                 model: win.dock.model
                 DockItem {
                     required property var model
+                    corner: win.corner
                     key: model.key
                     appId: model.appId
                     name: model.name
@@ -163,6 +174,7 @@ PanelWindow {
 
             DockItem {
                 id: launcher
+                corner: win.corner
                 key: "folio:settings"
                 name: "Settings"
                 icon: win.launcherIcon

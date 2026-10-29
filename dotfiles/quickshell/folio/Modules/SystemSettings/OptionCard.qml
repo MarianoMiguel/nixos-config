@@ -8,6 +8,7 @@ import qs.Widgets
 Item {
     id: root
     property bool selected: false
+    property bool busy: false               // chosen, still being applied: the tick turns
     property string title
     property string subtitle
     default property alias preview: thumb.data
@@ -41,7 +42,19 @@ Item {
         width: 22; height: 22; radius: 11; color: Theme.ink
         scale: root.selected ? 1 : 0
         Behavior on scale { SpringPress {} }
-        Icon { anchors.centerIn: parent; name: "check"; size: 13; stroke: 2.4; color: Theme.inkText }
+        Icon { anchors.centerIn: parent; name: "check"; size: 13; stroke: 2.4; color: Theme.inkText; opacity: root.busy ? 0 : 1
+               Behavior on opacity { NumberAnimation { duration: Theme.tQuick } } }
+        // Applying: an arc runs round the badge until the apps have caught up.
+        Rectangle {
+            anchors.centerIn: parent
+            width: 12; height: 12; radius: 6
+            color: "transparent"
+            border.width: 2; border.color: Theme.inkText
+            opacity: root.busy ? 1 : 0
+            Behavior on opacity { NumberAnimation { duration: Theme.tQuick } }
+            Rectangle { x: -2; y: -2; width: 8; height: 8; color: Theme.ink }
+            RotationAnimation on rotation { running: root.busy; loops: Animation.Infinite; from: 0; to: 360; duration: 800 }
+        }
     }
     MouseArea { id: press; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.chosen() }
 }

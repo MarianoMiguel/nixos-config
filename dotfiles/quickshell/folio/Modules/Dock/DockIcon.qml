@@ -15,6 +15,7 @@ Item {
     property string mode: "original"        // original | plated | printed
     property string shape: ""               // square | free | "" (not probed yet)
     property real unit: 1                   // pixels per logical pixel at rest
+    property real corner: 0.3               // tile corner / size, from the dock's radius and inset
     property var probe: null                // function(source): learn its shape
 
     readonly property bool missing: !source || img.status === Image.Error
@@ -38,7 +39,7 @@ Item {
         id: tile
         anchors.fill: parent
         visible: root.tiled
-        radius: width * 0.26
+        radius: width * root.corner
         color: Theme.sheetBase
         border.width: root.unit
         border.color: Theme.rule

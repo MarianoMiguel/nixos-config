@@ -467,6 +467,11 @@ in
           # palette, fonts and icon theme from here through the KDE platform
           # theme, so they follow Themeport like GTK does.
           "kdeglobals".source = mutableDotfile "themeport/kdeglobals";
+          # GTK 4 and libadwaita apps (Files, and with it the GNOME file
+          # chooser behind the portal) read the palette's colors here, light
+          # and dark in one file; GTK 3 apps get the current mode.
+          "gtk-4.0/gtk.css".source = mutableDotfile "themeport/gtk-4.0/gtk.css";
+          "gtk-3.0/gtk.css".source = mutableDotfile "themeport/gtk-3.0/gtk.css";
           # ChatGPT Community's omarchy-theme feature watches this conventional
           # path and reloads the generated palette in open windows.
           "omarchy/current/theme/codex-desktop.css".source =

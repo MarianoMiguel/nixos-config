@@ -102,8 +102,10 @@ themeport handle-url 'aether://apply?colors=https%3A%2F%2Fexample.com%2Fcolors.t
 | VS Code | theme's marketplace extension, else generated local extension; sets `workbench.colorTheme` | VS Code watches settings.json |
 | Wallpapers | copied to `~/Pictures/Wallpapers/themeport/<name>/`, best-effort DMS IPC | on apply |
 | Icons | `icons.theme` → gsettings + DMS settings (Yaru/Adwaita sets pre-installed) | on apply |
+| GTK 4 / libadwaita (Files, the GNOME file chooser behind the portal) | `gtk-4.0/gtk.css`: libadwaita's CSS variables, light at `:root`, dark under `prefers-color-scheme` | mode switches live; a new palette reaches newly started apps |
+| GTK 3 | `gtk-3.0/gtk.css`: `theme_*` and adw-gtk3 named colors for the current mode | next app start |
 | File pickers / portals | gsettings `color-scheme` (+ DMS `syncModeWithPortal`) | on apply |
-| Obsidian | `dotfiles/themeport/obsidian/themeport.css` (Omarchy tpl) | manual: copy into a vault's `.obsidian/snippets/` |
+| Obsidian | a theme named Folio (light and dark in one file) copied into every vault in `~/.config/obsidian/obsidian.json`; a vault with no theme chosen is switched to it (and DMS's `dms-colors` snippet turned off) | mode switches live with "Adapt to system"; a new palette when Obsidian reloads the theme |
 
 Not covered: Omarchy shell plugins (QML for their shell, not DMS) and anything
 richer than generated color theming in Chromium — Omarchy doesn't do more there

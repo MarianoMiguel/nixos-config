@@ -102,6 +102,14 @@ def validate_render(name: str, outdir: Path, expect_mode: str) -> None:
     check("{{" not in codex, f"{prefix} Codex desktop CSS has unresolved tokens")
     check(meta["background"] in codex, f"{prefix} Codex desktop CSS missed the background")
 
+    # GTK: libadwaita variables (not @define-color) and GTK 3 named colors.
+    gtk4 = (outdir / "gtk-4.0/gtk.css").read_text()
+    check(f"--window-bg-color: {meta['background']};" in gtk4, f"{prefix} gtk4 window color is not the background")
+    check(f"--accent-bg-color: {meta['accent']};" in gtk4, f"{prefix} gtk4 accent is not the accent")
+    check("@define-color" not in gtk4, f"{prefix} gtk4 uses @define-color, which libadwaita ignores")
+    gtk3 = (outdir / "gtk-3.0/gtk.css").read_text()
+    check(f"@define-color theme_bg_color {meta['background']};" in gtk3, f"{prefix} gtk3 theme_bg_color is not the background")
+
 
 def main() -> int:
     themes = sorted(p for p in FIXTURES.iterdir() if p.is_dir())
@@ -135,6 +143,53 @@ def main() -> int:
             check(dms["light"]["surface"] == latte.colors["background"], "[pair] light slot not latte")
         except Exception as exc:  # noqa: BLE001
             failures.append(f"[pair] blew up: {exc}")
+
+        # a pair puts light at :root and dark under prefers-color-scheme
+        try:
+            css = themeport.render_gtk4_css(tn, latte)
+            light_part, _, dark_part = css.partition("@media (prefers-color-scheme: dark)")
+            check(f"--window-bg-color: {latte.colors['background']};" in light_part, "[gtk-pair] light block is not latte")
+            check(f"--window-bg-color: {tn.colors['background']};" in dark_part, "[gtk-pair] dark block is not tokyo-night")
+            check(css == themeport.render_gtk4_css(latte, tn), "[gtk-pair] depends on which theme is current")
+        except Exception as exc:  # noqa: BLE001
+            failures.append(f"[gtk-pair] blew up: {exc}")
+
+        # Obsidian: one theme, light and dark blocks, installed into vaults;
+        # only a vault with no theme chosen is switched to it.
+        try:
+            css = themeport.render_obsidian_theme(tn, latte)
+            check(f"--background-primary: {latte.colors['background']};" in css.split(".theme-dark")[0], "[obsidian] light block is not latte")
+            check(f"--background-primary: {tn.colors['background']};" in css.split(".theme-dark")[1], "[obsidian] dark block is not tokyo-night")
+            import os
+            cfg = tmpdir / "obsidian-config"
+            state = tmpdir / "obsidian-state"
+            for rel, content in themeport.render_all(tn, latte).items():
+                (state / rel).parent.mkdir(parents=True, exist_ok=True)
+                (state / rel).write_text(content)
+            fresh, chosen = tmpdir / "vault-fresh", tmpdir / "vault-chosen"
+            for v, appearance in ((fresh, {"cssTheme": "", "enabledCssSnippets": ["dms-colors", "mine"]}),
+                                  (chosen, {"cssTheme": "Minimal", "enabledCssSnippets": ["dms-colors"]})):
+                (v / ".obsidian").mkdir(parents=True)
+                (v / ".obsidian/appearance.json").write_text(json.dumps(appearance))
+            (cfg / "obsidian").mkdir(parents=True)
+            (cfg / "obsidian/obsidian.json").write_text(json.dumps({"vaults": {"a": {"path": str(fresh)}, "b": {"path": str(chosen)}, "c": {"path": str(tmpdir / "gone")}}}))
+            old_env = os.environ.get("XDG_CONFIG_HOME")
+            os.environ["XDG_CONFIG_HOME"] = str(cfg)
+            try:
+                themeport.apply_obsidian(state)
+            finally:
+                if old_env is None:
+                    del os.environ["XDG_CONFIG_HOME"]
+                else:
+                    os.environ["XDG_CONFIG_HOME"] = old_env
+            a = json.loads((fresh / ".obsidian/appearance.json").read_text())
+            b = json.loads((chosen / ".obsidian/appearance.json").read_text())
+            check((fresh / ".obsidian/themes/Folio/theme.css").read_text() == css, "[obsidian] theme not installed")
+            check(a["cssTheme"] == "Folio" and a["enabledCssSnippets"] == ["mine"], f"[obsidian] fresh vault not switched: {a}")
+            check(b == {"cssTheme": "Minimal", "enabledCssSnippets": ["dms-colors"]}, f"[obsidian] chosen vault changed: {b}")
+            check((chosen / ".obsidian/themes/Folio/manifest.json").is_file(), "[obsidian] theme not offered in a vault with another theme")
+        except Exception as exc:  # noqa: BLE001
+            failures.append(f"[obsidian] blew up: {exc}")
 
         # same-mode pairing must be rejected
         try:

@@ -1,12 +1,15 @@
 import QtQuick
 import QtQuick.Effects
 import QtQuick.Window
+import Quickshell.Widgets
 import qs.Common
 import qs.Widgets
 
 // An app icon as the dock shows it: as shipped (original); on a paper tile
-// when it has no tile of its own (plated); in the ink (printed). Drawn at
-// the magnified size and scaled down, so it stays sharp when it grows.
+// (plated); on the tile and in the ink (printed). On a tile every icon sits
+// at the same inset; a square one is clipped to a corner concentric with the
+// tile's. Drawn at the magnified size and scaled down, so it stays sharp
+// when it grows.
 Item {
     id: root
     property string source
@@ -19,7 +22,8 @@ Item {
     property var probe: null                // function(source): learn its shape
 
     readonly property bool missing: !source || img.status === Image.Error
-    readonly property bool tiled: missing || (mode !== "original" && shape === "free")
+    readonly property bool tiled: missing || mode !== "original"
+    readonly property real inset: tiled ? width * 0.15 : 0
     readonly property bool printed: mode === "printed" && !missing
     readonly property real dpr: Screen.devicePixelRatio || 1
 
@@ -54,21 +58,33 @@ Item {
         }
     }
 
-    Image {
-        id: img
-        visible: false
+    // The icon as it will be drawn: on a tile, a square icon loses its own
+    // corners for the tile's less the inset (Theme.inner's rule).
+    Item {
+        id: art
         anchors.fill: parent
-        anchors.margins: root.tiled ? parent.width * 0.15 : 0
-        source: root.source
-        sourceSize: Qt.size(Math.round(root.width * root.dpr), Math.round(root.height * root.dpr))
-        fillMode: Image.PreserveAspectFit
-        asynchronous: true
-        smooth: true
-        mipmap: true
+        anchors.margins: root.inset
+        visible: false
+        layer.enabled: true
+        ClippingRectangle {
+            anchors.fill: parent
+            color: "transparent"
+            radius: root.tiled && root.shape === "square" ? Math.max(0, root.width * root.corner - root.inset) : 0
+            Image {
+                id: img
+                anchors.fill: parent
+                source: root.source
+                sourceSize: Qt.size(Math.round(root.width * root.dpr), Math.round(root.height * root.dpr))
+                fillMode: Image.PreserveAspectFit
+                asynchronous: true
+                smooth: true
+                mipmap: true
+            }
+        }
     }
     MultiEffect {
-        anchors.fill: img
-        source: img
+        anchors.fill: art
+        source: art
         visible: !root.printed && img.status === Image.Ready
         shadowEnabled: !root.tiled
         shadowColor: Theme.rgba(Theme.shade, 0.28)
@@ -77,9 +93,9 @@ Item {
         shadowHorizontalOffset: 0
     }
     ShaderEffect {
-        anchors.fill: img
+        anchors.fill: art
         visible: root.printed && img.status === Image.Ready
-        property var source: img
+        property var source: art
         // Light: ink on paper, mids pushed dark. Dark: the ink lifted toward
         // the text, mids pushed light, so colorful icons still read on night.
         property color lo: Theme.dark ? Theme.paper : Theme.ink

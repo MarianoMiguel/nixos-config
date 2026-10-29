@@ -63,7 +63,21 @@ Scope {
 
     function lookup(id) {
         if (!id) return null;
-        return DesktopEntries.byId(id) || DesktopEntries.heuristicLookup(id) || null;
+        const direct = DesktopEntries.byId(id) || DesktopEntries.heuristicLookup(id);
+        if (direct) return direct;
+        // Electron and Flatpak-style ids name the app last or in pieces:
+        // Obsidian's window is "md.obsidian.Obsidian", its entry "obsidian".
+        const parts = id.split(".");
+        for (let i = parts.length - 1; i >= 0; i--) {
+            const e = DesktopEntries.byId(parts.slice(i).join(".")) || DesktopEntries.byId(parts[i].toLowerCase());
+            if (e) return e;
+        }
+        // ...or extend the entry's window class ("md.Obsidian").
+        const low = id.toLowerCase();
+        return DesktopEntries.applications.values.find(e => {
+            const c = (e.startupClass || "").toLowerCase();
+            return c.length > 3 && (low.startsWith(c + ".") || low === c);
+        }) || null;
     }
     function iconFor(entry, id) {
         const name = entry && entry.icon ? entry.icon : "";
@@ -79,7 +93,7 @@ Scope {
         if (a === id.toLowerCase()) return true;
         if (!entry) return false;
         if (entry.id.toLowerCase() === a || (entry.startupClass || "").toLowerCase() === a) return true;
-        const h = DesktopEntries.heuristicLookup(appId);
+        const h = lookup(appId);
         return !!h && h.id === entry.id;
     }
     function item(key, id, entry, name, ids, pinned) {

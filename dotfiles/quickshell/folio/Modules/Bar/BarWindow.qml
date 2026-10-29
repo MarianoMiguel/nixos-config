@@ -165,7 +165,7 @@ PanelWindow {
             Layout.minimumWidth: 0
             leftPadding: 8; rightPadding: 8
             text: clock.date.toLocaleDateString(Qt.locale("en_GB"), "ddd d MMM")
-            color: Theme.text2
+            color: Theme.text
             SystemClock { id: clock; precision: SystemClock.Minutes }
         }
 

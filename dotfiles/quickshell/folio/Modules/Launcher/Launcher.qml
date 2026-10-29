@@ -12,8 +12,8 @@ import "Search.js" as Search
 // their actions, system actions, a calculator and unit conversions, files in
 // the home folder, emoji, clipboard history and the web, ranked together,
 // with a Quick Look preview of the selection. Prefixes narrow it: "clip ",
-// "f " (files), ":" or "emoji ". It grows from the centre on a spring; only
-// the first opening of a session prints in.
+// "f " (files), ":" or "emoji ". It grows from the centre on a spring, every
+// time: something opened this often should be quick, never printed in.
 Scope {
     id: root
 
@@ -665,7 +665,6 @@ Scope {
     // ---- Opening and closing
 
     property var targetScreen: Shell.screenFor(Quickshell.screens)
-    property bool printed: false            // the first opening has printed in
 
     onOpenChanged: {
         if (!open) { ctrlHeld = false; stopFiles(); return; }
@@ -677,7 +676,6 @@ Scope {
         else field.text = Shell.launcherQuery;      // runs setQuery
         field.cursorPosition = field.text.length;
         field.forceActiveFocus();
-        if (!printed) printer.printIn(Math.round(Theme.tDevelop * 0.6));
     }
     // Desktop entries load in the background; results catch up when they do.
     Connections {
@@ -731,7 +729,7 @@ Scope {
             x: Math.round((parent.width - width) / 2)
             y: Math.round(Math.max(24, (parent.height - height) * 0.4))
             opacity: root.open ? 1 : 0
-            scale: root.open ? 1 : (root.printed ? 0.965 : 0.92)
+            scale: root.open ? 1 : 0.965
             // Opacity settles in about 150 ms, so reopening feels instant.
             // "Still" motion cuts instead.
             Behavior on opacity { enabled: Theme.motion > 0.05; SpringAnimation { spring: 12; damping: 0.75; epsilon: 0.004 } }
@@ -746,12 +744,8 @@ Scope {
                 elevation: 1.4
             }
 
-            // The ink prints onto the sheet the first time (Widgets/Develop).
-            Develop {
-                id: printer
+            Item {
                 anchors.fill: parent
-                grain: 2
-                onFinished: root.printed = true
 
                 ColumnLayout {
                     anchors.fill: parent

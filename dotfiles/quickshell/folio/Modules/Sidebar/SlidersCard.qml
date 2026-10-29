@@ -60,7 +60,7 @@ SideCard {
                         radius: Theme.rS
                         sink: false
                         onClicked: if (!modelData.current) root.feed.useOutput(modelData)
-                        Rectangle { anchors.fill: parent; radius: parent.radius; color: out.hovered ? Theme.well : "transparent" }
+                        Rectangle { anchors.fill: parent; radius: out.radius; color: out.hovered ? Theme.well : "transparent" }
                         RowLayout {
                             anchors.fill: parent
                             anchors.leftMargin: 10

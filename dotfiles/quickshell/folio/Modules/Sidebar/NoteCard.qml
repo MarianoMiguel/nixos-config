@@ -40,6 +40,7 @@ Item {
     }
 
     component Avatar: ClippingRectangle {
+        id: avatar
         property var note
         implicitWidth: 30
         implicitHeight: 30
@@ -49,7 +50,7 @@ Item {
         Image {
             id: art
             anchors.fill: parent
-            source: parent.source
+            source: avatar.source
             sourceSize: Qt.size(60, 60)
             fillMode: Image.PreserveAspectCrop
             asynchronous: true

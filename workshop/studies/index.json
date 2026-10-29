@@ -1,3 +1,60 @@
 {
-  "studies": []
+  "studies": [
+    {
+      "id": "motion",
+      "title": "Motion language",
+      "version": 1,
+      "file": "motion/v1.html",
+      "date": "2026-10-28",
+      "notes": "Develop, dissolve, bleed, breathe, leaf, stamp, print-in, windows; the login score."
+    },
+    {
+      "id": "desktop",
+      "title": "Desktop: bar, sidebar, dock, windows",
+      "version": 1,
+      "file": "desktop/v1.html",
+      "date": "2026-10-28",
+      "notes": "First assembly; Chrome seeded from ink or paper."
+    },
+    {
+      "id": "desktop",
+      "title": "Desktop: island and widgets",
+      "version": 2,
+      "file": "desktop/v2.html",
+      "date": "2026-10-28",
+      "notes": "Island (music, focus, recording, volume notches); world clock, calendar, focus, quota."
+    },
+    {
+      "id": "desktop",
+      "title": "Desktop: real content",
+      "version": 3,
+      "file": "desktop/v3.html",
+      "date": "2026-10-28",
+      "notes": "Normal, Stress and Empty content; real app icons (original, plated, printed); privacy dots; fixed dock."
+    },
+    {
+      "id": "lockscreen",
+      "title": "Lock screen",
+      "version": 1,
+      "file": "lockscreen/v1.html",
+      "date": "2026-10-28",
+      "notes": "Art and page; cross grid prints per key; the page lifts away on unlock. Try “folio”."
+    },
+    {
+      "id": "controls",
+      "title": "Controls and inputs",
+      "version": 1,
+      "file": "controls/v1.html",
+      "date": "2026-10-28",
+      "notes": "Fields, menus, notched slider, choices, tokens, progress, shortcut, dialog on a halftone scrim."
+    },
+    {
+      "id": "appearance",
+      "title": "Settings: Appearance",
+      "version": 1,
+      "file": "appearance/v1.html",
+      "date": "2026-10-28",
+      "notes": "Mode, ink, collections and plates, motion, screensaver, lock, desktop and dock, app icons."
+    }
+  ]
 }

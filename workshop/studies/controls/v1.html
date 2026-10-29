@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="en" data-mode="light" data-ink="azure">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Folio Controls</title>
+<link rel="stylesheet" href="../_kit/folio.css">
+<style>
+  body { background: var(--paper); }
+  main { max-width: 1240px; margin: 0 auto; padding: 56px 16px 120px; }
+  header.top { display: grid; grid-template-columns: 1fr auto; gap: 8px 24px; align-items: end; margin-bottom: 36px; }
+  header.top h1 { font: 400 clamp(56px, 8vw, 104px)/0.85 var(--hero); color: var(--ink); margin: 8px 0 0; }
+  header.top p { margin: 10px 0 0; color: var(--text-2); max-width: 62ch; font-size: var(--fs-l); grid-column: 1 / -1; }
+  .specimens { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 12px; }
+  .spec { padding: 18px 18px 20px; display: flex; flex-direction: column; gap: 14px; border-radius: var(--r-l); background: var(--sheet-strong); box-shadow: var(--edge), var(--shadow-s); }
+  .spec > .cap { display: flex; justify-content: space-between; }
+  .spec .note { color: var(--text-3); font-size: 12px; margin-top: auto; }
+  .states { display: grid; gap: 12px; }
+
+  /* Fields */
+  .fld { display: grid; gap: 6px; }
+  .fld label { font-weight: 500; font-size: 12.5px; }
+  .fld .hint { font-size: 12px; color: var(--text-3); }
+  .fld .hint.err { color: var(--error); }
+  .input { position: relative; display: flex; align-items: center; gap: 8px; height: 38px; padding: 0 12px; border-radius: var(--r-s); background: var(--well);
+           box-shadow: inset 0 0 0 1px var(--rule); transition: box-shadow var(--t-quick) var(--ease), background-color var(--t-quick) var(--ease); }
+  .input input { flex: 1; min-width: 0; border: 0; outline: 0; background: none; height: 100%; caret-color: var(--ink); font-size: 14px; }
+  .input input::placeholder { color: var(--text-3); }
+  .input .i { color: var(--text-3); width: 17px; height: 17px; }
+  .input:focus-within { background: var(--sheet-strong); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--ink) 60%, transparent), 0 0 0 4px color-mix(in oklab, var(--ink) 14%, transparent); }
+  .input.error { box-shadow: inset 0 0 0 1px var(--error), 0 0 0 4px color-mix(in oklab, var(--error) 14%, transparent); }
+  .input.disabled { opacity: 0.5; pointer-events: none; }
+  .kbd { display: inline-flex; gap: 3px; }
+  .kbd kbd { font: 500 10.5px/1 var(--mono); padding: 4px 6px 3px; border-radius: 6px; background: var(--sheet-strong); color: var(--text-2);
+             box-shadow: inset 0 0 0 1px var(--rule-strong), 0 1.5px 0 var(--rule-strong); letter-spacing: 0.04em; }
+  .strength { display: flex; gap: 3px; }
+  .strength i { flex: 1; height: 4px; border-radius: 2px; background: var(--well-strong); transition: background-color var(--t-quick); }
+  .strength i.on { background: var(--ink); }
+  .eye-btn { border: 0; background: none; padding: 0; display: grid; cursor: pointer; color: var(--text-3); }
+
+  /* Select and menus print in from where they open. */
+  .select { position: relative; }
+  .select > button { width: 100%; justify-content: space-between; height: 38px; }
+  .menu { position: absolute; z-index: 20; min-width: 220px; padding: 6px; border-radius: 14px; display: none; --spine: top; }
+  .menu.open { display: block; }
+  .menu .item { display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 10px; border-radius: 8px; cursor: pointer; white-space: nowrap; }
+  .menu .item:hover, .menu .item.active { background: var(--ink); color: var(--on-ink); }
+  .menu .item:hover .kbd kbd, .menu .item.active .kbd kbd { background: transparent; color: inherit; box-shadow: inset 0 0 0 1px currentColor; }
+  .menu .item .check { width: 16px; height: 16px; visibility: hidden; }
+  .menu .item[aria-selected="true"] .check { visibility: visible; }
+  .menu .item .kbd { margin-left: auto; }
+  .menu .item.danger { color: var(--error); }
+  .menu .item.danger:hover { background: var(--error); color: #fff; }
+  .menu hr { border: 0; height: 1px; background: var(--rule); margin: 5px 6px; }
+  .menu .i { width: 16px; height: 16px; }
+
+  /* Stepper */
+  .stepper { display: inline-flex; align-items: center; border-radius: var(--r-s); background: var(--well); box-shadow: inset 0 0 0 1px var(--rule); }
+  .stepper button { width: 36px; height: 36px; border: 0; background: none; cursor: pointer; display: grid; place-items: center; color: var(--ink); }
+  .stepper output { min-width: 64px; text-align: center; font: 600 15px var(--ui); font-variant-numeric: tabular-nums; }
+
+  /* Notched slider */
+  .nslider { position: relative; height: 44px; touch-action: none; cursor: pointer; }
+  .nslider .rail { position: absolute; left: 0; right: 0; top: 20px; height: 4px; border-radius: 2px; background: var(--well-strong); }
+  .nslider .fill { position: absolute; left: 0; top: 20px; height: 4px; border-radius: 2px; background: var(--ink); }
+  .nslider .ticks { position: absolute; left: 0; right: 0; top: 30px; display: flex; justify-content: space-between; }
+  .nslider .ticks i { width: 1px; height: 6px; background: var(--rule-strong); }
+  .nslider .ticks i.major { height: 10px; background: var(--text-3); }
+  .nslider .knob { position: absolute; top: 12px; width: 20px; height: 20px; margin-left: -10px; border-radius: 50%; background: var(--sheet-base);
+                   box-shadow: 0 0 0 1px var(--rule-strong), 0 2px 6px rgba(var(--shade), 0.25); transition: left 260ms var(--spring), transform var(--t-press) var(--spring); }
+  .nslider.drag .knob { transform: scale(1.15); }
+  .nslider .bubble { position: absolute; top: -18px; translate: -50% 0; padding: 3px 8px; border-radius: 7px; background: var(--ink); color: var(--on-ink); font: 600 11.5px var(--mono);
+                     opacity: 0; transition: opacity var(--t-quick), left 260ms var(--spring); pointer-events: none; }
+  .nslider.drag .bubble { opacity: 1; }
+
+  /* Checks and radios */
+  .choice { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+  .box { width: 20px; height: 20px; border-radius: 6px; display: grid; place-items: center; background: var(--well); box-shadow: inset 0 0 0 1.5px var(--rule-strong);
+         transition: background-color var(--t-quick) var(--ease), box-shadow var(--t-quick); flex: none; }
+  .box svg { width: 14px; height: 14px; stroke: var(--on-ink); stroke-width: 2.4; fill: none; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 20; stroke-dashoffset: 20; transition: stroke-dashoffset 260ms var(--ease) 60ms; }
+  input:checked + .box { background: var(--ink); box-shadow: none; }
+  input:checked + .box svg { stroke-dashoffset: 0; }
+  .radio { border-radius: 50%; }
+  .radio::after { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--on-ink); transform: scale(0); transition: transform 300ms var(--spring); }
+  input:checked + .radio::after { transform: scale(1); }
+  .choice input { position: absolute; opacity: 0; pointer-events: none; }
+  .choice input:focus-visible + .box { outline: 2px solid color-mix(in oklab, var(--ink) 70%, transparent); outline-offset: 2px; }
+  .choice small { display: block; color: var(--text-3); font-size: 12px; }
+
+  /* Tokens / chips input */
+  .tokens { display: flex; flex-wrap: wrap; gap: 6px; padding: 6px; min-height: 42px; border-radius: var(--r-s); background: var(--well); box-shadow: inset 0 0 0 1px var(--rule); cursor: text; }
+  .tokens:focus-within { background: var(--sheet-strong); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--ink) 60%, transparent), 0 0 0 4px color-mix(in oklab, var(--ink) 14%, transparent); }
+  .token { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 6px 0 10px; border-radius: 8px; background: var(--ink); color: var(--on-ink); font-weight: 500; font-size: 12.5px; }
+  .token button { width: 18px; height: 18px; border: 0; border-radius: 5px; background: color-mix(in oklab, var(--on-ink) 18%, transparent); color: inherit; display: grid; place-items: center; cursor: pointer; padding: 0; }
+  .token button .i { width: 12px; height: 12px; }
+  .tokens input { flex: 1; min-width: 80px; border: 0; outline: 0; background: none; height: 28px; caret-color: var(--ink); }
+
+  /* Progress */
+  .lin { height: 6px; border-radius: 3px; background: var(--well-strong); overflow: hidden; }
+  .lin i { display: block; height: 100%; width: 0; border-radius: 3px; background: var(--ink); transition: width 600ms var(--ease); }
+  /* Indeterminate: a band of halftone ink travels through, the press at work. */
+  .printing { height: 6px; border-radius: 3px; background: var(--well-strong); overflow: hidden; position: relative; }
+  .printing::after { content: ""; position: absolute; inset: 0; width: 45%; background-image: radial-gradient(var(--ink) 1px, transparent 1.2px); background-size: 3px 3px;
+                     -webkit-mask-image: linear-gradient(90deg, transparent, #000 30%, #000 70%, transparent); mask-image: linear-gradient(90deg, transparent, #000 30%, #000 70%, transparent);
+                     animation: press 1.4s var(--ease) infinite; }
+  @keyframes press { from { transform: translateX(-110%); } to { transform: translateX(240%); } }
+  .rings { display: flex; gap: 18px; align-items: center; }
+  .rings svg { width: 44px; height: 44px; }
+  .rings .bg { fill: none; stroke: var(--well-strong); stroke-width: 4; }
+  .rings .fg { fill: none; stroke: var(--ink); stroke-width: 4; stroke-linecap: round; transform: rotate(-90deg); transform-origin: center; transition: stroke-dashoffset 600ms var(--ease); }
+  .rings .spin { animation: spin 1.1s linear infinite; transform-origin: center; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Context menu area and dialog */
+  .canvas-area { height: 120px; border-radius: var(--r-m); display: grid; place-items: center; color: var(--text-3); background:
+                 repeating-linear-gradient(45deg, transparent 0 8px, color-mix(in oklab, var(--ink) 5%, transparent) 8px 9px), var(--wash); box-shadow: inset 0 0 0 1px var(--rule); cursor: context-menu; }
+  #ctx { position: fixed; --spine: left; }
+  .scrim { position: fixed; inset: 0; z-index: 50; display: none; place-items: center;
+           background-image: radial-gradient(rgba(var(--shade), 0.55) 1px, transparent 1.25px); background-size: 3px 3px; background-color: rgba(var(--shade), 0.12); }
+  .scrim.open { display: grid; }
+  .dialog { width: min(400px, calc(100vw - 32px)); padding: 22px; border-radius: 22px; display: grid; gap: 14px; }
+  .dialog h3 { margin: 0; font-size: 17px; }
+  .dialog p { margin: 0; color: var(--text-2); }
+  .dialog .acts { display: flex; justify-content: end; gap: 8px; margin-top: 4px; }
+  .btn.danger { background: var(--error); color: #fff; box-shadow: none; }
+
+  .tipped { position: relative; }
+  .tipped .tip { position: absolute; left: 50%; bottom: calc(100% + 8px); translate: -50% 0; padding: 6px 10px; border-radius: 8px; white-space: nowrap; display: none; z-index: 5; }
+  .tipped:hover .tip, .tipped:focus-visible .tip { display: block; }
+  .row-of { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .swatches { display: flex; gap: 12px; }
+  .sw { width: 40px; height: 40px; border-radius: 50%; border: 0; cursor: pointer; position: relative; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12); transition: transform var(--t-press) var(--spring); }
+  .sw[aria-pressed="true"]::after { content: ""; position: absolute; inset: -5px; border-radius: 50%; box-shadow: 0 0 0 2px var(--ink); }
+  .study-bar { left: auto; right: 16px; transform: none; }
+</style>
+</head>
+<body>
+<main>
+  <header class="top">
+    <div><span class="cap">Workshop · Controls and inputs · v1</span><h1>Controls</h1></div>
+    <span></span>
+    <p>Every control the desktop needs, in every state. One field, one menu, one slider, one dialog, used by every screen, so nothing is designed twice and everything moves the same way: popovers print in from where they open, choices stamp, values snap with a spring.</p>
+  </header>
+
+  <section class="specimens">
+    <div class="spec"><span class="cap">Text field <span>default · focus · error · disabled</span></span>
+      <div class="states">
+        <div class="fld"><label for="f1">Computer name</label><div class="input"><input id="f1" value="bonhart"></div><span class="hint">Shown on the network and the lock screen.</span></div>
+        <div class="fld"><label for="f2">Email</label><div class="input error"><input id="f2" value="mariano@"></div><span class="hint err">Add a domain after the @.</span></div>
+        <div class="fld"><label>Hostname</label><div class="input disabled"><input value="bonhart.local" disabled></div></div>
+      </div></div>
+
+    <div class="spec"><span class="cap">Search and secrets</span>
+      <div class="states">
+        <div class="input">${search}<input placeholder="Search settings, apps, files"><span class="kbd"><kbd>Super</kbd><kbd>Space</kbd></span></div>
+        <div class="fld"><label for="pw">New password</label><div class="input"><input id="pw" type="password" value="tango" autocomplete="off"><button class="eye-btn" id="eye" aria-label="Show password">${eye}</button></div>
+          <div class="strength" id="strength"><i></i><i></i><i></i><i></i></div><span class="hint" id="strength-label">Weak · add length</span></div>
+      </div></div>
+
+    <div class="spec"><span class="cap">Select <span>menu prints in</span></span>
+      <div class="fld"><label>Lock after</label>
+        <div class="select" id="sel"><button class="btn" id="sel-btn"><span id="sel-val">5 minutes</span>${down}</button>
+          <div class="menu sheet strong" id="sel-menu" role="listbox">
+            <div class="item" role="option" aria-selected="false">${check}1 minute</div>
+            <div class="item" role="option" aria-selected="false">${check}2 minutes</div>
+            <div class="item" role="option" aria-selected="true">${check}5 minutes</div>
+            <div class="item" role="option" aria-selected="false">${check}10 minutes</div>
+            <hr><div class="item" role="option" aria-selected="false">${check}Never on AC</div>
+          </div></div></div>
+      <span class="note">Opens from its button, leafing down; arrow keys move, Enter chooses.</span></div>
+
+    <div class="spec"><span class="cap">Stepper and notched slider</span>
+      <div class="row-of"><span style="flex: 1">Window gaps</span><div class="stepper"><button id="minus" aria-label="Less">−</button><output id="gaps" class="num">12 px</output><button id="plus" aria-label="More">+</button></div></div>
+      <div class="fld"><label>Corner radius</label><div class="nslider" id="ns" role="slider" aria-valuemin="0" aria-valuemax="20" tabindex="0"><span class="rail"></span><span class="fill"></span><span class="ticks"></span><span class="knob"></span><span class="bubble"></span></div></div>
+      <span class="note">Snaps to notches every 2 px, with a spring. The value shows while you drag.</span></div>
+
+    <div class="spec"><span class="cap">Choices</span>
+      <div class="states">
+        <label class="choice"><input type="checkbox" checked><span class="box"><svg viewBox="0 0 16 16"><path d="M3.5 8.5l3 3 6-7"/></svg></span><span>Show seconds<small>In the bar and the island</small></span></label>
+        <label class="choice"><input type="checkbox"><span class="box"><svg viewBox="0 0 16 16"><path d="M3.5 8.5l3 3 6-7"/></svg></span><span>Play the login score<small>Plate, bar, dock, windows</small></span></label>
+        <label class="row" style="padding: 0; min-height: 0"><span class="grow">Breathe the wallpaper</span><input class="switch" type="checkbox" checked></label>
+        <div class="row-of"><label class="choice"><input type="radio" name="r" checked><span class="box radio"></span>Moonlit</label><label class="choice"><input type="radio" name="r"><span class="box radio"></span>Negative</label></div>
+        <div class="seg" id="seg"><button data-value="2" aria-pressed="false">2 min</button><button data-value="5" aria-pressed="true">5 min</button><button data-value="10" aria-pressed="false">10 min</button></div>
+      </div></div>
+
+    <div class="spec"><span class="cap">Tokens <span>type, Enter to add</span></span>
+      <div class="fld"><label>World clock</label><div class="tokens" id="tokens"><input id="tok-in" placeholder="Add a city"></div></div>
+      <span class="note">Each city prints in as a token; Backspace lifts the last one.</span></div>
+
+    <div class="spec"><span class="cap">Progress</span>
+      <div class="states">
+        <div class="fld"><label>Updating NixOS · 3 of 5</label><div class="lin"><i id="lin"></i></div></div>
+        <div class="fld"><label>Building the system</label><div class="printing"></div><span class="hint">Indeterminate: a band of halftone travels through, the press at work.</span></div>
+        <div class="rings"><svg viewBox="0 0 44 44"><circle class="bg" cx="22" cy="22" r="18"/><circle class="fg" id="ring" cx="22" cy="22" r="18" stroke-dasharray="113.1" stroke-dashoffset="113.1"/></svg>
+          <svg viewBox="0 0 44 44"><circle class="bg" cx="22" cy="22" r="18"/><circle class="fg spin" cx="22" cy="22" r="18" stroke-dasharray="28 85.1"/></svg><button class="btn" id="rerun">Run again</button></div>
+      </div></div>
+
+    <div class="spec"><span class="cap">Ink picker</span>
+      <div class="swatches" id="swatches">
+        <button class="sw tipped" data-ink="azure" aria-pressed="true" style="background: #214c94"><span class="tip sheet cap">Azure</span></button>
+        <button class="sw tipped" data-ink="cobalt" aria-pressed="false" style="background: #244fb8"><span class="tip sheet cap">Cobalt</span></button>
+        <button class="sw tipped" data-ink="slate" aria-pressed="false" style="background: #35556e"><span class="tip sheet cap">Slate</span></button>
+      </div>
+      <span class="note">Choosing an ink bleeds it from the swatch across this whole page.</span></div>
+
+    <div class="spec"><span class="cap">Shortcut</span>
+      <div class="row-of"><span style="flex: 1">Toggle sidebar</span><button class="btn" id="rec-btn"><span class="kbd" id="rec-keys"><kbd>Super</kbd><kbd>N</kbd></span></button></div>
+      <span class="note">Click, then press keys; the caps print as you hold them.</span></div>
+
+    <div class="spec"><span class="cap">Context menu and dialog</span>
+      <div class="canvas-area" id="area">Right-click here</div>
+      <button class="btn danger stamp" id="ask">Delete 2 saved looks…</button>
+      <span class="note">Menus print from the cursor. Dialogs sit on a halftone scrim, never flat black.</span></div>
+  </section>
+</main>
+
+<div class="menu sheet strong" id="ctx" role="menu">
+  <div class="item">${image}Set as wallpaper<span class="kbd"><kbd>W</kbd></span></div>
+  <div class="item">${palette}Appearance…</div>
+  <div class="item">${sidebar}Show sidebar<span class="kbd"><kbd>Super</kbd><kbd>N</kbd></span></div>
+  <hr><div class="item">${grid}New workspace<span class="kbd"><kbd>Super</kbd><kbd>T</kbd></span></div>
+  <hr><div class="item danger">${close}Close window<span class="kbd"><kbd>Super</kbd><kbd>Q</kbd></span></div>
+</div>
+<div class="scrim" id="scrim"><div class="dialog sheet strong" role="dialog" aria-modal="true" aria-labelledby="dlg-t">
+  <span class="cap">Looks</span><h3 id="dlg-t">Delete 2 saved looks?</h3><p>“mine” and “before” leave workshop/looks/. Git keeps them if you have committed.</p>
+  <div class="acts"><button class="btn" id="cancel">Cancel</button><button class="btn danger stamp" id="confirm">Delete</button></div></div></div>
+
+<div class="study-bar sheet">
+  <div class="seg" id="mode"><button data-value="light" aria-pressed="true">Light</button><button data-value="dark" aria-pressed="false">Dark</button></div>
+  <a class="btn ghost" href="../../index.html">Workshop</a>
+</div>
+
+<script src="../_kit/folio.js"></script>
+<script>
+  const $ = (s) => document.querySelector(s);
+  document.querySelectorAll(".input, .menu .item, button, .select button").forEach((el) => {
+    el.innerHTML = el.innerHTML.replace(/\$\{(\w+)\}/g, (_, n) => Folio.icon(n, n === "check" ? "check" : ""));
+  });
+
+  // Password strength in four notches.
+  const pw = $("#pw");
+  const strength = () => {
+    const v = pw.value, score = Math.min(4, (v.length >= 8) + (v.length >= 12) + /[0-9]/.test(v) + /[^a-z0-9]/i.test(v) + (v.length > 3));
+    $("#strength").querySelectorAll("i").forEach((n, i) => n.classList.toggle("on", i < score));
+    $("#strength-label").textContent = ["Too short", "Weak · add length", "Fair · add a symbol", "Good", "Strong"][score];
+  };
+  pw.addEventListener("input", strength); strength();
+  $("#eye").addEventListener("click", () => { pw.type = pw.type === "password" ? "text" : "password"; });
+
+  // Menus: leaf in from their spine, items cascade, keyboard works.
+  function openMenu(menu, at) {
+    menu.classList.remove("leaf-out");
+    menu.classList.add("open", "leaf-in");
+    if (at) { menu.style.left = `${Math.min(at.x, innerWidth - 240)}px`; menu.style.top = `${Math.min(at.y, innerHeight - 220)}px`; }
+    Folio.cascade(menu, 40);
+    Folio.develop(menu, { duration: 240, grain: 0.7 });
+  }
+  function closeMenu(menu) { if (!menu.classList.contains("open")) return; menu.classList.remove("leaf-in", "open"); }
+  const sel = $("#sel-menu");
+  sel.style.top = "44px"; sel.style.left = "0"; sel.style.right = "0";
+  $("#sel-btn").addEventListener("click", () => sel.classList.contains("open") ? closeMenu(sel) : openMenu(sel));
+  sel.querySelectorAll(".item").forEach((item) => item.addEventListener("click", () => {
+    sel.querySelectorAll(".item").forEach((x) => x.setAttribute("aria-selected", x === item));
+    $("#sel-val").textContent = item.textContent.trim();
+    closeMenu(sel);
+    Folio.develop($("#sel-val"), { duration: 300 });
+  }));
+  document.addEventListener("pointerdown", (e) => {
+    if (!e.target.closest("#sel")) closeMenu(sel);
+    if (!e.target.closest("#ctx")) closeMenu($("#ctx"));
+  });
+  $("#area").addEventListener("contextmenu", (e) => { e.preventDefault(); openMenu($("#ctx"), { x: e.clientX, y: e.clientY }); });
+  $("#ctx").querySelectorAll(".item").forEach((i) => i.addEventListener("click", () => closeMenu($("#ctx"))));
+
+  // Stepper
+  let gaps = 12;
+  const setGaps = (d) => { gaps = Math.max(0, Math.min(32, gaps + d)); $("#gaps").textContent = `${gaps} px`; Folio.develop($("#gaps"), { duration: 220, grain: 1 }); };
+  $("#minus").addEventListener("click", () => setGaps(-2));
+  $("#plus").addEventListener("click", () => setGaps(2));
+
+  // Notched slider, 0..20 in steps of 2.
+  const ns = $("#ns"), MAX = 20, STEP = 2;
+  ns.querySelector(".ticks").innerHTML = Array.from({ length: MAX / STEP + 1 }, (_, i) => `<i class="${i % 5 === 0 ? "major" : ""}"></i>`).join("");
+  let val = 14;
+  const paint = () => {
+    const pct = (val / MAX) * 100;
+    ns.querySelector(".knob").style.left = `${pct}%`;
+    ns.querySelector(".fill").style.width = `${pct}%`;
+    ns.querySelector(".bubble").style.left = `${pct}%`;
+    ns.querySelector(".bubble").textContent = `${val} px`;
+    ns.setAttribute("aria-valuenow", val);
+  };
+  const fromX = (x) => { const r = ns.getBoundingClientRect(); val = Math.round(Math.max(0, Math.min(1, (x - r.left) / r.width)) * MAX / STEP) * STEP; paint(); };
+  ns.addEventListener("pointerdown", (e) => { ns.setPointerCapture(e.pointerId); ns.classList.add("drag"); fromX(e.clientX); });
+  ns.addEventListener("pointermove", (e) => { if (ns.classList.contains("drag")) fromX(e.clientX); });
+  ns.addEventListener("pointerup", () => ns.classList.remove("drag"));
+  ns.addEventListener("keydown", (e) => { if (e.key === "ArrowRight") { val = Math.min(MAX, val + STEP); paint(); } if (e.key === "ArrowLeft") { val = Math.max(0, val - STEP); paint(); } });
+  paint();
+
+  Folio.seg($("#seg"));
+
+  // Tokens
+  const tokens = $("#tokens"), tin = $("#tok-in");
+  const addToken = (name) => {
+    const t = document.createElement("span");
+    t.className = "token";
+    t.innerHTML = `${name}<button aria-label="Remove ${name}">${Folio.icon("close")}</button>`;
+    tokens.insertBefore(t, tin);
+    Folio.develop(t, { duration: 260, grain: 1 });
+    t.querySelector("button").addEventListener("click", () => removeToken(t));
+  };
+  const removeToken = async (t) => { await Folio.develop(t, { duration: 180, reverse: true, grain: 1, keep: true }); t.remove(); };
+  ["Campana", "New York", "Los Angeles", "Sydney"].forEach(addToken);
+  tokens.addEventListener("click", () => tin.focus());
+  tin.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && tin.value.trim()) { addToken(tin.value.trim()); tin.value = ""; }
+    if (e.key === "Backspace" && !tin.value) { const last = [...tokens.querySelectorAll(".token")].pop(); if (last) removeToken(last); }
+  });
+
+  // Progress
+  const run = () => {
+    $("#lin").style.width = "0"; $("#ring").style.strokeDashoffset = 113.1;
+    [0.2, 0.45, 0.6, 0.85, 1].forEach((p, i) => setTimeout(() => { $("#lin").style.width = `${p * 100}%`; $("#ring").style.strokeDashoffset = 113.1 * (1 - p); }, 300 + i * 700));
+  };
+  $("#rerun").addEventListener("click", run); run();
+
+  // Ink swatches bleed from themselves.
+  document.querySelectorAll(".sw").forEach((s) => s.addEventListener("click", (e) => {
+    document.querySelectorAll(".sw").forEach((x) => x.setAttribute("aria-pressed", x === s));
+    const r = s.getBoundingClientRect();
+    Folio.set({ ink: s.dataset.ink }, { x: r.left + r.width / 2, y: r.top + r.height / 2 });
+  }));
+
+  // Shortcut recorder: caps print as keys go down.
+  const recBtn = $("#rec-btn"), recKeys = $("#rec-keys");
+  let recording = false, held = new Set();
+  const name = (e) => ({ Meta: "Super", OS: "Super", Control: "Ctrl", " ": "Space" }[e.key] || (e.key.length === 1 ? e.key.toUpperCase() : e.key));
+  recBtn.addEventListener("click", () => { recording = true; held.clear(); recKeys.innerHTML = `<kbd>Press keys…</kbd>`; });
+  document.addEventListener("keydown", (e) => {
+    if (!recording) return;
+    e.preventDefault();
+    if (held.has(name(e))) return;
+    if (!held.size) recKeys.innerHTML = "";
+    held.add(name(e));
+    const k = document.createElement("kbd"); k.textContent = name(e); recKeys.append(k);
+    Folio.develop(k, { duration: 160, grain: 1.2 });
+  });
+  document.addEventListener("keyup", () => { if (recording && held.size) recording = false; });
+
+  // Dialog on a halftone scrim.
+  const scrim = $("#scrim");
+  $("#ask").addEventListener("click", () => {
+    scrim.classList.add("open");
+    scrim.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 220, easing: "linear" });
+    const d = scrim.querySelector(".dialog");
+    d.animate([{ transform: "scale(0.94) translateY(10px)" }, { transform: "none" }], { duration: 420, easing: "cubic-bezier(0.16, 1, 0.3, 1)" });
+    Folio.develop(d, { duration: 320, grain: 0.7 });
+    $("#cancel").focus();
+  });
+  const closeDialog = async () => { await scrim.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 180 }).finished; scrim.classList.remove("open"); };
+  $("#cancel").addEventListener("click", closeDialog);
+  $("#confirm").addEventListener("click", closeDialog);
+  scrim.addEventListener("click", (e) => { if (e.target === scrim) closeDialog(); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") { closeDialog(); closeMenu(sel); closeMenu($("#ctx")); } });
+
+  Folio.seg($("#mode"), (v, e) => Folio.set({ mode: v }, e));
+</script>
+</body>
+</html>

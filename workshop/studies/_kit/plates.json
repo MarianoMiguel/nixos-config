@@ -1,0 +1,138 @@
+{
+  "inks": {
+    "azure": {
+      "light": "#214c94",
+      "dark": "#adc7ed"
+    },
+    "cobalt": {
+      "light": "#244fb8",
+      "dark": "#9dbbfa"
+    },
+    "slate": {
+      "light": "#35556e",
+      "dark": "#adc3d2"
+    }
+  },
+  "paper": {
+    "light": "#f7f4e9",
+    "dark": "#101d33"
+  },
+  "collections": [
+    {
+      "id": "dore",
+      "name": "Doré",
+      "description": "Gustave Doré · Paradise Lost",
+      "plates": [
+        {
+          "id": "dore-nightfall",
+          "title": "Nightfall",
+          "credit": "Gustave Doré · 1866",
+          "focus": [
+            0.5,
+            0.585
+          ],
+          "plate": "XXVI",
+          "file": "plates/dore-nightfall.png"
+        },
+        {
+          "id": "dore-descent",
+          "title": "The descent",
+          "credit": "Gustave Doré · 1866",
+          "focus": [
+            0.5,
+            0.365
+          ],
+          "plate": "XII",
+          "file": "plates/dore-descent.png"
+        }
+      ]
+    },
+    {
+      "id": "summer",
+      "name": "European Summer",
+      "description": "Riviera harbours, Sicilian terraces and yachts",
+      "plates": [
+        {
+          "id": "summer-riviera",
+          "title": "Riviera harbour",
+          "credit": "Azure Folio · Riviera study",
+          "focus": [
+            0.5,
+            0.57
+          ],
+          "plate": null,
+          "file": "plates/summer-riviera.png"
+        },
+        {
+          "id": "summer-sicily",
+          "title": "A Sicilian summer",
+          "credit": "Azure Folio · Sicily study",
+          "focus": [
+            0.5,
+            0.48
+          ],
+          "plate": null,
+          "file": "plates/summer-sicily.png"
+        }
+      ]
+    },
+    {
+      "id": "argentina",
+      "name": "Argentina",
+      "description": "Buenos Aires, mate, tango and Patagonia",
+      "plates": [
+        {
+          "id": "argentina-buenos-aires",
+          "title": "Una tarde porteña",
+          "credit": "Azure Folio · Buenos Aires study",
+          "focus": [
+            0.5,
+            0.62
+          ],
+          "plate": null,
+          "file": "plates/argentina-buenos-aires.png"
+        },
+        {
+          "id": "argentina-patagonia",
+          "title": "Patagonia",
+          "credit": "Azure Folio · Fitz Roy study",
+          "focus": [
+            0.5,
+            0.34
+          ],
+          "plate": null,
+          "file": "plates/argentina-patagonia.png"
+        }
+      ]
+    },
+    {
+      "id": "ronin",
+      "name": "Ronin",
+      "description": "Wandering samurai, mountain mist and quiet shrine paths",
+      "plates": [
+        {
+          "id": "ronin-crossing",
+          "title": "The quiet crossing",
+          "credit": "Azure Folio · Ronin study",
+          "focus": [
+            0.5,
+            0.47
+          ],
+          "plate": null,
+          "file": "plates/ronin-crossing.png"
+        },
+        {
+          "id": "ronin-shrine",
+          "title": "After the rain",
+          "credit": "Azure Folio · Shrine study",
+          "focus": [
+            0.5,
+            0.49
+          ],
+          "plate": null,
+          "file": "plates/ronin-shrine.png"
+        }
+      ]
+    }
+  ]
+}

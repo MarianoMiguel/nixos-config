@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="en" data-mode="light" data-ink="azure">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Folio Appearance</title>
+<link rel="stylesheet" href="../_kit/folio.css">
+<style>
+  html, body { height: 100%; overflow: hidden; }
+  #wall { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  .settings { position: fixed; inset: max(28px, 4vh) max(16px, 5vw); max-width: 1180px; margin: 0 auto; display: grid; grid-template-columns: 248px 1fr; overflow: hidden;
+              border-radius: 22px; background: var(--sheet-strong); backdrop-filter: blur(40px) saturate(1.5); box-shadow: var(--edge), var(--shadow-l); }
+  /* Navigation */
+  nav { padding: 14px 10px; display: flex; flex-direction: column; gap: 2px; overflow-y: auto; background: color-mix(in oklab, var(--ink) 5%, transparent); box-shadow: inset -1px 0 0 var(--rule); }
+  .search { display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 10px; border-radius: 10px; background: var(--well); box-shadow: inset 0 0 0 1px var(--rule); margin-bottom: 10px; color: var(--text-3); }
+  .search input { border: 0; outline: 0; background: none; flex: 1; min-width: 0; }
+  .search .i { width: 16px; height: 16px; }
+  .me { display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 12px; margin-bottom: 8px; }
+  .me .av { width: 40px; height: 40px; border-radius: 50%; background: var(--ink); color: var(--on-ink); display: grid; place-items: center; font: 400 24px/1 var(--hero); }
+  .me b { display: block; font-weight: 600; }
+  .me small { color: var(--text-2); font-size: 12px; }
+  .navgroup { padding: 6px 0; box-shadow: inset 0 1px 0 var(--rule); }
+  .navgroup:first-of-type { box-shadow: none; }
+  .nav { display: flex; align-items: center; gap: 10px; width: 100%; height: 34px; padding: 0 8px; border: 0; border-radius: 9px; background: none; cursor: pointer; text-align: left; color: var(--text);
+         transition: background-color var(--t-quick) var(--ease), color var(--t-quick) var(--ease); }
+  .nav:hover { background: var(--well); }
+  .nav[aria-current="true"] { background: var(--ink); color: var(--on-ink); }
+  .nav .ic { width: 24px; height: 24px; border-radius: 7px; display: grid; place-items: center; background: color-mix(in oklab, var(--ink) 14%, transparent); color: var(--ink); flex: none; }
+  .nav[aria-current="true"] .ic { background: color-mix(in oklab, var(--on-ink) 22%, transparent); color: var(--on-ink); }
+  .nav .ic .i { width: 15px; height: 15px; }
+  /* Content */
+  .content { overflow-y: auto; scroll-behavior: smooth; }
+  .pane { max-width: 760px; margin: 0 auto; padding: 28px 32px 80px; }
+  .pane h1 { font: 600 26px/1.15 var(--ui); letter-spacing: -0.015em; margin: 6px 0 4px; }
+  .pane .lede { color: var(--text-2); margin: 0 0 18px; }
+  section.block { margin-top: 28px; scroll-margin-top: 20px; }
+  section.block > h2 { font: 600 15px/1.2 var(--ui); margin: 0 0 4px; }
+  section.block > p { color: var(--text-2); margin: 0 0 12px; font-size: 13px; }
+  .group { border-radius: var(--r-m); background: var(--well); box-shadow: inset 0 0 0 1px var(--rule); }
+  .group .row { min-height: 52px; }
+  .row .ic2 { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; background: var(--ink); color: var(--on-ink); flex: none; }
+  .row .ic2 .i { width: 16px; height: 16px; }
+
+  /* Live preview of the whole desktop */
+  .preview { position: relative; aspect-ratio: 16 / 9.4; border-radius: 16px; overflow: hidden; box-shadow: var(--edge), var(--shadow-l); --pr: 16px; --pw: 12px; }
+  .mini { position: absolute; inset: 0; container-type: size; }
+  .mini canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .mini .mbar { position: absolute; inset: 0 0 auto 0; height: 5.2cqh; background: var(--sheet); backdrop-filter: blur(10px); box-shadow: inset 0 -1px 0 var(--rule); display: flex; align-items: center; padding: 0 1.4cqw; gap: 1cqw; }
+  .mini .mbar .m { width: 2.6cqh; height: 2.6cqh; border-radius: 0.8cqh; background: var(--ink); }
+  .mini .mbar .d { width: 3.5cqw; height: 1cqh; border-radius: 1cqh; background: var(--ink); }
+  .mini .mbar .d2 { width: 1cqh; height: 1cqh; border-radius: 1cqh; background: var(--text-3); opacity: 0.5; }
+  .mini .mbar .r { margin-left: auto; width: 9cqw; height: 1.6cqh; border-radius: 1cqh; background: var(--well-strong); }
+  .mini .mis { position: absolute; left: 50%; top: 0.8cqh; translate: -50% 0; width: 15cqw; height: 3.6cqh; border-radius: 1.8cqh; background: color-mix(in oklab, #214c94 46%, #0b1424); }
+  .mini .mwin { position: absolute; left: 2cqw; top: 8cqh; width: 56cqw; bottom: 15cqh; border-radius: calc(var(--pw) * 0.55); background: var(--sheet-strong); box-shadow: var(--edge), var(--shadow-s); overflow: hidden; }
+  .mini .mwin::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 4.4cqh; background: color-mix(in oklab, var(--ink) 18%, var(--paper)); }
+  .mini .mwin i { position: absolute; left: 4cqw; height: 1.4cqh; border-radius: 1cqh; background: var(--well-strong); }
+  .mini .mside { position: absolute; right: 1.2cqw; top: 7cqh; bottom: 2cqh; width: 25cqw; border-radius: calc(var(--pr) * 0.7); background: var(--sheet); backdrop-filter: blur(8px); box-shadow: var(--edge), var(--shadow-s);
+                 padding: 2cqh 1.6cqw; display: flex; flex-direction: column; gap: 1.6cqh; transition: border-radius 400ms var(--ease); }
+  .mini .mside .clk { font: 400 9cqh/0.8 var(--hero); color: var(--ink); }
+  .mini .mside .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 1cqh; }
+  .mini .mside .tiles i { height: 6cqh; border-radius: calc(var(--pr) * 0.45); background: var(--well); }
+  .mini .mside .tiles i:nth-child(1), .mini .mside .tiles i:nth-child(2) { background: var(--ink); }
+  .mini .mside .card { flex: 1; border-radius: calc(var(--pr) * 0.45); background: var(--well); }
+  .mini .mdock { position: absolute; left: 50%; bottom: 2cqh; translate: -50% 0; height: 9cqh; padding: 1.2cqh 1.4cqw; border-radius: calc(var(--pr) * 0.75); background: var(--sheet); backdrop-filter: blur(8px);
+                 box-shadow: var(--edge); display: flex; gap: 1cqw; align-items: center; }
+  .mini .mdock i { width: 6.4cqh; height: 6.4cqh; border-radius: 26%; background: var(--sheet-base); box-shadow: inset 0 0 0 1px var(--rule); }
+  .mini .mdock i:nth-child(2), .mini .mdock i:nth-child(5) { background: var(--ink); }
+  .preview .tag { position: absolute; left: 12px; bottom: 12px; padding: 6px 10px; border-radius: 9px; }
+
+  /* Option cards */
+  .opts { display: grid; gap: 10px; }
+  .opts.three { grid-template-columns: repeat(3, 1fr); }
+  .opts.four { grid-template-columns: repeat(4, 1fr); }
+  .opts.two { grid-template-columns: repeat(2, 1fr); }
+  .opt { border: 0; padding: 8px 8px 10px; border-radius: 16px; background: var(--well); cursor: pointer; text-align: left; display: grid; gap: 8px; position: relative;
+         box-shadow: inset 0 0 0 1px var(--rule); transition: box-shadow var(--t-quick) var(--ease), transform var(--t-press) var(--spring); color: var(--text); }
+  .opt:hover { box-shadow: inset 0 0 0 1px var(--rule-strong); }
+  .opt[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--ink); }
+  .opt .thumb { position: relative; aspect-ratio: 16 / 10; border-radius: 10px; overflow: hidden; }
+  .opt .thumb canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .opt .name { font-weight: 600; padding: 0 4px; }
+  .opt .sub { color: var(--text-2); font-size: 12px; padding: 0 4px; margin-top: -6px; }
+  .opt .tick { position: absolute; top: 14px; right: 14px; width: 22px; height: 22px; border-radius: 50%; background: var(--ink); color: var(--on-ink); display: grid; place-items: center;
+               transform: scale(0); transition: transform 320ms var(--spring); }
+  .opt .tick .i { width: 13px; height: 13px; stroke-width: 2.4; }
+  .opt[aria-pressed="true"] .tick { transform: scale(1); }
+  .split { position: absolute; inset: 0; }
+  .split.dark-half { clip-path: polygon(62% 0, 100% 0, 100% 100%, 38% 100%); }
+  .inkdot { width: 100%; aspect-ratio: 16 / 10; border-radius: 10px; display: grid; grid-template-columns: 1fr 1fr; overflow: hidden; }
+  .inkdot span { display: grid; place-items: end start; padding: 8px; font: 500 10px var(--mono); }
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .pair .thumb { aspect-ratio: 4 / 5; }
+
+  /* Looks demo */
+  .look-demo { position: relative; aspect-ratio: 16 / 10; border-radius: 10px; overflow: hidden; background: var(--wash); --lr: 16px; --lw: 12px; }
+  .look-demo .panel { position: absolute; top: 10%; right: 6%; bottom: 10%; width: 46%; background: var(--sheet-strong); box-shadow: var(--edge), var(--shadow-s); border-radius: var(--lr);
+                      padding: 8%; display: grid; gap: 7%; align-content: start; --spine: right; }
+  .look-demo .panel i { height: 12px; border-radius: calc(var(--lr) * 0.5); background: var(--well-strong); }
+  .look-demo .panel i:first-child { background: var(--ink); width: 60%; }
+  .look-demo .win { position: absolute; left: 6%; top: 14%; width: 38%; height: 56%; border-radius: var(--lw); background: var(--sheet-base); box-shadow: var(--edge), var(--shadow-s); }
+
+  /* Screensaver: the plate breathes hard and the clock drifts. */
+  .saver { position: relative; aspect-ratio: 16 / 10; border-radius: 14px; overflow: hidden; box-shadow: var(--edge), var(--shadow-s); }
+  .saver canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .saver .drift { position: absolute; left: 8%; top: 18%; font: 400 clamp(40px, 7vw, 76px)/0.8 var(--hero); color: var(--ink); padding: 10px 16px 14px; border-radius: 16px; animation: drift 40s ease-in-out infinite alternate; }
+  @keyframes drift { 0% { transform: translate(0, 0); } 33% { transform: translate(38%, 120%); } 66% { transform: translate(150%, 30%); } 100% { transform: translate(90%, 160%); } }
+  .saver .plabel { position: absolute; right: 12px; bottom: 12px; padding: 6px 10px; border-radius: 9px; }
+  .lockmini { position: relative; aspect-ratio: 16 / 10; border-radius: 14px; overflow: hidden; box-shadow: var(--edge), var(--shadow-s); background: var(--paper); container-type: size; }
+  .lockmini canvas { position: absolute; inset: 0 44% 0 0; width: 56%; height: 100%; }
+  .lockmini .pg { position: absolute; inset: 0 0 0 56%; padding: 0 6cqw; display: flex; flex-direction: column; justify-content: center; gap: 3cqh; }
+  .lockmini .tabn { position: absolute; top: 0; left: 50%; translate: -50% 0; width: 18cqw; height: 5.5cqh; border-radius: 0 0 1.5cqh 1.5cqh; background: var(--ink); }
+  .lockmini .clk { font: 400 18cqh/0.8 var(--hero); color: var(--ink); }
+  .lockmini .crs { display: grid; grid-template-columns: repeat(5, 4cqh); grid-template-rows: repeat(5, 4cqh); }
+  .lockmini .crs i { box-shadow: 0 0 0 0.5px var(--rule-strong); }
+  .lockmini .crs i.on { background: var(--ink); }
+  .split2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .placeholder { display: grid; place-items: center; min-height: 60vh; color: var(--text-3); text-align: center; gap: 8px; }
+  @media (max-width: 960px) {
+    .settings { grid-template-columns: 1fr; inset: 12px; }
+    nav { display: none; }
+    .opts.four { grid-template-columns: repeat(2, 1fr); }
+    .opts.three, .split2 { grid-template-columns: 1fr; }
+  }
+  .study-bar { left: auto; right: 16px; bottom: 12px; transform: none; }
+</style>
+</head>
+<body>
+<canvas id="wall"></canvas>
+
+<div class="settings" id="settings">
+  <nav aria-label="Settings">
+    <label class="search">${search}<input placeholder="Search settings"></label>
+    <div class="me"><span class="av">M</span><div><b>Mariano Miguel</b><small>Bonhart · NixOS 26.05</small></div></div>
+    <div class="navgroup">
+      <button class="nav" data-pane="none">${wifi}Wi-Fi</button><button class="nav" data-pane="none">${bluetooth}Bluetooth</button><button class="nav" data-pane="none">${shield}Network &amp; VPN</button>
+    </div>
+    <div class="navgroup">
+      <button class="nav" data-go="top" aria-current="true">${palette}Appearance</button>
+      <button class="nav" data-go="wallpaper">${image}Wallpaper</button>
+      <button class="nav" data-go="looks">${sparkle}Motion</button>
+      <button class="nav" data-go="saver">${lock}Lock &amp; screensaver</button>
+      <button class="nav" data-go="dock">${grid}Desktop &amp; dock</button>
+    </div>
+    <div class="navgroup">
+      <button class="nav" data-pane="none">${display}Displays</button><button class="nav" data-pane="none">${speaker}Sound</button><button class="nav" data-pane="none">${bell}Notifications</button><button class="nav" data-pane="none">${moon}Focus</button>
+    </div>
+    <div class="navgroup">
+      <button class="nav" data-pane="none">${battery}Battery</button><button class="nav" data-pane="none">${keyboard}Keyboard</button><button class="nav" data-pane="none">${user}About</button>
+    </div>
+  </nav>
+
+  <div class="content" id="content">
+    <div class="pane" id="pane">
+      <span class="cap" id="top">Settings</span>
+      <h1>Appearance</h1>
+      <p class="lede">How the whole desktop looks, in one place. Every change applies at once and the preview shows it on everything.</p>
+
+      <div class="preview" id="preview">
+        <div class="mini"><canvas id="pv-plate"></canvas><div class="mbar"><span class="m"></span><span class="d"></span><span class="d2"></span><span class="d2"></span><span class="r"></span></div><span class="mis"></span>
+          <div class="mwin"><i style="top: 9cqh; width: 40%"></i><i style="top: 13cqh; width: 70%"></i><i style="top: 17cqh; width: 55%"></i></div>
+          <div class="mside" id="pv-side"><span class="cap">Miércoles 28</span><span class="clk num" id="pv-clock"></span><div class="tiles"><i></i><i></i><i></i><i></i></div><div class="card"></div></div>
+          <div class="mdock"><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+        <span class="tag cap sheet" id="pv-tag">Doré · Nightfall</span>
+      </div>
+
+      <section class="block"><h2>Mode</h2><p>Sunset follows the sun in Campana: dark from 19:42 to 06:58.</p>
+        <div class="opts three" id="modes">
+          <button class="opt stamp" data-mode="light" aria-pressed="true"><span class="thumb"><canvas data-plate-mode="light"></canvas></span><span class="name">Light</span><span class="sub">Ink on paper</span><span class="tick">${check}</span></button>
+          <button class="opt stamp" data-mode="dark" aria-pressed="false"><span class="thumb"><canvas data-plate-mode="dark"></canvas></span><span class="name">Dark</span><span class="sub">Moonlit plates on night</span><span class="tick">${check}</span></button>
+          <button class="opt stamp" data-mode="sunset" aria-pressed="false"><span class="thumb"><span class="split"><canvas data-plate-mode="light"></canvas></span><span class="split dark-half"><canvas data-plate-mode="dark"></canvas></span></span><span class="name">Sunset</span><span class="sub">Light by day, dark at night</span><span class="tick">${check}</span></button>
+        </div></section>
+
+      <section class="block"><h2>Ink</h2><p>One ink for everything: art, controls, Chrome, the terminal. Each has a light and a dark tone.</p>
+        <div class="opts three" id="inks">
+          <button class="opt stamp" data-ink="azure" aria-pressed="true"><span class="inkdot"><span style="background: #214c94; color: #f7f4e9">#214c94</span><span style="background: #101d33; color: #adc7ed">#adc7ed</span></span><span class="name">Azure</span><span class="tick">${check}</span></button>
+          <button class="opt stamp" data-ink="cobalt" aria-pressed="false"><span class="inkdot"><span style="background: #244fb8; color: #f7f4e9">#244fb8</span><span style="background: #101d33; color: #9dbbfa">#9dbbfa</span></span><span class="name">Cobalt</span><span class="tick">${check}</span></button>
+          <button class="opt stamp" data-ink="slate" aria-pressed="false"><span class="inkdot"><span style="background: #35556e; color: #f7f4e9">#35556e</span><span style="background: #101d33; color: #adc3d2">#adc3d2</span></span><span class="name">Slate</span><span class="tick">${check}</span></button>
+        </div></section>
+
+      <section class="block" id="wallpaper"><h2>Wallpaper</h2><p>A collection is a theme bundle: its plates, its lock art, the last plate you chose. Plates print in the current ink.</p>
+        <div class="opts four" id="collections"></div>
+        <div class="opts two" id="plates" style="margin-top: 10px"></div>
+        <div class="group" style="margin-top: 12px">
+          <label class="row"><span class="ic2">${sparkle}</span><span class="grow"><span class="label">Breathe</span><br><span class="hint">The plate's dither keeps moving, in a quiet loop.</span></span><input class="switch" type="checkbox" id="breathe" checked></label>
+          <label class="row"><span class="ic2">${reload}</span><span class="grow"><span class="label">New plate at login</span><br><span class="hint">From this collection.</span></span><input class="switch" type="checkbox" checked></label>
+          <div class="row"><span class="ic2">${moon}</span><span class="grow"><span class="label">Plates in dark mode</span><br><span class="hint">Moonlit keeps the picture's tones; Negative prints it light on night.</span></span>
+            <div class="seg" id="darkplates"><button data-value="moonlit" aria-pressed="true">Moonlit</button><button data-value="negative" aria-pressed="false">Negative</button></div></div>
+        </div></section>
+
+      <section class="block" id="looks"><h2>Motion</h2><p>How much the desktop moves. Hover a card to see it.</p>
+        <div class="opts three" id="looksgrid">
+          <button class="opt stamp" data-motion="full" aria-pressed="true" style="--look-t: 520ms"><span class="look-demo"><span class="win"></span><span class="panel"><i></i><i></i><i></i></span></span><span class="name">Full</span><span class="sub">Develop, bleed, leaf, stamp</span><span class="tick">${check}</span></button>
+          <button class="opt stamp" data-motion="gentle" aria-pressed="false" style="--look-t: 240ms"><span class="look-demo"><span class="win"></span><span class="panel"><i></i><i></i><i></i></span></span><span class="name">Gentle</span><span class="sub">Half the time, half the travel</span><span class="tick">${check}</span></button>
+          <button class="opt stamp" data-motion="still" aria-pressed="false" style="--look-t: 1ms"><span class="look-demo"><span class="win"></span><span class="panel"><i></i><i></i><i></i></span></span><span class="name">Still</span><span class="sub">Changes cut; plates appear whole</span><span class="tick">${check}</span></button>
+        </div></section>
+
+      <section class="block" id="saver"><h2>Lock &amp; screensaver</h2><p>The screensaver is the plate, breathing harder, with the clock drifting over it. Touch anything and it lifts away.</p>
+        <div class="split2">
+          <div class="saver"><canvas id="saver-plate"></canvas><span class="drift num sheet" id="saver-clock"></span><span class="plabel cap sheet" id="saver-label">Plays now</span></div>
+          <div class="lockmini"><canvas id="lock-plate"></canvas><div class="pg"><span class="tabn"></span><span class="clk num" id="lock-clock"></span><div class="crs" id="crs"></div></div></div>
+        </div>
+        <div class="group" style="margin-top: 12px">
+          <div class="row"><span class="ic2">${sparkle}</span><span class="grow"><span class="label">Start the screensaver after</span></span><div class="seg" id="saver-after"><button data-value="2" aria-pressed="false">2 min</button><button data-value="5" aria-pressed="true">5 min</button><button data-value="10" aria-pressed="false">10 min</button></div></div>
+          <label class="row"><span class="ic2">${calendar}</span><span class="grow"><span class="label">Show the clock</span></span><input class="switch" type="checkbox" id="saver-show" checked></label>
+          <label class="row"><span class="ic2">${reload}</span><span class="grow"><span class="label">Cycle the collection</span><br><span class="hint">A new plate dissolves in every few minutes.</span></span><input class="switch" type="checkbox" checked></label>
+          <label class="row"><span class="ic2">${lock}</span><span class="grow"><span class="label">Lock when the screensaver starts</span><br><span class="hint">Then sleep the screens 30 seconds later.</span></span><input class="switch" type="checkbox" checked></label>
+          <label class="row"><span class="ic2">${music}</span><span class="grow"><span class="label">Show what's playing on the lock screen</span></span><input class="switch" type="checkbox" checked></label>
+        </div></section>
+
+      <section class="block" id="dock"><h2>Desktop &amp; dock</h2><p>The island, the sidebar and the dock.</p>
+        <div class="group">
+          <label class="row"><span class="ic2">${grid}</span><span class="grow"><span class="label">Magnify the dock</span></span><input class="switch" type="checkbox" checked></label>
+          <div class="row"><span class="ic2">${image}</span><span class="grow"><span class="label">App icons</span><br><span class="hint">As shipped, on paper plates when they are not square, or printed in the ink.</span></span><div class="seg" id="iconmode"><button data-value="original" aria-pressed="true">Original</button><button data-value="plated" aria-pressed="false">Plated</button><button data-value="printed" aria-pressed="false">Printed</button></div></div>
+          <div class="row"><span class="ic2">${sidebar}</span><span class="grow"><span class="label">Sidebar opens from</span></span><div class="seg" id="side"><button data-value="left" aria-pressed="false">Left</button><button data-value="right" aria-pressed="true">Right</button></div></div>
+          <label class="row"><span class="ic2">${music}</span><span class="grow"><span class="label">The island shows music, focus and recording</span><br><span class="hint">Volume and brightness always show there.</span></span><input class="switch" type="checkbox" checked></label>
+          <label class="row"><span class="ic2">${sparkle}</span><span class="grow"><span class="label">Play the login</span><br><span class="hint">Plate, bar, dock and windows arrive in sequence.</span></span><input class="switch" type="checkbox" checked></label>
+        </div></section>
+    </div>
+  </div>
+</div>
+
+<div class="study-bar sheet"><span class="cap">Folio · Appearance · v1</span><a class="btn ghost" href="../../index.html">Workshop</a></div>
+
+<script src="../_kit/folio.js"></script>
+<script>
+  const $ = (s) => document.querySelector(s);
+  document.querySelectorAll(".nav, .search, .tick, .ic2").forEach((el) => {
+    el.innerHTML = el.innerHTML.replace(/\$\{(\w+)\}/g, (_, n) => el.classList.contains("nav") ? `<span class="ic">${Folio.icon(n)}</span>` : Folio.icon(n));
+  });
+
+  let current = "dore-nightfall";
+  const wall = new Folio.Plate($("#wall"), { plate: current, breathe: 1, develop: true });
+  const preview = new Folio.Plate($("#pv-plate"), { plate: current, breathe: 1, develop: false });
+  const lockPlate = new Folio.Plate($("#lock-plate"), { plate: current, develop: false });
+  const saver = new Folio.Plate($("#saver-plate"), { plate: current, breathe: 1, develop: false, lift: 0.06 });
+
+  const hm = (d) => d.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false });
+  ["#pv-clock", "#saver-clock", "#lock-clock"].forEach((id) => Folio.clock($(id), hm));
+  $("#crs").innerHTML = [[0, 2], [1, 1], [1, 2], [1, 3], [2, 0], [2, 1], [2, 2], [2, 3], [2, 4], [3, 1], [3, 2], [3, 3], [4, 2]]
+    .map(([r, c], i) => `<i class="${i === 6 || i === 2 || i === 7 ? "on" : ""}" style="grid-area:${r + 1}/${c + 1}"></i>`).join("");
+
+  // Mode and ink: the choice bleeds from where you clicked.
+  function press(groupSel, el) { document.querySelectorAll(`${groupSel} .opt`).forEach((o) => o.setAttribute("aria-pressed", o === el)); }
+  document.querySelectorAll("#modes .opt").forEach((o) => o.addEventListener("click", (e) => {
+    press("#modes", o);
+    const mode = o.dataset.mode === "sunset" ? (new Date().getHours() >= 19 || new Date().getHours() < 7 ? "dark" : "light") : o.dataset.mode;
+    Folio.set({ mode }, e);
+  }));
+  document.querySelectorAll("#inks .opt").forEach((o) => o.addEventListener("click", (e) => { press("#inks", o); Folio.set({ ink: o.dataset.ink }, e); }));
+
+  // Collections and plates: every plate on the page dissolves to the new one.
+  const modePlates = [];
+  async function choose(id) {
+    if (id === current) return;
+    current = id;
+    const info = await Folio.plateInfo(id);
+    $("#pv-tag").textContent = `${info.collection.name} · ${info.title}`;
+    Folio.develop($("#pv-tag"), { duration: 360 });
+    [wall, preview, lockPlate, saver, ...modePlates].forEach((p, i) => Folio.wait(i * 40).then(() => p.show(id)));
+    document.querySelectorAll("#plates .opt").forEach((o) => o.setAttribute("aria-pressed", o.dataset.plate === id));
+  }
+  (async () => {
+    // Mode thumbnails keep their own mode and follow plate changes.
+    document.querySelectorAll("canvas[data-plate-mode]").forEach((c) => modePlates.push(new Folio.Plate(c, { plate: current, develop: false, mode: c.dataset.plateMode })));
+    const cat = await Folio.plates();
+    const cols = $("#collections");
+    cols.innerHTML = cat.collections.map((c, i) => `<button class="opt stamp" data-col="${c.id}" aria-pressed="${i === 0}"><span class="pair"><span class="thumb"><canvas></canvas></span><span class="thumb"><canvas></canvas></span></span><span class="name">${c.name}</span><span class="sub">${c.description}</span><span class="tick">${Folio.icon("check")}</span></button>`).join("");
+    cols.querySelectorAll(".opt").forEach((o, i) => {
+      const plates = cat.collections[i].plates;
+      o.querySelectorAll("canvas").forEach((cv, j) => new Folio.Plate(cv, { plate: plates[j].id, develop: false, zoom: 1.4 }));
+      o.addEventListener("click", () => {
+        cols.querySelectorAll(".opt").forEach((x) => x.setAttribute("aria-pressed", x === o));
+        showPlates(cat.collections[i]);
+        choose(plates[0].id);
+      });
+    });
+    function showPlates(col) {
+      const box = $("#plates");
+      box.innerHTML = col.plates.map((p) => `<button class="opt stamp" data-plate="${p.id}" aria-pressed="${p.id === current}"><span class="thumb"><canvas></canvas></span><span class="name">${p.title}</span><span class="sub">${p.credit}</span><span class="tick">${Folio.icon("check")}</span></button>`).join("");
+      box.querySelectorAll(".opt").forEach((o) => {
+        new Folio.Plate(o.querySelector("canvas"), { plate: o.dataset.plate, develop: true });
+        o.addEventListener("click", () => choose(o.dataset.plate));
+      });
+      Folio.cascade(box, 0);
+    }
+    showPlates(cat.collections[0]);
+  })();
+
+  $("#breathe").addEventListener("change", (e) => [wall, preview].forEach((p) => Folio.tween(600, (t) => { p.opts.breathe = e.target.checked ? t : 1 - t; })));
+  Folio.seg($("#darkplates"), (v) => Folio.setDarkPlates(v));
+
+  // Motion: hover plays each setting's own speed; choosing one replays the preview at it.
+  document.querySelectorAll("#looksgrid .opt").forEach((o) => {
+    const panel = o.querySelector(".panel");
+    o.addEventListener("pointerenter", () => {
+      panel.style.animation = "none"; void panel.offsetWidth;
+      panel.style.animation = `leaf-in ${getComputedStyle(o).getPropertyValue("--look-t")} cubic-bezier(0.2, 0, 0, 1) both`;
+    });
+    o.addEventListener("click", () => {
+      document.querySelectorAll("#looksgrid .opt").forEach((x) => x.setAttribute("aria-pressed", x === o));
+      const side = $("#pv-side");
+      side.style.animation = "none"; void side.offsetWidth;
+      side.style.animation = `leaf-in ${getComputedStyle(o).getPropertyValue("--look-t")} cubic-bezier(0.2, 0, 0, 1) both`;
+    });
+  });
+
+  Folio.seg($("#saver-after"));
+  Folio.seg($("#iconmode"));
+  $("#saver-show").addEventListener("change", (e) => { const c = $("#saver-clock"); if (e.target.checked) { c.style.display = ""; Folio.develop(c, { duration: 500 }); } else Folio.develop(c, { duration: 300, reverse: true, keep: true }).then(() => { c.style.display = "none"; c.style.filter = ""; }); });
+  Folio.seg($("#side"), (v) => { const s = $("#pv-side"); s.style.right = v === "right" ? "1.2cqw" : "auto"; s.style.left = v === "left" ? "1.2cqw" : "auto"; s.style.setProperty("--spine", v); s.classList.remove("leaf-in"); void s.offsetWidth; s.classList.add("leaf-in"); });
+
+  // The screensaver tile cycles the collection while it is on screen.
+  const cycle = ["dore-nightfall", "ronin-shrine", "summer-sicily", "argentina-patagonia"];
+  let ci = 0;
+  setInterval(async () => {
+    ci = (ci + 1) % cycle.length;
+    const info = await Folio.plateInfo(cycle[ci]);
+    $("#saver-label").textContent = `${info.collection.name} · ${info.title}`;
+    saver.show(cycle[ci], { duration: 1600 });
+  }, 9000);
+
+  // Navigation: Appearance's sections are one scroll; other panes are not in this study.
+  const content = $("#content");
+  document.querySelectorAll(".nav").forEach((n) => n.addEventListener("click", () => {
+    document.querySelectorAll(".nav").forEach((x) => x.setAttribute("aria-current", x === n));
+    if (n.dataset.go) {
+      if (!$("#top")) location.reload();
+      $("#" + n.dataset.go).scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+    const pane = $("#pane");
+    pane.innerHTML = `<div class="placeholder"><div><span class="cap">Not in this study</span><h1>${n.textContent.trim()}</h1><p class="lede">Designed after Appearance, with the same rows, groups and controls.</p></div></div>`;
+    Folio.develop(pane, { duration: 420 });
+  }));
+
+  // The window arrives the way panels do.
+  const settings = $("#settings");
+  settings.animate([{ transform: "scale(0.97) translateY(12px)", opacity: 0 }, { transform: "none", opacity: 1 }], { duration: 520, delay: 300, easing: "cubic-bezier(0.16, 1, 0.3, 1)", fill: "backwards" });
+  Folio.cascade($("#pane"), 420);
+</script>
+</body>
+</html>

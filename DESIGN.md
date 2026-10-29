@@ -1,8 +1,10 @@
 # NixOS Desktop Experience Design System
 
-Scope: this describes the DMS session. Since 2026-10-27 the desktop is moving
-to Pond's design, copied directly: the **Pond** session follows Pond's own
-`shell/Theme.qml`, and Azure Folio retires with DMS. See `workshop/README.md`.
+Scope: this describes the DMS session as it is. Since 2026-10-28 it is being
+redesigned in `workshop/` as one design language, Folio: these colors, with
+rounder corners, unhurried printmaker's motion, translucency and soft depth.
+Shape and motion values below are the `before` look; `workshop/looks/folio.json`
+and `workshop/studies/_kit/` hold the new ones.
 
 ## 1. Atmosphere & Identity
 
@@ -10,7 +12,7 @@ A quiet, immediate command center. DMS owns the shell, Niri owns windows, and Al
 
 ## 2. Color
 
-Azure Folio is the single visual family. Doré, European Summer and Argentina change only the art. Daylight uses warm near-white `#f7f4e9`; After hours uses navy `#101d33`. Azure, Cobalt and Slate provide three blue inks. DMS extensions consume the generated theme tokens; the greeter consumes the same validated palette.
+Folio is the single visual family. Doré, European Summer and Argentina change only the art. Daylight uses warm near-white `#f7f4e9`; After hours uses navy `#101d33`. Azure, Cobalt and Slate provide three blue inks. DMS extensions consume the generated theme tokens; the greeter consumes the same validated palette.
 
 | Role | DMS token | Usage |
 |---|---|---|
@@ -23,7 +25,7 @@ Azure Folio is the single visual family. Doré, European Summer and Argentina ch
 | Warning | `Theme.warning` | Quota at 60 percent or more |
 | Error | `Theme.error` | Quota at 80 percent or more and errors |
 
-Art uses paper and ink only. Muted semantic colors still distinguish errors, warnings and success. Azure Folio, Themeport and DMS own the shared palette; Qt and KDE applications follow Themeport through its rendered `kdeglobals` and the KDE platform theme.
+Art uses paper and ink only. Muted semantic colors still distinguish errors, warnings and success. Folio's palette (`azure-folio`), Themeport and DMS own the shared palette; Qt and KDE applications follow Themeport through its rendered `kdeglobals` and the KDE platform theme.
 
 ## 3. Typography
 

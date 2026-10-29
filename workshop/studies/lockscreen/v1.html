@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="en" data-mode="light" data-ink="azure">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Folio Lock</title>
+<link rel="stylesheet" href="../_kit/folio.css">
+<style>
+  html, body { height: 100%; overflow: hidden; }
+  body { user-select: none; background: var(--paper); }
+  /* Folio's split: art on the left, the page on the right. */
+  .art { position: fixed; inset: 0 auto 0 0; width: 56%; overflow: hidden; transition: width 900ms var(--ease); }
+  .art canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .art .credit { position: absolute; left: 20px; bottom: 18px; padding: 7px 11px; border-radius: 10px; }
+  body.unlocked .art { width: 100%; }
+
+  .page { position: fixed; inset: 0 0 0 56%; background: var(--paper); display: grid; grid-template-rows: auto 1fr auto; padding: 0 clamp(28px, 4.5vw, 72px);
+          transform-origin: left center; box-shadow: -1px 0 0 var(--rule), -30px 0 60px rgba(var(--shade), 0.12); transition: background-color var(--t-page) var(--ease); }
+  /* Unlock: the page's print lifts off, then the paper slides aside as the
+     art opens out to become the desktop. No page turn. */
+  .page { transition: transform 760ms var(--ease) 240ms, background-color var(--t-page) var(--ease); }
+  body.unlocked .page { transform: translateX(104%); }
+
+  /* The name tab hangs from the top edge of the page. */
+  .name-tab { justify-self: center; margin-top: 0; padding: 12px 22px 11px; border-radius: 0 0 14px 14px; background: var(--ink); color: var(--on-ink); font-weight: 500; font-size: 15px;
+              display: flex; align-items: center; gap: 10px; }
+  .name-tab .i { width: 16px; height: 16px; }
+
+  .center { display: flex; flex-direction: column; justify-content: center; gap: 0; min-height: 0; }
+  .date { margin-bottom: 6px; }
+  .clock { font: 400 clamp(110px, 13vw, 200px)/0.78 var(--hero); color: var(--ink); margin-left: -6px; }
+  .rule { height: 1px; background: var(--rule-strong); margin: clamp(22px, 4vh, 40px) 0; }
+
+  /* The cross grid: 1 · 3 · 5 · 3 · 1 cells. Each keystroke prints one. */
+  .entry { display: grid; grid-template-columns: auto 1fr; gap: 28px; align-items: center; }
+  .grid { --c: clamp(30px, 3.2vw, 44px); display: grid; grid-template-columns: repeat(5, var(--c)); grid-template-rows: repeat(5, var(--c)); position: relative; }
+  .cell { position: relative; box-shadow: inset 0 0 0 0.5px var(--rule-strong), 0 0 0 0.5px var(--rule-strong); display: grid; place-items: center;
+          font: 500 15px/1 var(--mono); color: transparent; transition: color var(--t-quick); }
+  /* Typed cells are halftone ink; solid when unlocking or peeking. */
+  .cell .ink { position: absolute; inset: 3px; opacity: 0; border-radius: 2px; z-index: -1;
+               background-image: radial-gradient(var(--ink) 0.95px, transparent 1.15px); background-size: 3px 3px; }
+  .cell { isolation: isolate; }
+  .cell.on .ink { opacity: 1; }
+  .cell.solid .ink, .grid.peek .cell.on .ink { background: var(--ink); }
+  .grid.peek .cell.on { color: var(--on-ink); }
+  .caret { position: absolute; left: 50%; top: 50%; width: 7px; height: 7px; margin: -3.5px 0 0 -3.5px; border-radius: 50%; background: var(--ink); animation: caret 1.2s var(--ease) infinite; pointer-events: none; }
+  @keyframes caret { 50% { transform: scale(0.4); opacity: 0.35; } }
+  .grid.shake { animation: shake 520ms var(--spring); }
+  @keyframes shake { 0% { transform: translateX(0); } 20% { transform: translateX(-14px); } 40% { transform: translateX(11px); } 60% { transform: translateX(-7px); } 80% { transform: translateX(4px); } 100% { transform: none; } }
+  .how { display: grid; gap: 10px; }
+  .how .line { display: flex; align-items: center; gap: 10px; color: var(--text-2); }
+  .how .line .i { width: 20px; height: 20px; color: var(--ink); }
+  .fp { animation: breathe-fp 2.6s var(--ease) infinite; }
+  @keyframes breathe-fp { 50% { opacity: 0.35; } }
+  .how .msg { min-height: 20px; font-weight: 500; }
+  .how .msg.err { color: var(--error); }
+  input.secret { position: absolute; opacity: 0; pointer-events: none; }
+
+  .foot { display: flex; align-items: center; gap: 14px; padding: 18px 0 22px; box-shadow: inset 0 1px 0 var(--rule); }
+  .foot .status { display: flex; gap: 16px; flex: 1; flex-wrap: wrap; }
+  .foot .status span { display: flex; align-items: center; gap: 6px; }
+  .foot .status .i { width: 14px; height: 14px; color: var(--text-3); }
+  .mini { display: flex; align-items: center; gap: 10px; }
+  .mini .t { font-weight: 600; font-size: 12.5px; }
+  .mini .a { color: var(--text-2); font-size: 12px; }
+
+  /* Edge tabs: the eye on the spine, power on the screen's right edge. */
+  .edge { position: fixed; z-index: 5; border: 0; background: var(--ink); color: var(--on-ink); display: grid; place-items: center; cursor: pointer; }
+  .edge .i { width: 20px; height: 20px; }
+  .eye { left: 56%; top: 50%; width: 38px; height: 64px; margin-top: -32px; border-radius: 0 14px 14px 0; }
+  .power { right: 0; top: 50%; width: 38px; height: 64px; margin-top: -32px; border-radius: 14px 0 0 14px; overflow: hidden; }
+  .power .fill { position: absolute; inset: auto 0 0 0; height: 0; background: color-mix(in oklab, var(--on-ink) 30%, transparent); }
+  .power.hold .fill { height: 100%; transition: height 1200ms linear; }
+  .power-tip { position: fixed; right: 46px; top: 50%; translate: 0 -50%; padding: 8px 12px; border-radius: 10px; opacity: 0; transition: opacity var(--t-quick); pointer-events: none; }
+  .power:hover + .power-tip { opacity: 1; }
+  body.unlocked .edge, body.unlocked .power-tip { opacity: 0; pointer-events: none; transition: opacity 300ms; }
+
+  /* After unlocking: the desktop's bar and dock arrive. */
+  .after { position: fixed; inset: 0; pointer-events: none; }
+  .after .bar { position: absolute; inset: 0 0 auto 0; height: 34px; transform: translateY(-100%); background: var(--sheet); backdrop-filter: blur(28px); box-shadow: inset 0 -1px 0 var(--rule); }
+  .after .dock { position: absolute; left: 50%; bottom: 10px; width: 420px; height: 68px; margin-left: -210px; border-radius: 24px; transform: translateY(140%); }
+  body.unlocked .after .bar { transition: transform 480ms var(--ease) 700ms; transform: none; }
+  body.unlocked .after .dock { transition: transform 620ms var(--spring) 860ms; transform: none; }
+  .again { position: fixed; left: 50%; top: 50%; translate: -50% -50%; z-index: 9; opacity: 0; pointer-events: none; transition: opacity 400ms 1500ms; }
+  body.unlocked .again { opacity: 1; pointer-events: auto; }
+
+  .study-bar { left: 16px; bottom: 16px; transform: none; }
+  @media (max-width: 900px) {
+    .art { width: 100%; }
+    .page { inset: auto 0 0 0; height: 78%; border-radius: 24px 24px 0 0; }
+    .eye { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="art" id="art"><canvas id="plate"></canvas><span class="credit cap sheet" id="credit">Pl. XXVI · Nightfall · Gustave Doré, 1866</span></div>
+
+<section class="page" id="page">
+  <div class="name-tab">${user}<span>Mariano</span></div>
+  <div class="center">
+    <span class="cap date" id="date"></span>
+    <div class="clock num" id="clock"></div>
+    <div class="rule"></div>
+    <div class="entry">
+      <div class="grid" id="grid" aria-label="Password"><span class="caret" id="caret"></span></div>
+      <div class="how">
+        <span class="line">${keyboard}<span>Type your password</span></span>
+        <span class="line">${fingerprint}<span>or touch the sensor</span></span>
+        <span class="msg" id="msg"></span>
+        <span class="cap">Try “folio”</span>
+      </div>
+    </div>
+    <input class="secret" id="secret" type="password" autocomplete="off" aria-label="Password">
+  </div>
+  <div class="foot">
+    <div class="status cap"><span>${wifi}Bonhart 5G</span><span>${battery}84%</span><span>${keyboard}US</span></div>
+    <div class="mini"><button class="btn round ink stamp" id="play" aria-label="Pause">${pause}</button><div><div class="t">Libertango</div><div class="a">Astor Piazzolla</div></div></div>
+  </div>
+</section>
+
+<button class="edge eye" id="eye" aria-label="Hold to show password">${eye}</button>
+<button class="edge power" id="power" aria-label="Hold for power options"><span class="fill"></span>${power}</button>
+<span class="power-tip cap sheet">Hold to power off</span>
+
+<div class="after"><div class="bar"></div><div class="dock sheet"></div></div>
+<button class="btn ink again stamp" id="again">Lock again</button>
+
+<div class="study-bar sheet">
+  <span class="cap">Folio · Lock · v1</span>
+  <div class="seg" id="mode"><button data-value="light" aria-pressed="true">Light</button><button data-value="dark" aria-pressed="false">Dark</button></div>
+  <div class="seg" id="ink"><button data-value="azure" aria-pressed="true">Azure</button><button data-value="cobalt" aria-pressed="false">Cobalt</button><button data-value="slate" aria-pressed="false">Slate</button></div>
+  <div class="seg" id="plates"><button data-value="moonlit" aria-pressed="true">Moonlit</button><button data-value="negative" aria-pressed="false">Negative</button></div>
+  <a class="btn ghost" href="../../index.html">Workshop</a>
+</div>
+
+<script src="../_kit/folio.js"></script>
+<script>
+  const $ = (s) => document.querySelector(s);
+  document.querySelectorAll("button, .line, .status, .name-tab").forEach((el) => {
+    el.innerHTML = el.innerHTML.replace(/\$\{(\w+)\}/g, (_, n) => Folio.icon(n, n === "fingerprint" ? "fp" : ""));
+  });
+
+  const plate = new Folio.Plate($("#plate"), { plate: "dore-nightfall", breathe: 0.6 });
+  const hm = (d) => d.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false });
+  Folio.clock($("#clock"), hm);
+  $("#date").textContent = new Date().toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" });
+
+  // Cells: the 13 positions of the cross, and the order they print in,
+  // from the center outward like a spiral.
+  const shape = [[0, 2], [1, 1], [1, 2], [1, 3], [2, 0], [2, 1], [2, 2], [2, 3], [2, 4], [3, 1], [3, 2], [3, 3], [4, 2]];
+  const order = [[2, 2], [1, 2], [2, 3], [3, 2], [2, 1], [1, 3], [3, 3], [3, 1], [1, 1], [0, 2], [2, 4], [4, 2], [2, 0]];
+  const grid = $("#grid"), cells = {};
+  for (const [r, c] of shape) {
+    const el = document.createElement("span");
+    el.className = "cell";
+    el.style.gridArea = `${r + 1} / ${c + 1}`;
+    el.innerHTML = `<i class="ink"></i>`;
+    grid.insertBefore(el, $("#caret"));
+    cells[`${r},${c}`] = el;
+  }
+  const slots = order.map(([r, c]) => cells[`${r},${c}`]);
+  const secret = $("#secret");
+  let typed = "";
+  const focus = () => secret.focus({ preventScroll: true });
+  document.addEventListener("pointerdown", (e) => { if (!e.target.closest(".study-bar")) setTimeout(focus); });
+  focus();
+
+  function render(prev) {
+    const n = Math.min(typed.length, slots.length);
+    slots.forEach((cell, i) => {
+      const on = i < n;
+      const char = typed[i] || "";
+      const textNode = cell.firstChild?.nodeType === 3 ? cell.firstChild : null;
+      if (on && !cell.classList.contains("on")) {
+        cell.classList.add("on");
+        Folio.develop(cell.querySelector(".ink"), { duration: 260, grain: 1.2 });
+      } else if (!on && cell.classList.contains("on")) {
+        Folio.develop(cell.querySelector(".ink"), { duration: 200, reverse: true, grain: 1.2, keep: true }).then(() => {
+          cell.classList.remove("on");
+          cell.querySelector(".ink").style.filter = "";
+        });
+      }
+      if (textNode) textNode.textContent = char; else cell.prepend(document.createTextNode(char));
+    });
+    $("#caret").style.opacity = typed.length ? 0 : 1;
+  }
+
+  secret.addEventListener("input", () => { typed = secret.value; $("#msg").textContent = ""; $("#msg").className = "msg"; render(); });
+  secret.addEventListener("keydown", (e) => { if (e.key === "Enter") submit(); });
+  // Any key typed while focus is elsewhere goes to the password, like a real lock.
+  document.addEventListener("keydown", (e) => {
+    if (document.activeElement === secret || document.body.classList.contains("unlocked")) return;
+    if ((e.key.length === 1 || e.key === "Backspace" || e.key === "Enter") && !e.ctrlKey && !e.metaKey && !e.altKey) focus();
+  }, true);
+
+  async function submit() {
+    if (!typed) return;
+    if (typed === "folio") return unlock();
+    grid.classList.remove("shake"); void grid.offsetWidth; grid.classList.add("shake");
+    $("#msg").textContent = "Not quite. The ink lifts; try again.";
+    $("#msg").className = "msg err";
+    await Folio.wait(420);
+    for (let i = typed.length - 1; i >= 0; i--) {
+      typed = typed.slice(0, i);
+      render();
+      await Folio.wait(28);
+    }
+    secret.value = "";
+  }
+
+  async function unlock() {
+    secret.blur();
+    // Flood: every cell prints, solid, in order.
+    for (const cell of slots) {
+      cell.classList.add("on", "solid");
+      Folio.develop(cell.querySelector(".ink"), { duration: 180, grain: 1.2 });
+      await Folio.wait(22);
+    }
+    await Folio.wait(120);
+    Folio.develop($(".center"), { duration: 380, reverse: true, keep: true });
+    Folio.develop($(".name-tab"), { duration: 300, reverse: true, keep: true });
+    document.body.classList.add("unlocked");
+    plate.zoom(1, 900);
+    Folio.tween(900, (p) => { plate.opts.breathe = 0.6 + p * 0.4; });
+  }
+
+  $("#again").addEventListener("click", async () => {
+    document.body.classList.remove("unlocked");
+    typed = ""; secret.value = "";
+    slots.forEach((c) => c.classList.remove("on", "solid"));
+    render();
+    await Folio.wait(500);
+    Folio.develop($(".center"), { duration: 700 });
+    Folio.develop($(".name-tab"), { duration: 500 });
+    plate.develop({ duration: 1100 });
+    focus();
+  });
+
+  // Eye: hold to read the cells.
+  const eye = $("#eye");
+  const peek = (on) => grid.classList.toggle("peek", on);
+  eye.addEventListener("pointerdown", () => peek(true));
+  ["pointerup", "pointerleave"].forEach((ev) => eye.addEventListener(ev, () => { peek(false); focus(); }));
+
+  // Power: hold 1.2 s, the tab fills, then nothing (it is a study).
+  const power = $("#power");
+  let holdTimer;
+  power.addEventListener("pointerdown", () => { power.classList.add("hold"); holdTimer = setTimeout(() => { $("#msg").textContent = "Power off would start now."; $("#msg").className = "msg"; }, 1200); });
+  ["pointerup", "pointerleave"].forEach((ev) => power.addEventListener(ev, () => { power.classList.remove("hold"); clearTimeout(holdTimer); }));
+
+  let playing = true;
+  $("#play").addEventListener("click", () => { playing = !playing; $("#play").innerHTML = Folio.icon(playing ? "pause" : "play"); });
+
+  Folio.seg($("#mode"), (v, e) => Folio.set({ mode: v }, e));
+  Folio.seg($("#ink"), (v, e) => Folio.set({ ink: v }, e));
+  Folio.seg($("#plates"), (v) => Folio.setDarkPlates(v));
+
+  // Arrival: the page prints in after the plate starts developing.
+  const page = $("#page");
+  page.style.opacity = 0;
+  Folio.wait(500).then(() => { page.style.opacity = ""; Folio.develop(page, { duration: 700, grain: 0.7 }); });
+</script>
+</body>
+</html>

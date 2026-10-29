@@ -1,0 +1,359 @@
+<!doctype html>
+<html lang="en" data-mode="light" data-ink="azure">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Folio Motion</title>
+<link rel="stylesheet" href="../_kit/folio.css">
+<style>
+  body { overflow-x: hidden; }
+  .splash { position: relative; height: 100vh; min-height: 560px; overflow: hidden; }
+  .splash canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .splash .title { position: absolute; left: clamp(16px, 6vw, 96px); bottom: clamp(48px, 10vh, 120px); max-width: min(760px, calc(100vw - 32px));
+                 padding: 28px 32px 30px; border-radius: var(--r-xl); }
+  .splash h1 { font: 400 clamp(64px, 11vw, 148px)/0.82 var(--hero); margin: 10px 0 14px; color: var(--ink); }
+  .splash p { margin: 0; font-size: var(--fs-l); color: var(--text-2); max-width: 46ch; }
+  main { max-width: 1180px; margin: 0 auto; padding: 72px 16px 140px; }
+  .intro { display: grid; grid-template-columns: 1fr 1fr; gap: 32px 64px; margin-bottom: 96px; }
+  .intro h2 { font: 600 var(--fs-2xl)/1.15 var(--ui); letter-spacing: -0.015em; margin: 8px 0 0; }
+  .intro p { color: var(--text-2); margin: 0 0 12px; font-size: var(--fs-l); line-height: 1.55; }
+  .move { display: grid; grid-template-columns: 340px 1fr; gap: 24px 48px; padding: 56px 0; box-shadow: inset 0 1px 0 var(--rule); }
+  .move h3 { font: 600 var(--fs-xl)/1.2 var(--ui); margin: 10px 0 10px; letter-spacing: -0.01em; }
+  .move p { color: var(--text-2); margin: 0 0 14px; }
+  .spec { display: flex; flex-wrap: wrap; gap: 6px; margin: 16px 0; }
+  .spec span { font: 500 var(--fs-cap)/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; padding: 6px 9px; border-radius: 999px; background: var(--well); color: var(--text-2); }
+  .build { font-size: var(--fs-s); color: var(--text-3); }
+  .build code { font: 12px var(--mono); color: var(--text-2); }
+  .stage { position: relative; aspect-ratio: 16 / 10; border-radius: var(--r-l); overflow: hidden; background: var(--wash); box-shadow: var(--edge), var(--shadow-l); }
+  .stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .stage .replay { position: absolute; right: 14px; bottom: 14px; z-index: 5; }
+  .stage .label { position: absolute; left: 16px; top: 14px; z-index: 5; padding: 6px 10px; border-radius: 999px; }
+  /* Leaf demo */
+  .drawer { position: absolute; top: 14px; right: 14px; bottom: 14px; width: min(300px, 46%); padding: 16px; display: flex; flex-direction: column; gap: 10px; --spine: right; }
+  .drawer .clockface { font: 400 64px/0.85 var(--hero); color: var(--ink); }
+  .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .tile { display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 12px; border: 0; border-radius: var(--r-m); background: var(--well); cursor: pointer; text-align: left; color: var(--text);
+          transition: background-color var(--t-quick) var(--ease), color var(--t-quick) var(--ease), transform var(--t-press) var(--ease); }
+  .tile[aria-pressed="true"] { background: var(--ink); color: var(--on-ink); }
+  .tile small { display: block; font-size: 11px; opacity: 0.7; }
+  .bars { display: grid; gap: 8px; }
+  /* Stamp demo */
+  .pad { position: absolute; inset: 0; display: grid; place-items: center; }
+  .pad .row-of { display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; padding: 24px; }
+  .key { width: 76px; height: 76px; border-radius: 22px; border: 0; display: grid; place-items: center; cursor: pointer; background: var(--sheet-strong); color: var(--ink); box-shadow: var(--edge), var(--shadow-s);
+         transition: transform var(--t-press) var(--spring); }
+  .key .i { width: 28px; height: 28px; }
+  .key.ink { background: var(--ink); color: var(--on-ink); }
+  /* Print-in demo */
+  .toast { position: absolute; top: 16px; left: 50%; translate: -50% 0; width: min(380px, 80%); padding: 14px 16px; display: grid; grid-template-columns: 36px 1fr; gap: 4px 12px; align-items: center; }
+  .toast .badge { width: 36px; height: 36px; border-radius: 10px; background: var(--ink); color: var(--on-ink); display: grid; place-items: center; grid-row: span 2; }
+  .toast strong { font-weight: 600; }
+  .toast span { color: var(--text-2); font-size: var(--fs-s); }
+  .bigclock { position: absolute; left: 50%; top: 58%; translate: -50% -50%; font: 400 clamp(72px, 12vw, 150px)/0.8 var(--hero); color: var(--ink); }
+  /* Window develop demo */
+  .win { position: absolute; left: 12%; top: 14%; width: 76%; height: 72%; border-radius: var(--r-window); overflow: hidden; background: var(--sheet-strong); box-shadow: var(--edge), var(--shadow-l); }
+  .win .chrome { height: 38px; display: flex; align-items: center; gap: 8px; padding: 0 12px; background: color-mix(in oklab, var(--ink) 14%, var(--sheet-base)); }
+  .win .tab { height: 26px; padding: 0 12px; display: flex; align-items: center; gap: 8px; border-radius: 8px; background: var(--sheet-base); font-size: 12px; }
+  .win .page { padding: 22px 26px; display: grid; gap: 10px; }
+  .win .line { height: 10px; border-radius: 5px; background: var(--well-strong); }
+  pre.glsl { margin: 12px 0 0; padding: 14px 16px; border-radius: var(--r-m); background: var(--well); font: 11.5px/1.5 var(--mono); color: var(--text-2); overflow-x: auto; }
+  /* Score */
+  .score { padding: 56px 0; box-shadow: inset 0 1px 0 var(--rule); }
+  .score h3 { font: 600 var(--fs-xl)/1.2 var(--ui); margin: 10px 0 6px; }
+  .timeline { margin-top: 24px; padding: 20px; border-radius: var(--r-l); background: var(--well); box-shadow: inset 0 0 0 1px var(--rule); }
+  .track { display: grid; grid-template-columns: 170px 1fr; align-items: center; gap: 16px; height: 34px; }
+  .track .name { font-size: var(--fs-s); color: var(--text-2); }
+  .lane { position: relative; height: 10px; border-radius: 5px; }
+  .lane i { position: absolute; top: 0; height: 10px; border-radius: 5px; background: var(--ink); transform-origin: left; }
+  .lane i.soft { background: color-mix(in oklab, var(--ink) 35%, transparent); }
+  .ruler { display: grid; grid-template-columns: 170px 1fr; gap: 16px; margin-top: 8px; }
+  .ruler div { display: flex; justify-content: space-between; }
+  .playhead { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--ink); left: 0; opacity: 0; }
+  .principles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 28px; }
+  .principles .card { padding: 18px; }
+  .principles h4 { margin: 8px 0 6px; font-size: var(--fs-l); }
+  .principles p { margin: 0; color: var(--text-2); font-size: var(--fs-s); }
+  @media (max-width: 860px) {
+    .intro, .move { grid-template-columns: 1fr; }
+    .principles { grid-template-columns: 1fr; }
+    .track, .ruler { grid-template-columns: 96px 1fr; }
+  }
+</style>
+</head>
+<body>
+<section class="splash">
+  <canvas id="hero"></canvas>
+  <div class="title sheet">
+    <span class="cap">Workshop · Motion language · v1</span>
+    <h1>Folio</h1>
+    <p>The desktop as a printed thing. Every image is a plate in one ink; every change is the press at work. Nothing fades. It develops, bleeds, turns, and stamps.</p>
+  </div>
+</section>
+
+<main>
+  <section class="intro">
+    <div>
+      <span class="cap">Why a printmaker</span>
+      <h2>Motion from the medium, not from a library of easings.</h2>
+    </div>
+    <div>
+      <p>Folio's art is two colors: paper and one ink, dithered. A great website earns its feel from one idea carried everywhere; ours is that idea. Wallpaper, lock screen, album art and window openings are all prints, so they all move like prints.</p>
+      <p>Each move below is live, in the real plates and inks, and each says how it would be built on the desktop: a QML <code>ShaderEffect</code> in the shell, or a niri <code>custom-shader</code> for windows.</p>
+    </div>
+  </section>
+
+  <section class="move">
+    <div>
+      <span class="cap">01 · Develop</span>
+      <h3>A plate arrives dot by dot</h3>
+      <p>On login, on a new wallpaper, on waking: the image is not faded in, it is printed. Ink dots land in random order until the plate is whole, the way a photograph comes up in the tray.</p>
+      <div class="spec"><span>1400 ms</span><span>ease 0.4 0 0.2 1</span><span>wallpaper · lock · login</span></div>
+      <p class="build">Shell: a <code>ShaderEffect</code> over the wallpaper thresholds a per-dot random number against progress.</p>
+    </div>
+    <div class="stage"><canvas id="develop"></canvas><button class="btn replay sheet" data-replay="develop">Replay</button></div>
+  </section>
+
+  <section class="move">
+    <div>
+      <span class="cap">02 · Dissolve</span>
+      <h3>One plate becomes another</h3>
+      <p>Changing art never crossfades two images into mud. Each dot independently switches from the old print to the new, so every frame is still a clean two-color print.</p>
+      <div class="spec"><span>1200 ms</span><span>per-dot</span><span>wallpaper picker · shuffle</span></div>
+      <p class="build">Same shader, two textures and a second random number per dot.</p>
+    </div>
+    <div class="stage"><canvas id="dissolve"></canvas><span class="label cap sheet" id="dissolve-label">Doré · Nightfall</span><button class="btn replay sheet" data-replay="dissolve">Next plate</button></div>
+  </section>
+
+  <section class="move">
+    <div>
+      <span class="cap">03 · Bleed</span>
+      <h3>A new ink soaks in from your hand</h3>
+      <p>Switching ink or mode starts where you clicked. The whole interface is revealed in a widening circle; behind its edge the plates soak up the new ink unevenly, like ink finding its way through paper fibre.</p>
+      <div class="spec"><span>950 ms</span><span>emphasized decel</span><span>appearance · dark mode · sunset</span></div>
+      <p class="build">Shell: one radius drives a clip on every surface and a ragged-edge term in the plate shader. Click the stage: it changes this whole page.</p>
+    </div>
+    <div class="stage" id="bleed-stage" style="cursor: crosshair"><canvas id="bleed"></canvas><span class="label cap sheet" id="bleed-label">Click anywhere</span></div>
+  </section>
+
+  <section class="move">
+    <div>
+      <span class="cap">04 · Breathe</span>
+      <h3>The plate is alive, barely</h3>
+      <p>Instead of video wallpapers: the plate never quite sits still. Its dots keep re-printing in a seamless loop, so the whole image shimmers like ink still settling into paper. The picture holds; only the grain moves.</p>
+      <div class="spec"><span>24-frame loop</span><span>9 fps</span><span>desktop · screensaver</span></div>
+      <label class="row" style="padding: 0; min-height: 0; gap: 12px"><span class="cap">Intensity</span><input class="range" id="breathe-amt" type="range" min="0" max="100" value="100" style="max-width: 200px; height: 20px"></label>
+    </div>
+    <div class="stage"><canvas id="breathe"></canvas></div>
+  </section>
+
+  <section class="move">
+    <div>
+      <span class="cap">05 · Leaf and cascade</span>
+      <h3>Panels turn in from their spine</h3>
+      <p>The sidebar is a page, so it arrives like one: hinged at the screen edge, it turns in with a little perspective. Its contents follow 34 ms apart, so the eye reads the panel top to bottom as it lands.</p>
+      <div class="spec"><span>520 ms leaf</span><span>34 ms stagger</span><span>sidebar · settings · popovers</span></div>
+      <p class="build">Shell: <code>rotation</code> about the y axis with a perspective <code>Matrix4x4</code>, then <code>SequentialAnimation</code> delays per child.</p>
+    </div>
+    <div class="stage"><canvas id="leaf-plate"></canvas>
+      <aside class="drawer sheet" id="drawer">
+        <div><span class="cap">Wednesday 28 October</span><div class="clockface num" id="leaf-clock">22:41</div></div>
+        <div class="tiles">
+          <button class="tile stamp" aria-pressed="true">${wifi}<span>Wi-Fi<small>Bonhart 5G</small></span></button>
+          <button class="tile stamp" aria-pressed="false">${moon}<span>Focus<small>Off</small></span></button>
+          <button class="tile stamp" aria-pressed="true">${bluetooth}<span>Bluetooth<small>AirPods</small></span></button>
+          <button class="tile stamp" aria-pressed="false">${cup}<span>Awake<small>Off</small></span></button>
+        </div>
+        <div class="bars"><input class="range" type="range" value="62" min="0" max="100" aria-label="Volume"><input class="range" type="range" value="80" min="0" max="100" aria-label="Brightness"></div>
+        <div class="card" style="padding: 12px"><span class="cap">Now playing</span><div style="font-weight: 600; margin-top: 4px">Libertango</div><div style="color: var(--text-2); font-size: var(--fs-s)">Astor Piazzolla</div></div>
+      </aside>
+      <button class="btn replay sheet" data-replay="leaf">Replay</button>
+    </div>
+  </section>
+
+  <section class="move">
+    <div>
+      <span class="cap">06 · Stamp</span>
+      <h3>Pressing prints</h3>
+      <p>Every control answers a press the same way: it sinks with a spring and leaves a ring of ink that spreads and dries. One gesture for the dock, tiles, buttons and the lock screen's keys.</p>
+      <div class="spec"><span>120 ms press</span><span>520 ms ring</span><span>spring</span></div>
+    </div>
+    <div class="stage"><div class="pad"><div class="row-of">
+      <button class="key stamp" aria-label="Files">${folder}</button>
+      <button class="key stamp ink" aria-label="Browser">${globe}</button>
+      <button class="key stamp" aria-label="Terminal">${terminal}</button>
+      <button class="key stamp" aria-label="Music">${music}</button>
+      <button class="key stamp ink" aria-label="Settings">${gear}</button>
+    </div></div></div>
+  </section>
+
+  <section class="move">
+    <div>
+      <span class="cap">07 · Print-in</span>
+      <h3>Text and cards print, too</h3>
+      <p>The same dot threshold works on any surface: a notification prints into place under the bar, and a clock prints its new minute instead of swapping digits. One mechanism, so plates and interface feel made of the same stuff.</p>
+      <div class="spec"><span>600 ms</span><span>linear threshold</span><span>notifications · clocks · OSD</span></div>
+    </div>
+    <div class="stage"><canvas id="print-plate"></canvas>
+      <div class="toast sheet" id="toast"><span class="badge">${message}</span><strong>Lucía</strong><span>¿Mate a las cinco? Llevo facturas.</span></div>
+      <div class="bigclock num" id="bigclock">22:41</div>
+      <button class="btn replay sheet" data-replay="print">Replay</button>
+    </div>
+  </section>
+
+  <section class="move">
+    <div>
+      <span class="cap">08 · Windows</span>
+      <h3>Windows develop too</h3>
+      <p>niri lets a window's opening animation be a shader, so a new window can print in exactly like the plates, and close by lifting its ink off. This is the one move that reaches every app.</p>
+      <div class="spec"><span>420 ms open</span><span>260 ms close</span><span>niri custom-shader</span></div>
+      <pre class="glsl">window-open {
+    duration-ms 420
+    curve "ease-out-expo"
+    custom-shader r"
+      vec4 open_color(vec3 coords_geo, vec3 size_geo) {
+        vec3 tex = niri_geo_to_tex * coords_geo;
+        vec4 color = texture2D(niri_tex, tex.st);
+        vec2 cell = floor(coords_geo.xy * size_geo.xy / 2.0);
+        float n = fract(sin(dot(cell, vec2(12.9898, 78.233))) * 43758.5453);
+        return color * step(n, niri_clamped_progress);
+      }"
+}</pre>
+    </div>
+    <div class="stage"><canvas id="win-plate"></canvas>
+      <div class="win" id="win">
+        <div class="chrome">${back}<div class="tab">${globe}Workshop</div><div class="tab" style="background: transparent">${plus}</div></div>
+        <div class="page"><div class="line" style="width: 42%; height: 18px"></div><div class="line"></div><div class="line" style="width: 88%"></div><div class="line" style="width: 64%"></div></div>
+      </div>
+      <button class="btn replay sheet" data-replay="win">Open window</button>
+    </div>
+  </section>
+
+  <section class="score">
+    <span class="cap">The score</span>
+    <h3>How the desktop assembles after you log in</h3>
+    <p style="color: var(--text-2); margin: 0; max-width: 62ch">Like a title sequence: one thing at a time, each starting before the last has finished, so it reads as a single gesture. 1.6 seconds from password to a desktop you can use; input is live from the first frame.</p>
+    <div class="timeline" id="timeline"></div>
+    <div class="principles">
+      <div class="card"><span class="cap">Rule 1</span><h4>Never fade an image</h4><p>Images develop, dissolve or bleed. A crossfade between two prints makes a third, muddy one; ours never exists.</p></div>
+      <div class="card"><span class="cap">Rule 2</span><h4>Start where the hand is</h4><p>Bleeds start at the cursor, panels from the edge they belong to, toasts from under the bar. Motion explains where things live.</p></div>
+      <div class="card"><span class="cap">Rule 3</span><h4>Input before ornament</h4><p>Everything is clickable mid-flight. Durations are long enough to read and short enough never to wait on.</p></div>
+    </div>
+  </section>
+</main>
+
+<div class="study-bar sheet">
+  <span class="cap">Mode</span>
+  <div class="seg" id="mode"><button data-value="light" aria-pressed="true">Light</button><button data-value="dark" aria-pressed="false">Dark</button></div>
+  <span class="cap">Ink</span>
+  <div class="seg" id="ink"><button data-value="azure" aria-pressed="true">Azure</button><button data-value="cobalt" aria-pressed="false">Cobalt</button><button data-value="slate" aria-pressed="false">Slate</button></div>
+  <span class="cap">Dark plates</span>
+  <div class="seg" id="plates"><button data-value="moonlit" aria-pressed="true">Moonlit</button><button data-value="negative" aria-pressed="false">Negative</button></div>
+  <a class="btn ghost" href="../../index.html">Workshop</a>
+</div>
+
+<script src="../_kit/folio.js"></script>
+<script>
+  // Inline ${icon} placeholders become sprite icons.
+  document.querySelectorAll("button, .badge, .chrome").forEach((el) => {
+    el.innerHTML = el.innerHTML.replace(/\$\{(\w+)\}/g, (_, name) => Folio.icon(name));
+  });
+
+  const hero = new Folio.Plate(document.getElementById("hero"), { plate: "dore-nightfall", breathe: 1, dot: 1 });
+  const dev = new Folio.Plate(document.getElementById("develop"), { plate: "ronin-shrine" });
+  const dis = new Folio.Plate(document.getElementById("dissolve"), { plate: "dore-nightfall", develop: false });
+  const bleed = new Folio.Plate(document.getElementById("bleed"), { plate: "summer-riviera", develop: false });
+  const breathe = new Folio.Plate(document.getElementById("breathe"), { plate: "argentina-patagonia", develop: false, breathe: 1 });
+  const leaf = new Folio.Plate(document.getElementById("leaf-plate"), { plate: "ronin-crossing", develop: false });
+  new Folio.Plate(document.getElementById("print-plate"), { plate: "summer-sicily", develop: false, lift: 0.18 });
+  new Folio.Plate(document.getElementById("win-plate"), { plate: "argentina-buenos-aires", develop: false, lift: 0.1 });
+
+  const order = ["dore-nightfall", "summer-riviera", "argentina-patagonia", "ronin-shrine", "dore-descent", "summer-sicily", "argentina-buenos-aires", "ronin-crossing"];
+  let at = 0;
+  const actions = {
+    develop: () => dev.develop(),
+    dissolve: async () => {
+      at = (at + 1) % order.length;
+      const info = await Folio.plateInfo(order[at]);
+      document.getElementById("dissolve-label").textContent = `${info.collection.name} · ${info.title}`;
+      dis.show(order[at]);
+    },
+    leaf: () => {
+      const d = document.getElementById("drawer");
+      d.classList.remove("leaf-in"); void d.offsetWidth; d.classList.add("leaf-in");
+      Folio.cascade(d, 140);
+    },
+    print: () => {
+      const t = document.getElementById("toast");
+      t.style.animation = "none"; void t.offsetWidth;
+      t.animate([{ transform: "translateY(-18px)" }, { transform: "none" }], { duration: 520, easing: "cubic-bezier(0.2, 0, 0, 1)" });
+      Folio.develop(t, { duration: 600 });
+      Folio.wait(380).then(() => Folio.develop(document.getElementById("bigclock"), { duration: 700 }));
+    },
+    win: async () => {
+      const w = document.getElementById("win");
+      w.animate([{ transform: "scale(0.94)" }, { transform: "none" }], { duration: 420, easing: "cubic-bezier(0.16, 1, 0.3, 1)" });
+      await Folio.develop(w, { duration: 420, grain: 0.5 });
+      await Folio.wait(900);
+      w.animate([{ transform: "none" }, { transform: "scale(0.97)" }], { duration: 260, easing: "cubic-bezier(0.3, 0, 0.8, 0.15)", fill: "forwards" });
+      await Folio.develop(w, { duration: 260, reverse: true, grain: 0.5, keep: true });
+      await Folio.wait(500);
+      w.getAnimations().forEach((a) => a.cancel());
+      w.style.filter = "";
+    },
+  };
+  document.querySelectorAll("[data-replay]").forEach((b) => b.addEventListener("click", () => actions[b.dataset.replay]()));
+
+  // Bleed: clicking the stage cycles the ink for the whole page.
+  const inks = ["azure", "cobalt", "slate"];
+  document.getElementById("bleed-stage").addEventListener("click", (e) => {
+    const next = inks[(inks.indexOf(Folio.state.ink) + 1) % inks.length];
+    Folio.set({ ink: next }, e);
+    syncSeg();
+  });
+
+  document.getElementById("breathe-amt").addEventListener("input", (e) => { breathe.opts.breathe = e.target.value / 100; });
+  document.querySelectorAll(".range").forEach(Folio.range);
+
+  const modeSeg = document.getElementById("mode"), inkSeg = document.getElementById("ink");
+  const placeMode = Folio.seg(modeSeg, (v, e) => Folio.set({ mode: v }, e));
+  const placeInk = Folio.seg(inkSeg, (v, e) => Folio.set({ ink: v }, e));
+  Folio.seg(document.getElementById("plates"), (v) => Folio.setDarkPlates(v));
+  function syncSeg() {
+    inkSeg.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.value === Folio.state.ink));
+    placeInk();
+  }
+
+  const fmt = (d) => d.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false });
+  Folio.clock(document.getElementById("leaf-clock"), fmt);
+  Folio.clock(document.getElementById("bigclock"), fmt);
+
+  document.querySelectorAll(".tile").forEach((t) => t.addEventListener("click", () => t.setAttribute("aria-pressed", t.getAttribute("aria-pressed") !== "true")));
+
+  // The score: the login sequence as a timeline, played on load and on click.
+  const score = [
+    ["Plate develops", 0, 1400, ""],
+    ["Bar slides from top", 520, 480, ""],
+    ["Dock rises, icons stagger", 700, 620, ""],
+    ["Clock prints", 900, 600, "soft"],
+    ["Windows develop back in", 1000, 420, ""],
+    ["Light band begins", 1600, 900, "soft"],
+  ];
+  const total = 2500;
+  const tl = document.getElementById("timeline");
+  tl.innerHTML = score.map(([name, start, dur, cls]) => `<div class="track"><span class="name">${name}</span><div class="lane"><i class="${cls}" style="left:${(start / total) * 100}%;width:${(dur / total) * 100}%"></i></div></div>`).join("")
+    + `<div class="ruler"><span></span><div class="cap"><span>0</span><span>0.5 s</span><span>1 s</span><span>1.5 s</span><span>2 s</span><span>2.5 s</span></div></div>`;
+  const play = () => tl.querySelectorAll(".lane i").forEach((bar, n) => {
+    const [, start, dur] = score[n];
+    bar.animate([{ transform: "scaleX(0)" }, { transform: "scaleX(1)" }], { duration: dur, delay: start, easing: "cubic-bezier(0.2, 0, 0, 1)", fill: "backwards" });
+  });
+  new IntersectionObserver((entries) => entries.forEach((e) => e.isIntersecting && play()), { threshold: 0.6 }).observe(tl);
+  tl.addEventListener("click", play);
+
+  // Hero: the title prints in after the plate starts developing.
+  const title = document.querySelector(".splash .title");
+  title.style.opacity = 0;
+  Folio.wait(700).then(() => { title.style.opacity = ""; Folio.develop(title, { duration: 900 }); });
+  actions.leaf();
+</script>
+</body>
+</html>

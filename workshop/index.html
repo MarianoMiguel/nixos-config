@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Desktop Workshop</title>
 <style>
-  /* Pond's palette and metrics (pond-interface shell/Theme.qml). */
+  /* Workshop page palette (dark gallery, light on request). */
   :root {
     --bg: #141414;
     --surface: #1d1d1d;
@@ -24,6 +24,7 @@
     --font: "Onest", system-ui, -apple-system, "Segoe UI", sans-serif;
     --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
     --link: var(--lilac);
+    --on-accent: #2a1f38;
     color-scheme: dark;
   }
   @media (prefers-color-scheme: light) {
@@ -46,12 +47,6 @@
         border-radius: var(--radius); width: fit-content; max-width: 100%; overflow-x: auto; }
   nav button { font: inherit; color: var(--muted); background: none; border: 0; padding: 6px 14px; border-radius: 12px; cursor: pointer; }
   nav button[aria-selected="true"] { color: var(--text); background: var(--surface-2); }
-  .filters { display: flex; flex-wrap: wrap; gap: var(--gap); align-items: center; margin-bottom: 14px; }
-  .filters input, .filters select { font: inherit; color: var(--text); background: var(--surface); border: 1px solid var(--line);
-        border-radius: 12px; padding: 6px 12px; min-width: 0; }
-  .filters input { flex: 1 1 220px; }
-  .filters .chip { cursor: pointer; user-select: none; }
-  .filters .chip[aria-pressed="false"] { opacity: 0.45; }
   h2 { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 26px 0 8px; }
   .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; margin-bottom: var(--gap); }
   .row { display: grid; grid-template-columns: 1fr auto; gap: 4px 16px; }
@@ -77,6 +72,44 @@
   dialog::backdrop { background: rgba(0, 0, 0, 0.8); }
   dialog img { max-width: 96vw; max-height: 92vh; border-radius: 12px; display: block; }
   .error { color: var(--pink); }
+
+  /* Controls */
+  button.act, .seg button { font: inherit; font-size: 13.5px; color: var(--text); background: var(--surface-2);
+        border: 1px solid var(--line); border-radius: 12px; padding: 5px 12px; cursor: pointer;
+        transition: background 120ms, border-color 120ms, color 120ms; }
+  button.act:hover, .seg button:hover { border-color: var(--muted); }
+  button.act.primary { background: var(--lilac); border-color: var(--lilac); color: var(--on-accent); font-weight: 500; }
+  button:disabled { opacity: 0.5; cursor: default; }
+  input.field, select.field { font: inherit; font-size: 14px; color: var(--text); background: var(--surface-2);
+        border: 1px solid var(--line); border-radius: 12px; padding: 6px 12px; min-width: 0; }
+  input.field:focus, select.field:focus, button:focus-visible { outline: 2px solid var(--lilac); outline-offset: 1px; }
+  .form { display: flex; flex-wrap: wrap; gap: var(--gap); align-items: center; margin-top: 10px; }
+  .form .grow { flex: 1 1 200px; }
+  .seg { display: inline-flex; gap: 2px; padding: 2px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px; }
+  .seg button { border: 0; background: none; padding: 3px 10px; border-radius: 10px; color: var(--muted); }
+  .seg button[aria-pressed="true"] { color: var(--text); background: var(--surface); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3); }
+  .notes { width: 100%; margin-top: 6px; background: transparent; border-color: transparent; padding-left: 0; color: var(--muted); }
+  .notes:hover, .notes:focus { border-color: var(--line); background: var(--surface-2); padding-left: 12px; color: var(--text); }
+
+  /* Looks */
+  .looks { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; }
+  .look { display: flex; flex-direction: column; gap: 8px; }
+  .look.live { border-color: var(--lilac); }
+  .look .note { color: var(--muted); font-size: 13.5px; flex: 1; }
+  .look footer { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  td.diff { color: var(--text); font-weight: 500; }
+  td.same { color: var(--muted); }
+  th.live-col, td.live-col { background: color-mix(in srgb, var(--lilac) 8%, transparent); }
+  tr.section th { color: var(--text); font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; padding-top: 18px; }
+  details pre { white-space: pre-wrap; font: 12px/1.45 var(--mono); color: var(--muted); margin: 6px 0 0; }
+  summary { cursor: pointer; }
+
+  .toast { position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 20px); opacity: 0; pointer-events: none;
+           background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px; padding: 8px 16px;
+           box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35); transition: opacity 220ms, transform 220ms cubic-bezier(0.2, 0, 0, 1);
+           max-width: calc(100vw - 32px); }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+  .toast.bad { border-color: var(--pink); }
   @media (max-width: 640px) {
     .row { grid-template-columns: 1fr; }
     .row .meta { justify-content: start; }
@@ -88,37 +121,78 @@
   <header>
     <div>
       <h1>Desktop Workshop</h1>
-      <p class="sub">Pond's polish, Omarchy's features, NixOS underneath.</p>
+      <p class="sub">Folio: one native, coherent desktop on NixOS, in one design language.</p>
     </div>
     <span class="chip" id="current">loading</span>
   </header>
   <div class="stats" id="stats"></div>
   <nav role="tablist">
-    <button role="tab" data-tab="parity" aria-selected="true">Parity</button>
+    <button role="tab" data-tab="looks" aria-selected="true">Looks</button>
+    <button role="tab" data-tab="taste" aria-selected="false">Taste</button>
     <button role="tab" data-tab="versions" aria-selected="false">Versions</button>
-    <button role="tab" data-tab="upstreams" aria-selected="false">Upstreams</button>
     <button role="tab" data-tab="studies" aria-selected="false">Studies</button>
+    <button role="tab" data-tab="upstreams" aria-selected="false">Upstreams</button>
   </nav>
-  <section id="parity"></section>
+  <section id="looks"></section>
+  <section id="taste" hidden></section>
   <section id="versions" hidden></section>
-  <section id="upstreams" hidden></section>
   <section id="studies" hidden></section>
+  <section id="upstreams" hidden></section>
 </main>
 <dialog id="zoom"><img alt=""></dialog>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script>
-const COLORS = {
+const VERDICT_COLORS = { like: "var(--lime)", unsure: "var(--yellow)", dislike: "var(--pink)" };
+const VERDICTS = Object.keys(VERDICT_COLORS);
+// Statuses of the archived Pond parity board, still shown on versions 1 and 2.
+const PARITY_COLORS = {
   verified: "var(--lime)", built: "var(--lilac)", building: "var(--orange)", study: "var(--yellow)",
   missing: "var(--pink)", deviation: "#7fa7d9", watching: "var(--muted)", rejected: "var(--divider)",
 };
-const ORDER = Object.keys(COLORS);
+const SOURCES = ["ours", "pond", "omarchy", "macos", "gnome"];
+const LABELS = {
+  cornerRadius: "Shell corner radius", niriLayoutRadiusOverride: "Window corner radius", niriLayoutGapsOverride: "Window gaps",
+  niriLayoutBorderSize: "Window border", animationSpeed: "Animation speed", customAnimationDuration: "Custom duration",
+  syncComponentAnimationSpeeds: "Same speed everywhere", popoutAnimationSpeed: "Popout speed", popoutCustomAnimationDuration: "Popout custom duration",
+  modalAnimationSpeed: "Modal speed", modalCustomAnimationDuration: "Modal custom duration", notificationAnimationSpeed: "Notification speed",
+  notificationCustomAnimationDuration: "Notification custom duration", animationVariant: "Motion curve", motionEffect: "Motion effect",
+  springBounce: "Spring", enableRippleEffects: "Ripples", popupTransparency: "Popout opacity", dockTransparency: "Dock opacity",
+  floatingWindowTransparency: "Floating window opacity", foregroundLayerTransparency: "Foreground layer opacity", blurEnabled: "Blur",
+  blurForegroundLayers: "Blur behind shell layers", blurLayerOutlineOpacity: "Blur outline", blurBorderEnabled: "Blur border",
+  blurBorderOpacity: "Blur border opacity", frameBlurEnabled: "Frame blur", m3ElevationEnabled: "Elevation", m3ElevationIntensity: "Elevation size",
+  m3ElevationOpacity: "Elevation strength", modalElevationEnabled: "Modal shadow", popoutElevationEnabled: "Popout shadow",
+  barElevationEnabled: "Bar shadow", notificationPopupShadowEnabled: "Notification shadow",
+  transparency: "Bar opacity", widgetTransparency: "Bar widget opacity", squareCorners: "Square bar corners", borderOpacity: "Bar border",
+  widgetOutlineOpacity: "Bar widget outline", shadowIntensity: "Bar shadow size", shadowOpacity: "Bar shadow strength",
+  spacing: "Bar spacing", innerPadding: "Bar padding",
+};
+const ENUMS = {
+  animationSpeed: ["None", "Short", "Medium", "Long", "Custom"], animationVariant: ["Material", "Fluent", "Dynamic"],
+  motionEffect: ["Standard", "Directional", "Depth"], springBounce: ["Damped", "Critical", "Bouncy"],
+};
 const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const pill = (status) => `<span class="chip"><span class="dot" style="background:${COLORS[status] || "var(--muted)"}"></span>${esc(status)}</span>`;
-const state = { statuses: new Set(ORDER), source: "", query: "" };
+const dot = (color) => `<span class="dot" style="background:${color}"></span>`;
+const page = { api: false, state: null, taste: null };
 
-function upstreamLink(ref) {
-  const match = /^([\w.-]+\/[\w.-]+):(.+)$/.exec(ref || "");
-  if (!match) return ref ? `<span class="mono">${esc(ref)}</span>` : "";
-  return `<a class="mono" href="https://github.com/${match[1]}/blob/HEAD/${match[2]}">${esc(ref)}</a>`;
+function fmt(key, value) {
+  if (value === undefined || value === null) return "–";
+  const names = ENUMS[key] || (/AnimationSpeed$/.test(key) ? ENUMS.animationSpeed : null);
+  if (names) return names[value] ?? value;
+  if (typeof value === "boolean") return value ? "on" : "off";
+  if (/Transparency$|^transparency$|Opacity$/.test(key) && value <= 1) return `${Math.round(value * 100)}%`;
+  if (/Radius|Gaps|BorderSize|spacing|Padding/.test(key)) return value < 0 ? "DMS default" : `${value} px`;
+  if (/Duration$/.test(key)) return `${value} ms`;
+  return String(value);
+}
+
+let toastTimer;
+function toast(message, bad = false) {
+  const el = document.getElementById("toast");
+  el.textContent = message;
+  el.classList.toggle("bad", bad);
+  el.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove("show"), bad ? 6000 : 2600);
 }
 
 async function load(name, fallback) {
@@ -132,56 +206,149 @@ async function load(name, fallback) {
   }
 }
 
-function renderStats(items) {
-  const counts = Object.fromEntries(ORDER.map((s) => [s, items.filter((i) => i.status === s).length]));
-  document.getElementById("stats").innerHTML = ORDER.filter((s) => counts[s])
-    .map((s) => `<span class="chip"><span class="dot" style="background:${COLORS[s]}"></span>${s} <strong>${counts[s]}</strong></span>`).join("");
+async function post(path, body) {
+  const response = await fetch(path, {
+    method: "POST", headers: { "Content-Type": "application/json", "X-Workshop": "1" }, body: JSON.stringify(body),
+  });
+  const data = await response.json().catch(() => ({ error: `HTTP ${response.status}` }));
+  if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+  page.state = data;
+  page.taste = data.taste;
+  renderAll();
+  return data;
 }
 
-function renderParity(parity) {
-  const sources = [...new Set(parity.items.map((i) => i.source))];
-  const visible = parity.items.filter((i) => state.statuses.has(i.status)
-    && (!state.source || i.source === state.source)
-    && (!state.query || JSON.stringify(i).toLowerCase().includes(state.query)));
-  const areas = {};
-  for (const item of visible) (areas[item.area] ||= []).push(item);
-  const filters = `<div class="filters">
-      <input type="search" id="q" placeholder="Search capabilities, files, notes" value="${esc(state.query)}" aria-label="Search">
-      <select id="source" aria-label="Source"><option value="">All sources</option>${sources.map((s) => `<option ${s === state.source ? "selected" : ""}>${esc(s)}</option>`).join("")}</select>
-      ${ORDER.map((s) => `<span class="chip" role="button" tabindex="0" data-status="${s}" aria-pressed="${state.statuses.has(s)}" title="${esc(parity.statuses[s] || "")}"><span class="dot" style="background:${COLORS[s]}"></span>${s}</span>`).join("")}
+function act(path, body, done) {
+  post(path, body).then(() => done && toast(done)).catch((error) => toast(error.message, true));
+}
+
+function renderStats() {
+  const items = page.taste?.items || [];
+  document.getElementById("stats").innerHTML = VERDICTS.map((v) => [v, items.filter((i) => i.verdict === v).length])
+    .filter(([, n]) => n).map(([v, n]) => `<span class="chip">${dot(VERDICT_COLORS[v])}${v} <strong>${n}</strong></span>`).join("");
+  const live = page.state?.live;
+  document.getElementById("current").textContent = !page.api ? "read-only" : page.state.liveLook ? `look: ${live || "unsaved changes"}` : "no DMS session";
+}
+
+function renderLooks() {
+  const root = document.getElementById("looks");
+  const state = page.state;
+  if (!page.api) {
+    root.innerHTML = `<p class="empty">Looks need the workshop server on a DMS session: <code>scripts/workshop open</code>.</p>`;
+    return;
+  }
+  const names = Object.keys(state.looks);
+  const live = state.live;
+  const head = state.liveLook ? `<div class="card">
+      <div class="row"><div class="title">Live session: ${live ? `<strong>${esc(state.looks[live].title)}</strong> <code class="id">${esc(live)}</code>` : "<strong>unsaved changes</strong>"}</div></div>
+      <div class="detail sub">Tune in DMS Settings, then save what you like here. Saved looks are files in <code>workshop/looks/</code>, so they live in git.</div>
+      <form class="form" id="save-look">
+        <input class="field" name="name" required pattern="[a-z0-9][a-z0-9\\-]{0,40}" placeholder="name, e.g. mine" aria-label="Look name" value="${live ? "" : ""}">
+        <input class="field" name="title" placeholder="Title" aria-label="Title">
+        <input class="field grow" name="note" placeholder="What's different about it" aria-label="Note">
+        <button class="act primary" type="submit">Save live look</button>
+      </form></div>`
+    : `<p class="empty">No DMS settings on this host; looks are read-only.</p>`;
+  const cards = names.map((name) => {
+    const look = state.looks[name];
+    const isLive = name === live;
+    return `<div class="card look ${isLive ? "live" : ""}">
+      <div class="row"><div class="title">${esc(look.title)}<code class="id">${esc(name)}</code></div>
+        <div class="meta">${isLive ? `<span class="chip">${dot("var(--lilac)")}live</span>` : ""}</div></div>
+      <div class="note">${esc(look.note)}</div>
+      <footer><span class="sub">saved ${esc(look.saved)}</span>
+        <button class="act ${isLive ? "" : "primary"}" data-apply="${esc(name)}" ${isLive || !state.liveLook ? "disabled" : ""}>${isLive ? "Applied" : "Apply"}</button></footer>
     </div>`;
+  }).join("");
+  const columns = names.map((name) => ({ name, look: state.looks[name], live: name === live }));
+  if (state.liveLook && !live) columns.push({ name: "live", look: { title: "Live (unsaved)", ...state.liveLook }, live: true });
+  const cell = (key, values, value) => {
+    const differs = new Set(values.map((v) => JSON.stringify(v))).size > 1;
+    return `<td class="${differs ? "diff" : "same"}">${esc(fmt(key, value))}</td>`;
+  };
+  const rows = (title, keys, pick) => `<tr class="section"><th colspan="${columns.length + 1}">${esc(title)}</th></tr>` + keys.map((key) => {
+    const values = columns.map((c) => pick(c.look)[key]);
+    return `<tr><td>${esc(LABELS[key] || key)}</td>${values.map((v, i) => cell(key, values, v).replace("<td class=\"", `<td class="${columns[i].live ? "live-col " : ""}`)).join("")}</tr>`;
+  }).join("");
+  const niriRow = `<tr class="section"><th colspan="${columns.length + 1}">Windows (niri)</th></tr><tr><td>Motion and shadows</td>${columns.map((c) => {
+    const text = (c.look.niri || "").trim();
+    return `<td class="${c.live ? "live-col " : ""}${text ? "diff" : "same"}">${text ? `<details><summary>${esc(text.split("\n")[0].replace(/^\/\/\s*/, "").slice(0, 60))}</summary><pre>${esc(text)}</pre></details>` : "repo config as is"}</td>`;
+  }).join("")}</tr>`;
+  const table = `<h2>Compare</h2><div class="card table-wrap"><table>
+      <thead><tr><th>Setting</th>${columns.map((c) => `<th class="${c.live ? "live-col" : ""}">${esc(c.look.title)}</th>`).join("")}</tr></thead>
+      <tbody>${Object.entries(state.keys).map(([section, keys]) => rows(section, Object.keys(keys), (l) => l.dms || {})).join("")}
+      ${rows("Bar", state.barKeys, (l) => l.bar || {})}${niriRow}</tbody></table></div>`;
+  root.innerHTML = head + `<h2>Saved looks</h2><div class="looks">${cards}</div>` + table;
+  root.querySelectorAll("[data-apply]").forEach((button) => button.addEventListener("click", () => {
+    button.disabled = true;
+    act("/api/look/apply", { name: button.dataset.apply }, `Applied ${button.dataset.apply}. Your session is changing now.`);
+  }));
+  root.querySelector("#save-look")?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const form = Object.fromEntries(new FormData(event.target));
+    act("/api/look/save", form, `Saved ${form.name} to workshop/looks/${form.name}.json`);
+  });
+}
+
+function slug(text, taken) {
+  const base = text.toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 36) || "item";
+  let id = base;
+  for (let n = 2; taken.has(id); n++) id = `${base}-${n}`;
+  return id;
+}
+
+function renderTaste() {
+  const root = document.getElementById("taste");
+  const taste = page.taste;
+  const editable = page.api;
+  const areas = {};
+  for (const item of taste.items) (areas[item.area] ||= []).push(item);
   const body = Object.entries(areas).map(([area, items]) => `<h2>${esc(area)}</h2>` + items.map((i) => `
-      <div class="card row">
-        <div class="title">${esc(i.capability)}<code class="id">${esc(i.id)}</code></div>
-        <div class="meta">${pill(i.status)}<span class="chip" title="${esc(parity.sources[i.source] || "")}">${esc(i.source)}</span><span class="chip" title="${esc(parity.tiers[i.tier] || "")}">${esc(i.tier)}</span></div>
-        <div class="detail">
-          ${i.where ? `<div><span class="mono">${esc(i.where)}</span></div>` : ""}
-          ${i.upstream ? `<div>Upstream: ${upstreamLink(i.upstream)}</div>` : ""}
-          ${i.checked ? `<div>Checked: ${esc(i.checked)}</div>` : ""}
-          ${i.notes ? `<div>${esc(i.notes)}</div>` : ""}
-        </div>
-      </div>`).join("")).join("") || `<p class="empty">Nothing matches.</p>`;
-  const root = document.getElementById("parity");
-  root.innerHTML = filters + body;
-  const q = root.querySelector("#q");
-  q.addEventListener("input", () => { state.query = q.value.toLowerCase(); renderParity(parity); root.querySelector("#q").focus(); });
-  root.querySelector("#source").addEventListener("change", (e) => { state.source = e.target.value; renderParity(parity); });
-  root.querySelectorAll("[data-status]").forEach((chip) => {
-    const toggle = () => { const s = chip.dataset.status; state.statuses.has(s) ? state.statuses.delete(s) : state.statuses.add(s); renderParity(parity); };
-    chip.addEventListener("click", toggle);
-    chip.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); } });
+      <div class="card row" data-id="${esc(i.id)}">
+        <div class="title">${esc(i.thing)}<code class="id">${esc(i.id)}</code></div>
+        <div class="meta"><span class="chip">${esc(i.from)}</span>
+          ${editable ? `<span class="seg" role="group" aria-label="Verdict">${VERDICTS.map((v) => `<button type="button" data-verdict="${v}" aria-pressed="${i.verdict === v}">${dot(VERDICT_COLORS[v])} ${v}</button>`).join("")}</span>`
+            : `<span class="chip">${dot(VERDICT_COLORS[i.verdict])}${esc(i.verdict)}</span>`}</div>
+        <div class="detail">${editable ? `<input class="field notes" value="${esc(i.notes)}" placeholder="Why? (saved when you leave the field)" aria-label="Notes">` : esc(i.notes)}</div>
+      </div>`).join("")).join("");
+  const add = editable ? `<h2>Add something</h2><div class="card"><form class="form" id="add-taste">
+      <input class="field grow" name="thing" required placeholder="What, e.g. Omarchy's theme picker" aria-label="Thing">
+      <input class="field" name="area" required list="areas" placeholder="Area" aria-label="Area">
+      <datalist id="areas">${Object.keys(areas).map((a) => `<option value="${esc(a)}">`).join("")}</datalist>
+      <select class="field" name="from" aria-label="From">${SOURCES.map((s) => `<option>${s}</option>`).join("")}</select>
+      <select class="field" name="verdict" aria-label="Verdict">${VERDICTS.map((v) => `<option>${v}</option>`).join("")}</select>
+      <input class="field grow" name="notes" placeholder="Notes" aria-label="Notes">
+      <button class="act primary" type="submit">Add</button></form></div>`
+    : `<p class="sub">Read-only. Run <code>scripts/workshop open</code> to edit from this page.</p>`;
+  root.innerHTML = `<p class="sub">What the desktop should and should not be, and where each idea came from. Saved to <code>workshop/taste.json</code>.</p>` + body + add;
+  root.querySelectorAll("[data-verdict]").forEach((button) => button.addEventListener("click", () => {
+    const id = button.closest("[data-id]").dataset.id;
+    act("/api/taste/set", { id, verdict: button.dataset.verdict });
+  }));
+  root.querySelectorAll(".notes").forEach((input) => input.addEventListener("change", () => {
+    const id = input.closest("[data-id]").dataset.id;
+    const item = page.taste.items.find((i) => i.id === id);
+    act("/api/taste/set", { id, verdict: item.verdict, notes: input.value }, "Note saved");
+  }));
+  root.querySelector("#add-taste")?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const form = Object.fromEntries(new FormData(event.target));
+    form.id = slug(form.thing, new Set(page.taste.items.map((i) => i.id)));
+    act("/api/taste/add", form, `Added ${form.thing}`);
   });
 }
 
 function renderVersions(sessions) {
   const versions = [...sessions.versions].reverse();
   document.getElementById("versions").innerHTML = versions.map((v) => {
-    const total = Object.values(v.parity || {}).reduce((a, b) => a + b, 0) || 1;
-    const bar = ORDER.filter((s) => v.parity?.[s]).map((s) => `<span title="${s} ${v.parity[s]}" style="width:${(100 * v.parity[s]) / total}%;background:${COLORS[s]}"></span>`).join("");
+    const counts = v.taste || v.parity || {};
+    const colors = v.taste ? VERDICT_COLORS : PARITY_COLORS;
+    const total = Object.values(counts).reduce((a, b) => a + b, 0) || 1;
+    const bar = Object.keys(colors).filter((s) => counts[s]).map((s) => `<span title="${s} ${counts[s]}" style="width:${(100 * counts[s]) / total}%;background:${colors[s]}"></span>`).join("");
     return `<div class="card">
       <div class="row"><div class="title">v${v.version} · ${esc(v.title)}</div>
-        <div class="meta"><span class="chip">${esc(v.date)}</span><span class="chip mono">${esc(v.tag)}</span></div>
-        <div class="detail">${esc(v.summary)}</div></div>
+        <div class="meta"><span class="chip">${esc(v.date)}</span><span class="chip mono">${esc(v.tag)}</span>${v.look ? `<span class="chip">look: ${esc(v.look)}</span>` : ""}</div>
+        <div class="detail">${esc(v.summary)}${v.parity ? " (Pond parity board, archived.)" : ""}</div></div>
       <div class="bar">${bar}</div>
       ${v.captures?.length ? `<div class="grid">${v.captures.map((c) => `<figure><img src="${esc(c.file)}" alt="${esc(c.title)}" loading="lazy"><figcaption><strong>${esc(c.title)}</strong>${esc(c.note)}</figcaption></figure>`).join("")}</div>` : `<p class="empty">No captures yet.</p>`}
     </div>`;
@@ -207,6 +374,12 @@ function renderStudies(index) {
     : `<p class="empty">No studies yet. See studies/README.md.</p>`;
 }
 
+function renderAll() {
+  renderStats();
+  renderLooks();
+  renderTaste();
+}
+
 document.querySelectorAll("nav button").forEach((button) => button.addEventListener("click", () => {
   document.querySelectorAll("nav button").forEach((b) => b.setAttribute("aria-selected", b === button));
   document.querySelectorAll("main > section").forEach((s) => { s.hidden = s.id !== button.dataset.tab; });
@@ -219,18 +392,18 @@ document.addEventListener("click", (e) => {
 
 (async () => {
   try {
-    const [parity, sessions, upstreams, studies] = await Promise.all([
-      load("parity.json"), load("sessions.json"), load("upstreams.json"), load("studies/index.json", { studies: [] }),
+    page.state = await load("api/state", null);
+    page.api = !!page.state;
+    page.taste = page.api ? page.state.taste : await load("taste.json");
+    const [sessions, upstreams, studies] = await Promise.all([
+      load("sessions.json"), load("upstreams.json"), load("studies/index.json", { studies: [] }),
     ]);
-    const latest = sessions.versions.at(-1);
-    document.getElementById("current").textContent = latest ? `v${latest.version} · ${latest.date}` : "no versions";
-    renderStats(parity.items);
-    renderParity(parity);
+    renderAll();
     renderVersions(sessions);
     renderUpstreams(upstreams);
     renderStudies(studies);
   } catch (error) {
-    document.getElementById("parity").innerHTML = `<p class="error">${esc(error.message)}</p>`;
+    document.getElementById("looks").innerHTML = `<p class="error">${esc(error.message)}</p>`;
   }
 })();
 </script>

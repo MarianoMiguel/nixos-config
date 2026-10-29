@@ -8,16 +8,17 @@ in. Watermarks (the last reviewed commit or release) live in `upstreams.json`;
 
 | Upstream | Role | How it flows in |
 |---|---|---|
-| [Pond](https://github.com/bflycomputer) `pond-interface` | Design reference and the Pond session's actual shell | **Consume**: our fork is a flake input; NixOS fixes are applied at build time |
-| Pond `vicinae` fork | Launcher and clipboard | **Consume**: fork as a flake input, built with nixos-unstable's Vicinae recipe |
+| [Pond](https://github.com/bflycomputer) `pond-interface` | Design reference; runs in `pond-preview` | **Port**: design and ideas. Our fork stays a flake input only so the preview runs |
+| Pond `vicinae` fork | Pond's launcher, inside `pond-preview` | Reference only |
 | Pond `iso-installer` | Release signal only | A new `ROOTFS_SHA256` in `src/backend/model.py` means a new Pond system image worth inspecting |
 | [Omarchy](https://github.com/omacom/omarchy) | Feature reference | **Port**: ideas only; its window-aware code imports `Quickshell.Hyprland` |
-| DankMaterialShell | Current default shell | **Consume** until the parity board is green, then removed |
-| Quickshell, niri | Runtime for both shells | **Consume** via `flake.lock` / nixpkgs |
+| DankMaterialShell | The shell today; looks restyle it | **Consume**; screens it limits are studied for our own shell |
+| Quickshell, niri | Runtime and compositor | **Consume** via `flake.lock` / nixpkgs |
 | NixOS | The base | Generations, pinned inputs, offline installer, LUKS |
 
-`DESIGN.md` describes the DMS session. Inside the Pond session, Pond's
-`shell/Theme.qml` is the design source of truth; we do not restyle it.
+`DESIGN.md` describes the desktop as it is; the taste board and studies
+describe where it is going. The Pond package map below is history from the
+2026-10-27 Pond session (`archive/`).
 
 ## Tiers, cheapest first
 
@@ -26,7 +27,7 @@ in. Watermarks (the last reviewed commit or release) live in `upstreams.json`;
 2. **Bridge**: an adapter over an upstream format, so new upstream content
    flows in without code changes.
 3. **Port**: rebuilt here. Upstream changes never flow in by themselves.
-   Every port records its upstream file in `parity.json` (`repo:path`), so
+   Every port records its upstream file in `taste.json` (`repo:path`), so
    the digest can show exactly which ported files changed.
 
 Prefer consume over bridge over port. Patch upstream code at build time
@@ -54,7 +55,7 @@ guessed.
 | `pond-screenshot` 0.1.0 | `Pond.Screenshot` (+ native drag helper) | Same package |
 | `pond-wallpaper` 0.1.1 | `Pond.Wallpaper`, `Pond.Daylight` | Same package |
 | `pond-launcher` 0.1.4 | Vicinae fork, `vicinae.service`, `uinput` | `packages/pond-vicinae.nix`, `pond-vicinae.service` |
-| `pond-pm`, `pond-pm-extension` | Unified pacman/Flatpak/Nix installer (closed) | Not available; see `app-install` and `updates` in the parity board |
+| `pond-pm`, `pond-pm-extension` | Unified pacman/Flatpak/Nix installer (closed) | Not available (see `archive/`) |
 | `pond-plymouth-theme`, `pond-grub-config` | Boot splash, GRUB theme | Deferred / systemd-boot |
 | `pond-system-optimizations` 1.4.1 | sysctl, udev, ananicy-cpp, zram, regdomain | Under review, rule by rule |
 | `pond-fish-config` | fish, pure prompt, eza, bat, fzf | Not adopted (zsh) |
@@ -81,6 +82,6 @@ nix build .#nixosConfigurations.bonhart.config.system.build.pondPreview
 ./result/bin/pond-preview                # nested niri window running Pond
 ```
 
-Capture what changed (`scripts/workshop capture`), update `parity.json`,
+Compare in `pond-preview`, record verdicts in `taste.json`,
 `scripts/workshop render`, and when satisfied
 `scripts/workshop digest --advance` to move the watermarks.

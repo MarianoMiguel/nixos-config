@@ -1,0 +1,598 @@
+{
+  "verdicts": {
+    "like": "Wanted in the DMS session.",
+    "unsure": "Not judged yet; look at it in pond-preview, the captures or a study.",
+    "dislike": "Not wanted. Say why in notes so it is not proposed again."
+  },
+  "items": [
+    {
+      "id": "gnome-apple-feel",
+      "area": "Overall",
+      "thing": "A calmer, GNOME/macOS-like interface on the DMS session",
+      "verdict": "like",
+      "from": "ours",
+      "notes": "The direction of the revamp: rounded, smooth, translucent, one palette with a good dark mode.",
+      "decided": "2026-10-28"
+    },
+    {
+      "id": "pond-session",
+      "area": "Overall",
+      "thing": "Pond as the whole desktop session",
+      "verdict": "dislike",
+      "from": "pond",
+      "notes": "\"Really not ready, and a lot of things I just don't like.\" Login session removed; pond-preview stays as a live reference.",
+      "decided": "2026-10-28"
+    },
+    {
+      "id": "folio-colors",
+      "area": "Color",
+      "thing": "Folio's color schemes",
+      "verdict": "like",
+      "from": "ours",
+      "notes": "Kept as they are. Looks never change colors.",
+      "decided": "2026-10-28"
+    },
+    {
+      "id": "dark-mode",
+      "area": "Color",
+      "thing": "One cohesive palette with a good dark mode across shell, apps and greeter",
+      "verdict": "like",
+      "from": "ours",
+      "notes": "",
+      "decided": "2026-10-28"
+    },
+    {
+      "id": "rounded-corners",
+      "area": "Shape",
+      "thing": "More rounded corners",
+      "verdict": "like",
+      "from": "pond",
+      "notes": "Panels 16 px, rows and windows 12 px (was 5 px everywhere). First seen in Pond.",
+      "decided": "2026-10-28"
+    },
+    {
+      "id": "smooth-transitions",
+      "area": "Motion",
+      "thing": "Smoother, unhurried transitions",
+      "verdict": "like",
+      "from": "pond",
+      "notes": "Controls 120 ms, panels 220-320 ms, pages 300-520 ms, springs for windows (was 40-90 ms). First seen in Pond.",
+      "upstream": "bflycomputer/pond-interface:shell/Motion.qml",
+      "decided": "2026-10-28"
+    },
+    {
+      "id": "translucency",
+      "area": "Material",
+      "thing": "Transparency with blur behind shell surfaces",
+      "verdict": "like",
+      "from": "macos",
+      "notes": "Pond's own panels are mostly opaque; this is closer to macOS.",
+      "decided": "2026-10-28"
+    },
+    {
+      "id": "soft-shadows",
+      "area": "Material",
+      "thing": "Soft layered shadows under panels and windows",
+      "verdict": "unsure",
+      "from": "pond",
+      "notes": "Pond stacks five soft shadows under each panel.",
+      "upstream": "bflycomputer/pond-interface:shell/PanelStyle.qml",
+      "decided": "2026-10-28"
+    },
+    {
+      "id": "sidebar",
+      "area": "Shell",
+      "thing": "Sidebar with clock, calendar, media, notifications and quick controls",
+      "verdict": "unsure",
+      "from": "pond",
+      "notes": "",
+      "upstream": "bflycomputer/pond-interface:shell/Sidebar.qml",
+      "decided": "2026-10-28"
+    },
+    {
+      "id": "minimap",
+      "area": "Shell",
+      "thing": "Workspace minimap; drag windows between workspaces",
+      "verdict": "unsure",
+      "from": "pond",
+      "notes": "",
+      "upstream": "bflycomputer/pond-interface:shell/minimap/Map.qml",
+      "decided": "2026-10-28"
+    },
+    {
+      "id": "agent-dots",
+      "area": "Shell",
+      "thing": "Claude Code / Codex terminal state on the minimap (working, needs input, unread)",
+      "verdict": "unsure",
+      "from": "pond",
+      "notes": "",
+      "upstream": "bflycomputer/pond-interface:shell/NiriMsg.qml",
+      "decided": "2026-10-28"
+    },
+    {
+      "id": "notifications",
+      "area": "Shell",
+      "thing": "Notification toasts, centre and sidebar card",
+      "verdict": "unsure",
+      "from": "pond",
+      "notes": "",
+      "upstream": "bflycomputer/pond-interface:shell/notifications",
+      "decided": "2026-10-28"
+    },
+    {
+      "id": "osd",
+      "area": "Shell",
+      "thing": "Volume, brightness and keyboard-layout feedback",
+      "verdict": "unsure",
+      "from": "pond",
+      "notes": "",
+      "upstream": "bflycomputer/pond-interface:shell",
+      "decided": "2026-10-28"
+    },
+    {
+      "id": "updates",
+      "area": "Shell",
+      "thing": "Update card and restart-recommended badge",
+      "verdict": "unsure",
+      "from": "pond",
+      "notes": "",
+      "upstream": "bflycomputer/pond-interface:shell/updates/State.qml",
+      "decided": "2026-10-28"
+    },
+    {
+      "id": "wifi",
+      "area": "Controls",
+      "thing": "Wi-Fi and Ethernet panel, including enterprise networks",
+      "verdict": "unsure",
+      "from": "pond",
+      "notes": "",
+      "upstream": "bflycomputer/pond-interface:shell/wifi",
+      "decided": "2026-10-28"
+    },
+    {
+      "id": "bluetooth",
+      "area": "Controls",
+      "thing": "Bluetooth panel",
+      "verdict": "unsure",
+      "from": "pond",
+      "notes": "",
+      "upstream": "bflycomputer/pond-interface:shell/bluetooth",
+      "decided": "2026-10-28"
+    },
+    {
+      "id": "audio",
+      "area": "Controls",
+      "thing": "Audio output and input panel",
+      "verdict": "unsure",
+      "from": "pond",
+      "notes": "",
+      "upstream": "bflycomputer/pond-interface:shell/audio",
+      "decided": "2026-10-28"
+    },
+    {
+      "id": "battery",
+      "area": "Controls",
+      "thing": "Battery detail and power profiles",
+      "verdict": "unsure",
+      "from": "pond",
+      "notes": "",
+      "upstream": "bflycomputer/pond-interface:shell/battery",
+      "decided": "2026-10-28"
+    },
+    {
+      "id": "display-settings",
+      "area": "Settings",
+      "thing": "Pond's settings panels (displays, keyboard, mouse)",
+      "verdict": "unsure",
+      "from": "pond",
+      "notes": "",
+      "upstream": "bflycomputer/pond-interface:shell/settings",
+      "decided": "2026-10-28"
+    },
+    {
+      "id": "appearance",
+      "area": "Settings",
+      "thing": "Daylight / Unthemed look and wallpaper picker",
+      "verdict": "unsure",
+      "from": "pond",
+      "notes": "",
+      "upstream": "bflycomputer/pond-interface:wallpaper",
+      "decided": "2026-10-28"
+    },
+    {
+      "id": "manual",
+      "area": "Settings",
+      "thing": "First-run manual and navigation tutorial",
+      "verdict": "unsure",
+      "from": "pond",
+      "notes": "",
+      "upstream": "bflycomputer/pond-interface:shell/settings/manual",
+      "decided": "2026-10-28"
+    },
+    {
+      "id": "lockscreen",
+      "area": "Session",
+      "thing": "Lock screen with the shape-grid password field",
+      "verdict": "unsure",
+      "from": "pond",
+      "notes": "",
+      "upstream": "bflycomputer/pond-interface:lockscreen",
+      "decided": "2026-10-28"
+    },
+    {
+      "id": "greeter",
+      "area": "Session",
+      "thing": "Login screen",
+      "verdict": "unsure",
+      "from": "pond",
+      "notes": "",
+      "upstream": "bflycomputer/pond-interface:lockscreen/greeter",
+      "decided": "2026-10-28"
+    },
+    {
+      "id": "boot-splash",
+      "area": "Session",
+      "thing": "Plymouth boot and shutdown animation",
+      "verdict": "unsure",
+      "from": "pond",
+      "notes": "",
+      "upstream": "bflycomputer/pond-interface:plymouth",
+      "decided": "2026-10-28"
+    },
+    {
+      "id": "launcher",
+      "area": "Launcher",
+      "thing": "Pond's Vicinae fork (Mod+Space)",
+      "verdict": "unsure",
+      "from": "pond",
+      "notes": "",
+      "upstream": "bflycomputer/vicinae",
+      "decided": "2026-10-28"
+    },
+    {
+      "id": "clipboard",
+      "area": "Launcher",
+      "thing": "Clipboard history (Mod+V)",
+      "verdict": "unsure",
+      "from": "pond",
+      "notes": "",
+      "upstream": "bflycomputer/vicinae:src/server/src/builtins/clipboard",
+      "decided": "2026-10-28"
+    },
+    {
+      "id": "terminal",
+      "area": "Apps",
+      "thing": "Pond's kitty setup (70% opacity, JetBrains Mono, Pond theme)",
+      "verdict": "unsure",
+      "from": "pond",
+      "notes": "",
+      "upstream": "bflycomputer/pond-interface:config/kitty",
+      "decided": "2026-10-28"
+    },
+    {
+      "id": "fonts",
+      "area": "Look",
+      "thing": "Onest as the interface font",
+      "verdict": "unsure",
+      "from": "pond",
+      "notes": "",
+      "decided": "2026-10-28"
+    },
+    {
+      "id": "gtk-theme",
+      "area": "Look",
+      "thing": "Dark Adwaita for apps",
+      "verdict": "unsure",
+      "from": "pond",
+      "notes": "",
+      "upstream": "bflycomputer/pond-interface:config/gtk-3.0",
+      "decided": "2026-10-28"
+    },
+    {
+      "id": "appearance-place",
+      "area": "Appearance",
+      "thing": "One Appearance place: theme, wallpaper, font, bar, windows, dock, animations, lock screen",
+      "verdict": "unsure",
+      "from": "omarchy",
+      "notes": "Omarchy 4.5 rc2 made it top-level. Omarchy's is a keyboard menu; ours would be a designed screen.",
+      "decided": "2026-10-28"
+    },
+    {
+      "id": "theme-bundles",
+      "area": "Appearance",
+      "thing": "A theme as a bundle: palette, wallpapers, preview, lock art, light and dark; last wallpaper remembered per theme",
+      "verdict": "unsure",
+      "from": "omarchy",
+      "notes": "Maps onto Azure Folio's collections (Doré, European Summer, Argentina).",
+      "decided": "2026-10-28"
+    },
+    {
+      "id": "wallpaper-picker",
+      "area": "Appearance",
+      "thing": "Visual picker for wallpapers and themes",
+      "verdict": "unsure",
+      "from": "omarchy",
+      "notes": "Omarchy: carousel of skewed cards (shell/plugins/image-picker), no Hyprland imports.",
+      "decided": "2026-10-28"
+    },
+    {
+      "id": "theme-switch",
+      "area": "Appearance",
+      "thing": "A theme change as one event: visible apps recolor first, the rest after, one notification if anything fails",
+      "verdict": "unsure",
+      "from": "omarchy",
+      "notes": "bin/omarchy-theme-set builds, swaps atomically and ignores outdated recolors. Ours would drive themeport.",
+      "decided": "2026-10-28"
+    },
+    {
+      "id": "choreographed-change",
+      "area": "Motion",
+      "thing": "Wallpaper and theme changes choreographed: cover, reveal, the bar fading along",
+      "verdict": "unsure",
+      "from": "omarchy",
+      "notes": "shell/plugins/background/Background.qml (slanted reveal).",
+      "decided": "2026-10-28"
+    },
+    {
+      "id": "morphing-panels",
+      "area": "Motion",
+      "thing": "Panels that grow out of the bar and morph into each other, with press feedback",
+      "verdict": "unsure",
+      "from": "omarchy",
+      "notes": "New in 4.5 rc2. Needs a rewrite: Omarchy uses HyprlandFocusGrab.",
+      "decided": "2026-10-28"
+    },
+    {
+      "id": "screensaver",
+      "area": "Session",
+      "thing": "A screensaver before the lock, with idle timing owned by the shell",
+      "verdict": "unsure",
+      "from": "omarchy",
+      "notes": "omarchy-screensaver (Rust) animates ASCII art of your branding; dismissing it cancels the lock. Would be built from source.",
+      "decided": "2026-10-28"
+    },
+    {
+      "id": "notification-deck",
+      "area": "Shell",
+      "thing": "Notifications stacked by sender; actions, codes and links on the card; Do Not Disturb; a day of history",
+      "verdict": "unsure",
+      "from": "omarchy",
+      "notes": "4.5 rc1/rc2. Its JS modules are portable; the service asks Hyprland for monitor and fullscreen state.",
+      "decided": "2026-10-28"
+    },
+    {
+      "id": "video-wallpapers",
+      "area": "Appearance",
+      "thing": "Video wallpapers, with a still frame on the lock screen",
+      "verdict": "unsure",
+      "from": "omarchy",
+      "notes": "Omarchy's player (OWE) is Hyprland-only; would need another player that works on niri.",
+      "decided": "2026-10-28"
+    },
+    {
+      "id": "surface-tokens",
+      "area": "Foundations",
+      "thing": "One token file with a section per surface, so every screen draws from the same named colors and shapes",
+      "verdict": "unsure",
+      "from": "omarchy",
+      "notes": "Omarchy: shell.toml feeding Color and Style singletons. Ours would be emitted by themeport.",
+      "decided": "2026-10-28"
+    },
+    {
+      "id": "menu-as-data",
+      "area": "Foundations",
+      "thing": "One keyboard menu for every action, defined as data",
+      "verdict": "unsure",
+      "from": "omarchy",
+      "notes": "default/omarchy/omarchy-menu.jsonc; the same menu doubles as dmenu. Omarchy has no settings screens: Setup > Monitors opens a config file.",
+      "decided": "2026-10-28"
+    },
+    {
+      "id": "page-turn",
+      "area": "Session",
+      "thing": "Unlocking with a page turn",
+      "verdict": "dislike",
+      "from": "ours",
+      "notes": "\"The book flipping is weird.\" Replaced: the page's print lifts, the paper slides aside, the art opens out.",
+      "decided": "2026-10-28"
+    },
+    {
+      "id": "real-icons",
+      "area": "Shell",
+      "thing": "App icons in their own colors and shapes",
+      "verdict": "like",
+      "from": "ours",
+      "notes": "\"Real app icons don't always have that tint.\" Original by default; plated and printed are options.",
+      "decided": "2026-10-28"
+    },
+    {
+      "id": "dock-stays",
+      "area": "Shell",
+      "thing": "A dock that never moves for other panels",
+      "verdict": "like",
+      "from": "ours",
+      "notes": "\"The dock should not move with the sidebar.\" The sidebar stops above the dock's band instead.",
+      "decided": "2026-10-28"
+    },
+    {
+      "id": "moving-dither",
+      "area": "Motion",
+      "thing": "The plate's dither moving everywhere, in a loop",
+      "verdict": "like",
+      "from": "ours",
+      "notes": "Asked for instead of the diagonal light band.",
+      "decided": "2026-10-28"
+    },
+    {
+      "id": "moonlit",
+      "area": "Color",
+      "thing": "Moonlit plates in dark mode (picture's tones kept)",
+      "verdict": "unsure",
+      "from": "ours",
+      "notes": "\"Dark mode really kills the vibe of the images.\" The UI's dark mode is liked as is.",
+      "decided": "2026-10-28"
+    },
+    {
+      "id": "sturdy-content",
+      "area": "Overall",
+      "thing": "Nothing breaks with real content: long titles, many notifications, empty states",
+      "verdict": "like",
+      "from": "ours",
+      "notes": "\"Pay extreme attention to things that could break the design.\" Every study gets Stress and Empty modes.",
+      "decided": "2026-10-28"
+    },
+    {
+      "id": "one-language",
+      "area": "Overall",
+      "thing": "One design language, Folio; no looks named after their sources",
+      "verdict": "like",
+      "from": "ours",
+      "notes": "",
+      "decided": "2026-10-28"
+    },
+    {
+      "id": "springs",
+      "area": "Motion",
+      "thing": "Interruptible springs everywhere, matched to niri's",
+      "verdict": "unsure",
+      "from": "research",
+      "notes": "See digests/2026-10-28-mature-os.md",
+      "decided": "2026-10-28"
+    },
+    {
+      "id": "mirror-exits",
+      "area": "Motion",
+      "thing": "Things leave the way they came (exits mirror entries)",
+      "verdict": "unsure",
+      "from": "research",
+      "notes": "See digests/2026-10-28-mature-os.md",
+      "decided": "2026-10-28"
+    },
+    {
+      "id": "concentric-radii",
+      "area": "Shape",
+      "thing": "Concentric corner radii: inner = outer − padding",
+      "verdict": "unsure",
+      "from": "research",
+      "notes": "See digests/2026-10-28-mature-os.md",
+      "decided": "2026-10-28"
+    },
+    {
+      "id": "squircles",
+      "area": "Shape",
+      "thing": "Continuous (squircle) corners, as a plate mark",
+      "verdict": "unsure",
+      "from": "research",
+      "notes": "See digests/2026-10-28-mature-os.md",
+      "decided": "2026-10-28"
+    },
+    {
+      "id": "privacy-dots",
+      "area": "Shell",
+      "thing": "Mic, camera and screen-sharing indicators",
+      "verdict": "unsure",
+      "from": "research",
+      "notes": "See digests/2026-10-28-mature-os.md",
+      "decided": "2026-10-28"
+    },
+    {
+      "id": "screenshot-thumb",
+      "area": "Shell",
+      "thing": "Floating screenshot thumbnail to drag, mark up or dismiss",
+      "verdict": "unsure",
+      "from": "research",
+      "notes": "See digests/2026-10-28-mature-os.md",
+      "decided": "2026-10-28"
+    },
+    {
+      "id": "undo-toasts",
+      "area": "Shell",
+      "thing": "Undo toasts instead of confirmation dialogs",
+      "verdict": "unsure",
+      "from": "research",
+      "notes": "See digests/2026-10-28-mature-os.md",
+      "decided": "2026-10-28"
+    },
+    {
+      "id": "launcher-actions",
+      "area": "Launcher",
+      "thing": "A launcher that acts: app actions, clipboard, Quick Look previews",
+      "verdict": "unsure",
+      "from": "research",
+      "notes": "See digests/2026-10-28-mature-os.md",
+      "decided": "2026-10-28"
+    },
+    {
+      "id": "live-activities",
+      "area": "Shell",
+      "thing": "Builds, downloads and timers as live activities in the island",
+      "verdict": "unsure",
+      "from": "research",
+      "notes": "See digests/2026-10-28-mature-os.md",
+      "decided": "2026-10-28"
+    },
+    {
+      "id": "ink-merge",
+      "area": "Motion",
+      "thing": "Wet-ink shapes that merge (island to sidebar, dock tooltips)",
+      "verdict": "unsure",
+      "from": "research",
+      "notes": "See digests/2026-10-28-mature-os.md",
+      "decided": "2026-10-28"
+    },
+    {
+      "id": "scroll-dissolve",
+      "area": "Material",
+      "thing": "Scroll edges dissolve into paper instead of divider lines",
+      "verdict": "unsure",
+      "from": "research",
+      "notes": "See digests/2026-10-28-mature-os.md",
+      "decided": "2026-10-28"
+    },
+    {
+      "id": "adaptive-ink",
+      "area": "Color",
+      "thing": "The bar's ink weight follows the plate's brightness",
+      "verdict": "unsure",
+      "from": "research",
+      "notes": "See digests/2026-10-28-mature-os.md",
+      "decided": "2026-10-28"
+    },
+    {
+      "id": "clock-negative-space",
+      "area": "Session",
+      "thing": "The lock clock set in the picture's negative space",
+      "verdict": "unsure",
+      "from": "research",
+      "notes": "See digests/2026-10-28-mature-os.md",
+      "decided": "2026-10-28"
+    },
+    {
+      "id": "ghost-impression",
+      "area": "Material",
+      "thing": "Hover leaves a faint offset ghost impression",
+      "verdict": "unsure",
+      "from": "research",
+      "notes": "See digests/2026-10-28-mature-os.md",
+      "decided": "2026-10-28"
+    },
+    {
+      "id": "foley",
+      "area": "Overall",
+      "thing": "Paper-and-press interface sounds (optional)",
+      "verdict": "unsure",
+      "from": "research",
+      "notes": "See digests/2026-10-28-mature-os.md",
+      "decided": "2026-10-28"
+    },
+    {
+      "id": "first-time-develop",
+      "area": "Motion",
+      "thing": "Develop on first appearance only; frequent actions stay quick",
+      "verdict": "unsure",
+      "from": "research",
+      "notes": "See digests/2026-10-28-mature-os.md",
+      "decided": "2026-10-28"
+    }
+  ]
+}

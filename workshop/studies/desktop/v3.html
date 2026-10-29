@@ -1,0 +1,710 @@
+<!doctype html>
+<html lang="en" data-mode="light" data-ink="azure">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Folio Desktop</title>
+<link rel="stylesheet" href="../_kit/folio.css">
+<style>
+  html, body { height: 100%; overflow: hidden; }
+  body { font-size: 13px; user-select: none; }
+  #wall { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+
+  .bar { position: fixed; z-index: 30; inset: 0 0 auto 0; height: 34px; padding: 0 8px; display: grid; grid-template-columns: minmax(0, 1fr) 340px minmax(0, 1fr); align-items: center;
+         background: var(--sheet); backdrop-filter: blur(28px) saturate(1.5); box-shadow: inset 0 -1px 0 var(--rule); }
+  .bar .left, .bar .right { display: flex; align-items: center; gap: 4px; min-width: 0; }
+  .bar .right { justify-content: end; }
+  .mark { width: 24px; height: 24px; border-radius: 7px; border: 0; background: var(--ink); color: var(--on-ink); display: grid; place-items: center; cursor: pointer; font: 400 19px/1 var(--hero); padding-top: 1px; flex: none; }
+  .ws { display: flex; align-items: center; gap: 5px; padding: 0 10px; height: 26px; }
+  .ws i { width: 6px; height: 6px; border-radius: 3px; background: var(--text-3); opacity: 0.5; transition: width var(--t-panel) var(--spring), background-color var(--t-quick), opacity var(--t-quick); cursor: pointer; }
+  .ws i.on { width: 20px; background: var(--ink); opacity: 1; }
+  /* The left side never reaches the island: app names cut, titles fade. */
+  .app-name { font-weight: 600; padding: 0 4px; flex: none; max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .win-title { color: var(--text-2); flex: 1; }
+  .ws.many { gap: 3px; } .ws.many i { width: 4px; height: 4px; } .ws.many i.on { width: 14px; }
+  .privacy { display: flex; gap: 3px; align-items: center; height: 22px; padding: 0 7px; border-radius: 11px; background: color-mix(in oklab, var(--warning) 18%, transparent); color: var(--warning); flex: none; }
+  .privacy .i { width: 13px; height: 13px; }
+  .privacy[hidden] { display: none; }
+  .pill.low .pct, .pill.low .i:nth-of-type(4) { color: var(--error); }
+  .pill { height: 26px; display: flex; align-items: center; gap: 9px; padding: 0 10px; border-radius: 9px; border: 0; background: none; cursor: pointer; transition: background-color var(--t-quick) var(--ease); }
+  .pill:hover, .pill[aria-expanded="true"] { background: var(--well); }
+  .pill .i { width: 16px; height: 16px; }
+  .pill .pct { font-variant-numeric: tabular-nums; font-weight: 500; }
+  .bar .date { color: var(--text-2); padding: 0 8px; white-space: nowrap; }
+
+  /* The Island: one place for everything transient. It is a printed pill of
+     deep ink that morphs, with a spring, into whatever is happening. */
+  .island { position: fixed; z-index: 35; top: 4px; left: 50%; translate: -50% 0; width: var(--w, 132px); height: var(--h, 26px); border-radius: var(--r, 13px);
+            background: var(--island); color: #eef2f8; box-shadow: 0 6px 24px rgba(var(--shade), 0.28), inset 0 0 0 1px rgba(255, 255, 255, 0.06); overflow: hidden; cursor: pointer;
+            transition: width 520ms var(--spring), height 520ms var(--spring), border-radius 520ms var(--spring);
+            --island: color-mix(in oklab, #214c94 46%, #0b1424); }
+  [data-ink="cobalt"] .island { --island: color-mix(in oklab, #244fb8 46%, #0b1424); }
+  [data-ink="slate"] .island { --island: color-mix(in oklab, #35556e 52%, #0b1424); }
+  .island .face { position: absolute; inset: 0; display: flex; align-items: center; gap: 10px; padding: 0 12px; opacity: 0; pointer-events: none; transition: opacity 140ms var(--ease); }
+  .island .face.on { opacity: 1; pointer-events: auto; transition: opacity 220ms var(--ease) 120ms; }
+  .island .i { width: 15px; height: 15px; }
+  .island .t { font: 600 13px/1 var(--ui); font-variant-numeric: tabular-nums; }
+  .island .s { font-size: 12px; opacity: 0.7; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; }
+  .island .warn { color: #f4a49a; }
+  .face.idle { justify-content: center; }
+  .thumb { width: 18px; height: 18px; border-radius: 5px; overflow: hidden; position: relative; flex: none; }
+  .thumb canvas, .big-art canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .eq { display: flex; gap: 2px; align-items: end; height: 12px; margin-left: auto; }
+  .eq i { width: 3px; border-radius: 1.5px; background: #adc7ed; animation: eq 900ms ease-in-out infinite; }
+  .eq i:nth-child(2) { animation-delay: -300ms; } .eq i:nth-child(3) { animation-delay: -600ms; } .eq i:nth-child(4) { animation-delay: -150ms; }
+  @keyframes eq { 0%, 100% { height: 4px; } 50% { height: 12px; } }
+  .ring { width: 16px; height: 16px; margin-left: auto; flex: none; }
+  .ring circle { fill: none; stroke-width: 2.4; }
+  .ring .bg { stroke: rgba(255, 255, 255, 0.18); }
+  .ring .fg { stroke: #adc7ed; stroke-linecap: round; transform: rotate(-90deg); transform-origin: center; transition: stroke-dashoffset 1s linear; }
+  .rec { width: 9px; height: 9px; border-radius: 50%; background: #f07b70; animation: rec 1.2s ease-in-out infinite; flex: none; }
+  @keyframes rec { 50% { opacity: 0.35; } }
+  .stop { margin-left: auto; width: 20px; height: 20px; border-radius: 6px; border: 0; background: rgba(255, 255, 255, 0.14); display: grid; place-items: center; cursor: pointer; }
+  .stop i { width: 7px; height: 7px; border-radius: 1.5px; background: #eef2f8; }
+  /* Notches: level feedback as sixteen segments. */
+  .notches { display: flex; gap: 3px; margin-left: auto; }
+  .notches i { width: 6px; height: 10px; border-radius: 2px; background: rgba(255, 255, 255, 0.16); transition: background-color 120ms, transform 160ms var(--spring); }
+  .notches i.on { background: #adc7ed; }
+  .notches i.edge { transform: scaleY(1.35); }
+  /* Expanded music */
+  .face.player { flex-direction: column; align-items: stretch; gap: 10px; padding: 16px; }
+  .player .top { display: flex; gap: 14px; align-items: center; }
+  .big-art { width: 64px; height: 64px; border-radius: 12px; overflow: hidden; position: relative; flex: none; }
+  .player .top > div { flex: 1; min-width: 0; }
+  .player .title { font-weight: 600; font-size: 15px; }
+  .player .artist { opacity: 0.7; font-size: 12.5px; }
+  .player .dev { margin-left: auto; align-self: start; display: flex; gap: 6px; align-items: center; padding: 4px 8px; border-radius: 999px; background: rgba(255, 255, 255, 0.1); font-size: 11px; }
+  .player .dev .i { width: 13px; height: 13px; }
+  .player .scrub { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; font: 11px var(--mono); opacity: 0.85; }
+  .player .bar2 { height: 4px; border-radius: 2px; background: rgba(255, 255, 255, 0.16); position: relative; }
+  .player .bar2 i { position: absolute; inset: 0 auto 0 0; width: 38%; background: #eef2f8; border-radius: 2px; }
+  .player .ctl { display: flex; justify-content: center; gap: 18px; }
+  .player .ctl button { border: 0; background: none; color: inherit; width: 34px; height: 34px; display: grid; place-items: center; border-radius: 50%; cursor: pointer; }
+  .player .ctl button .i { width: 20px; height: 20px; }
+  .player .ctl button.big { background: #eef2f8; color: var(--island); }
+
+  .stage { position: fixed; inset: 46px 12px 94px 12px; display: flex; gap: 12px; }
+  .window { position: relative; border-radius: var(--r-window); overflow: hidden; box-shadow: var(--edge), var(--shadow-l); }
+  .window.focused { box-shadow: 0 0 0 1px color-mix(in oklab, var(--ink) 55%, transparent), var(--shadow-l); }
+  .term { flex: 0 0 34%; background: color-mix(in srgb, var(--sheet-base) 90%, transparent); backdrop-filter: blur(24px); padding: 18px 20px; font: 12.5px/1.65 var(--mono); }
+  .term .p { color: var(--ink); font-weight: 500; }
+  .term .o { color: var(--text-2); white-space: pre; }
+  .term .cur { display: inline-block; width: 8px; height: 15px; background: var(--ink); vertical-align: -3px; animation: blink 1.1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  .browser { flex: 1; display: flex; flex-direction: column; --seed: var(--ink); --c-frame: color-mix(in oklab, var(--seed) 20%, var(--paper));
+             --c-toolbar: color-mix(in oklab, var(--seed) 4%, #fff); --c-omni: color-mix(in oklab, var(--seed) 11%, var(--c-toolbar)); background: var(--c-toolbar); }
+  [data-mode="dark"] .browser { --c-frame: color-mix(in oklab, var(--seed) 22%, #0b1424); --c-toolbar: color-mix(in oklab, var(--seed) 12%, #101a2c); --c-omni: color-mix(in oklab, var(--seed) 18%, #0d1626); }
+  .tabs { height: 40px; background: var(--c-frame); display: flex; align-items: end; gap: 2px; padding: 0 10px; }
+  .tab { height: 32px; width: 200px; display: flex; align-items: center; gap: 8px; padding: 0 12px; border-radius: 10px 10px 0 0; font-size: 12px; color: var(--text-2); }
+  .tab.active { background: var(--c-toolbar); color: var(--text); }
+  .tab .i { width: 15px; height: 15px; }
+  .toolbar { height: 42px; display: flex; align-items: center; gap: 6px; padding: 0 10px; color: var(--text-2); }
+  .toolbar .i { width: 17px; height: 17px; }
+  .omni { flex: 1; height: 30px; border-radius: 15px; background: var(--c-omni); display: flex; align-items: center; padding: 0 14px; gap: 8px; font-size: 12.5px; color: var(--text); }
+  .page { flex: 1; position: relative; overflow: hidden; background: var(--paper); box-shadow: inset 0 1px 0 var(--rule); }
+  .page canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+  /* The dock never moves; the sidebar stops above its band instead. */
+  .dock-wrap { position: fixed; z-index: 25; left: 50%; bottom: 10px; translate: -50% 0; }
+  .dock { height: 68px; padding: 9px 10px; display: flex; align-items: flex-end; gap: 8px; border-radius: 24px; }
+  .dock .sep { width: 1px; align-self: center; height: 38px; background: var(--rule-strong); margin: 0 3px; }
+  /* The dock shrinks its icons before it would ever leave the screen. */
+  .app { --s: 1; position: relative; width: calc(var(--base, 50px) * var(--s)); height: calc(var(--base, 50px) * var(--s)); flex: none; border: 0; padding: 0; background: none; cursor: pointer; }
+  .tile { position: absolute; inset: 0; border-radius: 26%; overflow: hidden; display: grid; place-items: center; background: var(--sheet-base); color: var(--ink);
+          box-shadow: inset 0 0 0 1px var(--rule), inset 0 1px 0 var(--highlight), 0 2px 6px rgba(var(--shade), 0.16); }
+  .tile .i { width: 52%; height: 52%; stroke-width: 1.7; position: relative; }
+  .tile.inv { background: var(--ink); color: var(--on-ink); }
+  .tile.night { background: #101d33; color: #adc7ed; }
+  .tile.wash { background: var(--wash); }
+  .tile .tone { position: absolute; inset: 0; background-image: radial-gradient(color-mix(in oklab, var(--ink) 55%, transparent) 0.9px, transparent 1.1px); background-size: 4px 4px; mask-image: linear-gradient(to top, #000, transparent 70%); }
+  .tile.inv .tone { background-image: radial-gradient(color-mix(in oklab, var(--paper) 40%, transparent) 0.9px, transparent 1.1px); mask-image: radial-gradient(circle at 30% 25%, #000, transparent 70%); }
+  .tile canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+  /* Real app icons: their own colors and shapes. Plated puts round and
+     free-form icons on a paper tile; Printed tints every icon in the ink. */
+  .tile.orig { background: none; box-shadow: none; overflow: visible; }
+  .tile.orig .appicon { position: absolute; inset: 0; width: 100%; height: 100%; filter: drop-shadow(0 2px 3px rgba(var(--shade), 0.28)); transition: inset var(--t-panel) var(--spring), width var(--t-panel) var(--spring), height var(--t-panel) var(--spring); }
+  body.icons-plated .tile.orig:is([data-shape="round"], [data-shape="free"]), body.icons-printed .tile.orig:is([data-shape="round"], [data-shape="free"]) {
+    background: var(--sheet-base); box-shadow: inset 0 0 0 1px var(--rule), inset 0 1px 0 var(--highlight), 0 2px 6px rgba(var(--shade), 0.16); }
+  body.icons-plated .tile.orig:is([data-shape="round"], [data-shape="free"]) .appicon, body.icons-printed .tile.orig:is([data-shape="round"], [data-shape="free"]) .appicon { inset: 15%; width: 70%; height: 70%; filter: none; }
+  body.icons-printed .tile.orig .appicon, body.icons-printed .tile.orig:is([data-shape="round"], [data-shape="free"]) .appicon { filter: url(#duo); }
+  /* Album art: the real cover, printed only when icons are. */
+  .cover { position: absolute; inset: 0; background: radial-gradient(circle at 28% 30%, #f6c453 0 18%, transparent 46%), radial-gradient(circle at 72% 74%, #e2533c 0 14%, transparent 48%),
+           linear-gradient(135deg, #2b1a3d, #8a2d3b 60%, #c9663a); }
+  .cover::after { content: "PIAZZOLLA"; position: absolute; left: 8%; bottom: 8%; font: 700 clamp(5px, 1.2cqw, 11px)/1 var(--ui); letter-spacing: 0.18em; color: #fff3d6; }
+  body.icons-printed .cover { display: none; }
+  .app .run { position: absolute; left: 50%; bottom: -7px; width: 4px; height: 4px; margin-left: -2px; border-radius: 50%; background: var(--ink); opacity: 0; }
+  .app.running .run { opacity: 1; }
+  .app .tip { position: absolute; left: 50%; bottom: calc(100% + 12px); translate: -50% 4px; padding: 5px 10px; border-radius: 8px; white-space: nowrap; pointer-events: none; opacity: 0; transition: opacity var(--t-quick), translate var(--t-quick) var(--ease); }
+  .app:hover .tip { opacity: 1; translate: -50% 0; }
+
+  /* Sidebar v2: the same page, now a stack of widgets. */
+  .sidebar { position: fixed; z-index: 40; top: 42px; right: 8px; bottom: 88px; width: 380px; padding: 14px; display: none; --spine: right; border-radius: 26px; }
+  .sidebar.open { display: block; }
+  .sidebar .scroll { height: 100%; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; scrollbar-width: none; padding-bottom: 4px; }
+  .w-head { display: flex; align-items: center; justify-content: space-between; padding: 2px 4px 0; }
+  .sb-hero { padding: 6px 6px 2px; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 0 12px; }
+  .sb-hero .clock { font: 400 92px/0.78 var(--hero); color: var(--ink); grid-column: 1 / -1; margin: 6px 0 8px -2px; }
+  .sb-hero .meta { color: var(--text-2); font-size: 12.5px; }
+  .tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .qt { display: flex; align-items: center; gap: 11px; height: 58px; padding: 0 12px; border: 0; border-radius: var(--r-m); background: var(--well); text-align: left; cursor: pointer; color: var(--text); box-shadow: inset 0 0 0 1px var(--rule); transition: transform var(--t-press) var(--spring); }
+  .qt .badge { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; background: var(--well-strong); flex: none; transition: background-color var(--t-quick); }
+  .qt .badge .i { width: 17px; height: 17px; }
+  .qt b { display: block; font-weight: 600; font-size: 12.5px; }
+  .qt > span:last-child { min-width: 0; }
+  .qt b, .qt small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .qt small { display: block; font-size: 11.5px; color: var(--text-2); }
+  .qt[aria-pressed="true"] .badge { background: var(--ink); color: var(--on-ink); }
+  .sliders { display: grid; gap: 8px; padding: 12px; }
+  .slider { position: relative; }
+  .slider .i { position: absolute; left: 11px; top: 6px; width: 17px; height: 17px; color: var(--on-ink); pointer-events: none; }
+  .slider .range { height: 30px; border-radius: 15px; }
+  /* Music widget */
+  .music { padding: 14px; display: grid; gap: 12px; }
+  .music .top { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 14px; align-items: center; }
+  .music .art { width: 92px; height: 92px; border-radius: 12px; overflow: hidden; position: relative; box-shadow: var(--shadow-s); }
+  .music .art canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .music .top > div { min-width: 0; }
+  .music .title { font: 600 16px/1.25 var(--ui); }
+  .music .artist { color: var(--text-2); }
+  .chip { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; padding: 4px 9px; border-radius: 999px; background: var(--well); font-size: 11.5px; color: var(--text-2); }
+  .chip .i { width: 13px; height: 13px; color: var(--ink); }
+  .music .scrub { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; }
+  .music .track { height: 4px; border-radius: 2px; background: var(--well-strong); position: relative; }
+  .music .track i { position: absolute; inset: 0 auto 0 0; width: 38%; background: var(--ink); border-radius: 2px; }
+  .music .ctl { display: flex; justify-content: center; gap: 16px; }
+  .music .ctl .btn { width: 38px; height: 38px; padding: 0; background: none; box-shadow: none; border-radius: 50%; }
+  .music .ctl .btn.ink { background: var(--ink); color: var(--on-ink); width: 44px; height: 44px; }
+  /* World clock: a sky strip per city, dots thick where it is night. */
+  .world { padding: 6px 14px; }
+  .city > div { min-width: 0; }
+  .city b, .city small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .city { display: grid; grid-template-columns: minmax(0, 1fr) 88px 56px; align-items: center; gap: 12px; min-height: 46px; }
+  .city + .city { box-shadow: inset 0 1px 0 var(--rule); }
+  .city b { display: block; font-weight: 600; }
+  .city small { color: var(--text-2); font-size: 11.5px; }
+  .sky { height: 22px; border-radius: 11px; position: relative; overflow: hidden; background: var(--well); }
+  .sky .night { position: absolute; inset: 0; background-image: radial-gradient(var(--ink) 0.9px, transparent 1.1px); background-size: 3px 3px; }
+  .sky .sun { position: absolute; top: 50%; width: 8px; height: 8px; margin: -4px 0 0 -4px; border-radius: 50%; background: var(--ink); box-shadow: 0 0 0 3px color-mix(in oklab, var(--paper) 80%, transparent); }
+  .city .time { font: 600 17px/1 var(--ui); text-align: right; font-variant-numeric: tabular-nums; }
+  /* Calendar */
+  .cal { padding: 12px 14px 10px; }
+  .cal .grid { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; gap: 2px 0; margin-top: 8px; }
+  .cal .grid span { height: 28px; display: grid; place-items: center; font-size: 12px; font-variant-numeric: tabular-nums; position: relative; border-radius: 50%; }
+  .cal .grid .dow { height: 20px; font: 500 10px var(--mono); color: var(--text-3); letter-spacing: 0.06em; }
+  .cal .grid .out { color: var(--text-3); }
+  .cal .grid .today { background: var(--ink); color: var(--on-ink); font-weight: 600; width: 28px; justify-self: center; }
+  .cal .grid .ev::after { content: ""; position: absolute; bottom: 2px; width: 3px; height: 3px; border-radius: 50%; background: var(--ink); }
+  .cal .grid .today.ev::after { background: var(--on-ink); }
+  .event { display: grid; grid-template-columns: 3px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 8px 2px 2px; }
+  .event .bar3 { width: 3px; height: 30px; border-radius: 2px; background: var(--ink); }
+  .event > div { min-width: 0; }
+  .event b, .event small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
+  .event b { font-weight: 600; }
+  .event small { color: var(--text-2); }
+  /* Focus */
+  .focus { padding: 14px; display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; gap: 14px; align-items: center; }
+  .focus svg { width: 64px; height: 64px; }
+  .focus .ringbg { fill: none; stroke: var(--well-strong); stroke-width: 5; }
+  .focus .ringfg { fill: none; stroke: var(--ink); stroke-width: 5; stroke-linecap: round; transform: rotate(-90deg); transform-origin: center; transition: stroke-dashoffset 1s linear; }
+  .focus .fcount { font: 600 22px/1 var(--ui); font-variant-numeric: tabular-nums; }
+  .focus small { color: var(--text-2); }
+  /* Quota */
+  .quota { padding: 12px 14px; display: grid; gap: 10px; }
+  .q { display: grid; grid-template-columns: 70px minmax(0, 1fr) auto; gap: 10px; align-items: center; }
+  .q b { font-weight: 600; font-size: 12.5px; }
+  .q .meter { height: 8px; border-radius: 4px; background: var(--well-strong); overflow: hidden; display: flex; gap: 2px; }
+  .q .meter i { flex: 1; background: var(--ink); opacity: 0.15; }
+  .q .meter i.on { opacity: 1; }
+  .q .meter.warn i.on { background: var(--warning); }
+  .q small { font: 500 11px var(--mono); color: var(--text-2); white-space: nowrap; }
+  .q .meter.full i.on { background: var(--error); }
+  .notes-head { display: flex; align-items: center; justify-content: space-between; padding: 6px 6px 0; }
+  .note { padding: 12px 14px; display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; gap: 2px 10px; background: var(--sheet-strong); border-radius: var(--r-m); box-shadow: inset 0 0 0 1px var(--rule), var(--shadow-s); }
+  .note .who { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; background: var(--ink); color: var(--on-ink); grid-row: span 2; font: 400 18px/1 var(--hero); }
+  .note > * { min-width: 0; }
+  .note .from { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .note .ago { display: flex; gap: 6px; align-items: center; white-space: nowrap; }
+  .more-row { width: 100%; justify-content: space-between; height: 38px; }
+  .empty-w { padding: 18px 14px; display: grid; justify-items: center; gap: 4px; text-align: center; color: var(--text-2); }
+  .empty-w b { color: var(--text); }
+  .empty-w .i { width: 22px; height: 22px; color: var(--ink); }
+  .note .body { color: var(--text-2); font-size: 12.5px; grid-column: 2 / -1; }
+  .note .ago { font-size: 11px; color: var(--text-3); }
+  .footer { display: flex; align-items: center; gap: 8px; padding: 6px 4px 2px; }
+  .footer .batt { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; color: var(--text-2); font-size: 12px; }
+  .footer .batt span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .footer .btn { width: 36px; height: 36px; padding: 0; border-radius: 12px; }
+
+  .study-bar { left: 12px; transform: none; bottom: 96px; flex-direction: column; align-items: stretch; width: 200px; }
+  .study-bar .seg { width: 100%; flex-wrap: wrap; }
+  .study-bar .seg button { flex: 1; padding: 5px 6px; font-size: 12px; }
+  .study-bar.hide { opacity: 0; pointer-events: none; }
+  .hint-keys { position: fixed; left: 12px; bottom: 14px; z-index: 5; padding: 6px 10px; border-radius: 10px; }
+</style>
+</head>
+<body>
+<canvas id="wall"></canvas>
+<svg width="0" height="0" style="position: absolute" aria-hidden="true"><filter id="duo" color-interpolation-filters="sRGB">
+  <feColorMatrix type="matrix" values="0.3 0.59 0.11 0 0  0.3 0.59 0.11 0 0  0.3 0.59 0.11 0 0  0 0 0 1 0"/>
+  <feComponentTransfer><feFuncR type="gamma" exponent="1.9"/><feFuncG type="gamma" exponent="1.9"/><feFuncB type="gamma" exponent="1.9"/></feComponentTransfer>
+  <feComponentTransfer><feFuncR id="duo-r" type="table" tableValues="0 1"/><feFuncG id="duo-g" type="table" tableValues="0 1"/><feFuncB id="duo-b" type="table" tableValues="0 1"/></feComponentTransfer>
+</filter></svg>
+
+<header class="bar" id="bar">
+  <div class="left">
+    <button class="mark stamp" aria-label="Launcher">F</button>
+    <div class="ws"><i class="on"></i><i></i><i></i><i></i></div>
+    <span class="app-name" id="app-name">Ghostty</span><span class="win-title fade" id="win-title">~/Development/personal/nixos-config</span>
+  </div>
+  <span></span>
+  <div class="right">
+    <span class="privacy" id="privacy" hidden title="Microphone and camera in use">${mic}${camera}</span>
+    <span class="date" id="bar-date"></span>
+    <button class="pill" id="status" aria-expanded="false">${wifi}${bluetooth}${speaker}${battery}<span class="pct" id="pct">84%</span></button>
+  </div>
+</header>
+
+<div class="island" id="island" role="status" aria-live="polite">
+  <div class="face idle on" data-face="idle"><span class="t num" id="is-clock"></span></div>
+  <div class="face" data-face="music"><span class="thumb"><canvas id="is-art"></canvas><span class="cover"></span></span><span class="s" id="is-song">Libertango</span><span class="eq"><i></i><i></i><i></i><i></i></span></div>
+  <div class="face player" data-face="player">
+    <div class="top"><span class="big-art"><canvas id="is-big"></canvas><span class="cover"></span></span><div><div class="title" id="pl-title">Libertango</div><div class="artist ellipsis" id="pl-artist">Astor Piazzolla</div></div><span class="dev">${bluetooth}AirPods Pro</span></div>
+    <div class="scrub"><span>1:22</span><span class="bar2"><i></i></span><span>-2:29</span></div>
+    <div class="ctl"><button aria-label="Previous">${prev}</button><button class="big" aria-label="Pause">${pause}</button><button aria-label="Next">${next}</button></div>
+  </div>
+  <div class="face" data-face="focus">${moon}<span class="t num" id="is-focus">24:12</span><span class="s">Focus</span>
+    <svg class="ring" viewBox="0 0 20 20"><circle class="bg" cx="10" cy="10" r="7.5"/><circle class="fg" id="is-ring" cx="10" cy="10" r="7.5" stroke-dasharray="47.1" stroke-dashoffset="5"/></svg></div>
+  <div class="face" data-face="rec"><span class="rec"></span><span class="t num" id="is-rec">00:00</span><span class="s">Recording region</span><button class="stop" aria-label="Stop"><i></i></button></div>
+  <div class="face" data-face="note"><span class="thumb" style="background: #adc7ed; color: #0b1424; display: grid; place-items: center; font: 400 15px/1 var(--hero)">L</span><span class="s" style="opacity: 1"><b>Lucía</b> ¿Mate a las cinco?</span></div>
+  <div class="face" data-face="battery"><span id="bt-icon">${battery}</span><span class="t num" id="bt-pct">6%</span><span class="s" id="bt-msg">Battery low · plug in soon</span></div>
+  <div class="face" data-face="level"><span id="lvl-icon">${speaker}</span><span class="notches" id="notches"></span></div>
+</div>
+
+<main class="stage">
+  <section class="window term focused">
+    <div><span class="p">~/nixos-config ❯</span> scripts/workshop open</div>
+    <div class="o">workshop at http://127.0.0.1:8765/</div>
+    <div><span class="p">~/nixos-config ❯</span> <span class="cur"></span></div>
+  </section>
+  <section class="window browser">
+    <div class="tabs"><div class="tab active">${palette}<span>Folio · Desktop v2</span></div><div class="tab">${globe}<span>Desktop Workshop</span></div></div>
+    <div class="toolbar">${back}${reload}<div class="omni">${lock}<span>127.0.0.1:8765/studies/desktop/v2.html</span></div>${star}</div>
+    <div class="page"><canvas id="page-plate"></canvas></div>
+  </section>
+</main>
+
+<div class="dock-wrap" id="dock-wrap">
+  <nav class="dock sheet" id="dock"><span class="sep"></span></nav>
+</div>
+
+<aside class="sidebar sheet" id="sidebar">
+  <div class="scroll" id="sb">
+    <div class="sb-hero"><span class="cap" id="sb-date"></span><span class="cap">Pl. XXVI</span><div class="clock num" id="sb-clock"></div><span class="meta">Campana · 19° · clear</span><span class="cap">Nightfall</span></div>
+    <div class="tiles">
+      <button class="qt stamp" aria-pressed="true"><span class="badge">${wifi}</span><span><b>Wi-Fi</b><small id="wifi-name">Bonhart 5G</small></span></button>
+      <button class="qt stamp" aria-pressed="true"><span class="badge">${bluetooth}</span><span><b>Bluetooth</b><small>AirPods Pro</small></span></button>
+      <button class="qt stamp" aria-pressed="false" id="qt-focus"><span class="badge">${moon}</span><span><b>Focus</b><small>Off</small></span></button>
+      <button class="qt stamp" aria-pressed="false"><span class="badge">${shield}</span><span><b>VPN</b><small>Tailscale</small></span></button>
+    </div>
+    <div class="card sliders">
+      <div class="slider">${speaker}<input class="range" id="vol" type="range" min="0" max="100" value="64" aria-label="Volume"></div>
+      <div class="slider">${sun}<input class="range" id="bri" type="range" min="0" max="100" value="78" aria-label="Brightness"></div>
+    </div>
+    <div class="card music" id="music-card">
+      <div class="top"><div class="art"><canvas id="sb-art"></canvas><span class="cover"></span></div><div><div class="title" id="sb-title">Libertango</div><div class="artist ellipsis" id="sb-artist">Astor Piazzolla</div><span class="chip">${bluetooth}AirPods Pro</span></div></div>
+      <div class="scrub"><span class="cap num">1:22</span><div class="track"><i id="sb-prog"></i></div><span class="cap num">-2:29</span></div>
+      <div class="ctl"><button class="btn stamp">${prev}</button><button class="btn ink stamp" id="sb-play">${pause}</button><button class="btn stamp">${next}</button></div>
+    </div>
+    <div class="w-head"><span class="cap">World clock</span><span class="cap" id="wc-note"></span></div>
+    <div class="card world" id="world"></div>
+    <div class="card cal"><div class="w-head" style="padding: 0"><span class="cap" id="cal-month"></span><span class="cap" id="ev-count">3 events</span></div><div class="grid" id="cal"></div>
+      <div class="event" id="event"><span class="bar3"></span><div><b id="ev-title">Workshop review</b><small id="ev-sub">15:00 – 15:45 · with Lucía</small></div><span class="cap" id="ev-when">in 18m</span></div></div>
+    <div class="card focus"><svg viewBox="0 0 64 64"><circle class="ringbg" cx="32" cy="32" r="26"/><circle class="ringfg" id="fc-ring" cx="32" cy="32" r="26" stroke-dasharray="163.4" stroke-dashoffset="163.4"/></svg>
+      <div><div class="fcount num" id="fc-count">25:00</div><small>Deep work · silences notifications</small></div><button class="btn ink stamp" id="fc-start">Start</button></div>
+    <div class="w-head"><span class="cap">AI quota</span><span class="cap">CodexBar</span></div>
+    <div class="card quota" id="quota"></div>
+    <div class="notes-head"><span class="cap">Notifications</span><button class="btn ghost" style="height: 26px; padding: 0 8px; font-size: 12px">Clear</button></div>
+    <div id="notes" style="display: grid; gap: 6px"></div>
+    <div class="footer"><span class="batt">${battery}<span id="batt-text">84% · 3 h 20 m left</span></span><button class="btn stamp">${gear}</button><button class="btn stamp">${lock}</button><button class="btn stamp">${power}</button></div>
+  </div>
+</aside>
+
+<div class="study-bar sheet" id="study">
+  <span class="cap">Folio · Desktop · v3</span>
+  <div class="seg" id="mode"><button data-value="light" aria-pressed="true">Light</button><button data-value="dark" aria-pressed="false">Dark</button></div>
+  <div class="seg" id="ink"><button data-value="azure" aria-pressed="true">Azure</button><button data-value="cobalt" aria-pressed="false">Cobalt</button><button data-value="slate" aria-pressed="false">Slate</button></div>
+  <div class="seg" id="plates"><button data-value="moonlit" aria-pressed="true">Moonlit</button><button data-value="negative" aria-pressed="false">Negative</button></div>
+  <span class="cap">Island</span>
+  <div class="seg" id="faces"><button data-value="idle" aria-pressed="true">Clock</button><button data-value="music" aria-pressed="false">Music</button><button data-value="focus" aria-pressed="false">Focus</button><button data-value="rec" aria-pressed="false">Rec</button></div>
+  <span class="cap">App icons</span>
+  <div class="seg" id="icons"><button data-value="original" aria-pressed="true">Original</button><button data-value="plated" aria-pressed="false">Plated</button><button data-value="printed" aria-pressed="false">Printed</button></div>
+  <span class="cap">Content</span>
+  <div class="seg" id="content"><button data-value="normal" aria-pressed="true">Normal</button><button data-value="stress" aria-pressed="false">Stress</button><button data-value="empty" aria-pressed="false">Empty</button></div>
+  <button class="btn" id="ping">Incoming message</button>
+  <button class="btn" id="sb-toggle">Sidebar</button>
+  <a class="btn ghost" href="../../index.html">Workshop</a>
+</div>
+<span class="hint-keys cap sheet">N sidebar · ↑↓ volume · [ ] brightness · click island · H hide</span>
+
+<script src="../_kit/folio.js"></script>
+<script>
+  const $ = (s) => document.querySelector(s);
+  document.querySelectorAll("button, .tabs, .toolbar, .slider, .batt, .face, .chip, #lvl-icon, #privacy").forEach((el) => {
+    el.innerHTML = el.innerHTML.replace(/\$\{(\w+)\}/g, (_, n) => Folio.icon(n));
+  });
+  document.querySelectorAll(".range").forEach(Folio.range);
+
+  // Stand-in app icons: drawn here, in the variety real icons have: square
+  // and round, flat and gradient, dark and bright, one with no tile at all.
+  const sq = (fill) => `<rect x="2" y="2" width="60" height="60" rx="14" fill="${fill}"/>`;
+  const grad = (id, a, b, dir = "0 0 0 1") => { const [x1, y1, x2, y2] = dir.split(" "); return `<defs><linearGradient id="${id}" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient></defs>`; };
+  const ICONS = {
+    files: { name: "Files", shape: "square", svg: grad("gFiles", "#6db1f5", "#2a6fdb") + sq("url(#gFiles)") + '<path d="M14 23a4 4 0 0 1 4-4h9l4 4h15a4 4 0 0 1 4 4v15a4 4 0 0 1-4 4H18a4 4 0 0 1-4-4z" fill="#fff" opacity=".96"/>' },
+    browser: { name: "Browser", shape: "round", running: true, svg: grad("gWeb", "#42c6f2", "#1f63d1") + '<circle cx="32" cy="32" r="29" fill="url(#gWeb)"/><g fill="none" stroke="#fff" stroke-width="2.6" opacity=".92"><circle cx="32" cy="32" r="18"/><path d="M14 32h36M32 14c6 5 8 11 8 18s-2 13-8 18c-6-5-8-11-8-18s2-13 8-18z"/></g>' },
+    terminal: { name: "Ghostty", shape: "square", running: true, svg: sq("#16181d") + '<rect x="2.5" y="2.5" width="59" height="59" rx="13.5" fill="none" stroke="#2f343d"/><path d="M16 24l8 8-8 8" fill="none" stroke="#7ee787" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><path d="M30 41h16" stroke="#e6edf3" stroke-width="4" stroke-linecap="round"/>' },
+    mail: { name: "Mail", shape: "square", svg: grad("gMail", "#9ad8ff", "#3b82f6") + sq("url(#gMail)") + '<rect x="12" y="19" width="40" height="27" rx="4" fill="#fff"/><path d="M13 21l19 14 19-14" fill="none" stroke="#3b82f6" stroke-width="3" stroke-linejoin="round"/>' },
+    music: { name: "Music", shape: "square", running: true, svg: grad("gMusic", "#ff5f86", "#ff9e57", "0 0 1 1") + sq("url(#gMusic)") + '<path d="M26 44V20l18-4v22" fill="none" stroke="#fff" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="21.5" cy="44" r="5.5" fill="#fff"/><circle cx="39.5" cy="38" r="5.5" fill="#fff"/>' },
+    messages: { name: "Messages", shape: "square", svg: grad("gMsg", "#6cf193", "#17b14a") + sq("url(#gMsg)") + '<path d="M32 15c-10.5 0-19 7-19 15.6 0 4.9 2.8 9.3 7.1 12.1L18 50l8.2-4.1c1.8.5 3.8.7 5.8.7 10.5 0 19-7 19-15.6S42.5 15 32 15z" fill="#fff"/>' },
+    notes: { name: "Notes", shape: "square", svg: sq("#fffdf5") + '<path d="M2 16A14 14 0 0 1 16 2h32a14 14 0 0 1 14 14v5H2z" fill="#ffcf33"/><g stroke="#ddd6c3" stroke-width="2"><path d="M12 32h40M12 41h40M12 50h26"/></g><rect x="2.5" y="2.5" width="59" height="59" rx="13.5" fill="none" stroke="#e8e2cf"/>' },
+    photos: { name: "Photos", shape: "square", svg: sq("#ffffff") + '<rect x="2.5" y="2.5" width="59" height="59" rx="13.5" fill="none" stroke="#e3e3e3"/><g transform="translate(32 32)" opacity=".88">' + ["#ff9f0a", "#ffd60a", "#34c759", "#0a84ff", "#bf5af2", "#ff375f"].map((c, i) => `<ellipse rx="7" ry="13" cy="-9" fill="${c}" transform="rotate(${i * 60})" style="mix-blend-mode:multiply"/>`).join("") + "</g>" },
+    paint: { name: "Krita", shape: "free", svg: grad("gLeaf", "#ffb347", "#e8433a", "0 0 1 1") + '<path d="M50 6C35 10 18 25 12 39c-3 7 1 15 9 15 10 0 23-17 29-48z" fill="url(#gLeaf)"/><path d="M14 52c4-10 12-22 24-32" fill="none" stroke="#fff6e8" stroke-width="2.4" stroke-linecap="round" opacity=".8"/>' },
+    code: { name: "Code", shape: "square", svg: grad("gCode", "#3aa0ff", "#1d5fd0") + sq("url(#gCode)") + '<path d="M24 22l-10 10 10 10M40 22l10 10-10 10M35 18l-6 28" fill="none" stroke="#fff" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>' },
+    calendar: { name: "Calendar", shape: "square", svg: sq("#ffffff") + '<path d="M2 18A14 14 0 0 1 16 4h32a14 14 0 0 1 14 14v2H2z" fill="#ff453a" transform="translate(0 -2)"/><text x="32" y="50" text-anchor="middle" font-family="Inter, sans-serif" font-weight="600" font-size="26" fill="#1c1c1e">28</text><rect x="2.5" y="2.5" width="59" height="59" rx="13.5" fill="none" stroke="#e3e3e3"/>' },
+    vpn: { name: "Tailscale", shape: "round", svg: '<circle cx="32" cy="32" r="29" fill="#242424"/>' + [[22, 22], [32, 22], [42, 22], [22, 32], [32, 32], [42, 32], [32, 42]].map(([x, y], i) => `<circle cx="${x}" cy="${y}" r="4.2" fill="#fff" opacity="${i === 1 || i === 3 ? 0.35 : 1}"/>`).join("") },
+    settings: { name: "Settings", shape: "square", svg: grad("gSet", "#c9ced6", "#8e95a0") + sq("url(#gSet)") + '<g transform="translate(32 32)" fill="none" stroke="#3a3f47" stroke-width="3.2" stroke-linecap="round"><circle r="8"/><circle r="15" stroke-width="2"/>' + Array.from({ length: 8 }, (_, i) => `<path d="M0-17v-6" transform="rotate(${i * 45})"/>`).join("") + "</g>" },
+  };
+  const DOCK = ["files", "browser", "terminal", "mail", "music", "messages", "notes", "photos", "paint"];
+  function buildApp(key, extra = false) {
+    const a = ICONS[key];
+    const b = document.createElement("button");
+    b.className = `app${a.running && !extra ? " running" : ""}${extra ? " extra" : ""}`;
+    b.innerHTML = `<span class="tile orig" data-shape="${a.shape}"><svg class="appicon" viewBox="0 0 64 64" aria-hidden="true">${a.svg}</svg></span><span class="tip sheet cap">${a.name}</span><span class="run"></span>`;
+    return b;
+  }
+  {
+    const dockEl = $("#dock"), sep = dockEl.querySelector(".sep");
+    DOCK.forEach((k) => dockEl.insertBefore(buildApp(k), sep));
+    dockEl.append(buildApp("settings"));
+  }
+  // Printed icons: luminance mapped from the ink (dark) to the paper (light).
+  function duotone() {
+    const { paper, ink } = Folio.palette();
+    const dark = Folio.state.mode === "dark";
+    const lo = dark ? "#1c2d4b" : ink, hi = dark ? ink : paper;
+    const ch = (h, i) => parseInt(h.slice(1 + i * 2, 3 + i * 2), 16) / 255;
+    ["r", "g", "b"].forEach((c, i) => $(`#duo-${c}`).setAttribute("tableValues", `${ch(lo, i).toFixed(3)} ${ch(hi, i).toFixed(3)}`));
+  }
+  duotone();
+  Folio.on(() => duotone());
+  Folio.seg($("#icons"), (v) => { document.body.classList.toggle("icons-plated", v === "plated"); document.body.classList.toggle("icons-printed", v === "printed"); });
+
+  new Folio.Plate($("#wall"), { plate: "dore-nightfall", breathe: 1, develop: false });
+  new Folio.Plate($("#page-plate"), { plate: "summer-riviera", develop: false });
+  for (const id of ["#is-art", "#is-big", "#sb-art"]) new Folio.Plate($(id), { plate: "argentina-buenos-aires", develop: false, zoom: 2.2 });
+
+  const hm = (d, tz) => d.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: tz });
+  Folio.clock($("#is-clock"), (d) => hm(d));
+  Folio.clock($("#sb-clock"), (d) => hm(d));
+  const now = new Date();
+  $("#bar-date").textContent = now.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+  $("#sb-date").textContent = now.toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" });
+
+  // ---------------------------------------------------------------- Island
+  const island = $("#island");
+  const SIZES = { idle: [96, 26, 13], music: [230, 30, 15], player: [380, 168, 30], focus: [210, 30, 15], rec: [260, 30, 15], note: [300, 34, 17], level: [250, 30, 15], battery: [300, 30, 15] };
+  let resting = "idle", showing = "idle", transient;
+  function face(name) {
+    showing = name;
+    const [w, h, r] = SIZES[name];
+    island.style.setProperty("--w", `${w}px`); island.style.setProperty("--h", `${h}px`); island.style.setProperty("--r", `${r}px`);
+    island.querySelectorAll(".face").forEach((f) => f.classList.toggle("on", f.dataset.face === name));
+  }
+  function rest(name) { resting = name; if (!transient) face(name); }
+  function flash(name, ms = 1600) {
+    clearTimeout(transient);
+    face(name);
+    transient = setTimeout(() => { transient = null; face(resting); }, ms);
+  }
+  island.addEventListener("click", (e) => {
+    if (e.target.closest(".stop")) { rest("idle"); setFaces("idle"); return; }
+    if (showing === "player") { if (!e.target.closest(".ctl")) face(resting); return; }
+    if (resting === "music" || showing === "music") { clearTimeout(transient); transient = null; face("player"); }
+  });
+  document.addEventListener("pointerdown", (e) => { if (showing === "player" && !e.target.closest("#island")) face(resting); });
+
+  // Notches: sixteen segments; the last lit one stands taller.
+  const notches = $("#notches");
+  notches.innerHTML = "<i></i>".repeat(16);
+  const levels = { vol: 64, bri: 78 };
+  function level(kind, delta) {
+    levels[kind] = Math.max(0, Math.min(100, levels[kind] + delta));
+    const lit = Math.round(levels[kind] / 100 * 16);
+    [...notches.children].forEach((n, i) => { n.classList.toggle("on", i < lit); n.classList.toggle("edge", i === lit - 1); });
+    $("#lvl-icon").innerHTML = Folio.icon(kind === "vol" ? (levels.vol ? "speaker" : "speaker") : "sun");
+    const input = $(kind === "vol" ? "#vol" : "#bri");
+    input.value = levels[kind]; input.dispatchEvent(new Event("input"));
+    flash("level", 1400);
+  }
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowUp") { e.preventDefault(); level("vol", 6.25); }
+    if (e.key === "ArrowDown") { e.preventDefault(); level("vol", -6.25); }
+    if (e.key === "]") level("bri", 6.25);
+    if (e.key === "[") level("bri", -6.25);
+    if (e.key === "n" || e.key === "N") toggleSidebar();
+    if (e.key === "Escape") { toggleSidebar(false); if (showing === "player") face(resting); }
+    if (e.key === "h" || e.key === "H") $("#study").classList.toggle("hide");
+  });
+  $("#vol").addEventListener("input", (e) => { if (e.isTrusted) { levels.vol = +e.target.value; level("vol", 0); } });
+  $("#bri").addEventListener("input", (e) => { if (e.isTrusted) { levels.bri = +e.target.value; level("bri", 0); } });
+
+  // Focus countdown and recording clock feed the island.
+  let focusLeft = 25 * 60, focusTimer, recSecs = 0, recTimer;
+  const mmss = (s) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+  function startFocus() {
+    clearInterval(focusTimer);
+    focusLeft = 25 * 60;
+    $("#qt-focus").setAttribute("aria-pressed", "true");
+    $("#qt-focus small").textContent = "On · until 23:40";
+    $("#fc-start").textContent = "Stop";
+    const tick = () => {
+      focusLeft = Math.max(0, focusLeft - 1);
+      $("#is-focus").textContent = mmss(focusLeft);
+      $("#fc-count").textContent = mmss(focusLeft);
+      const p = 1 - focusLeft / 1500;
+      $("#is-ring").style.strokeDashoffset = 47.1 * (1 - p);
+      $("#fc-ring").style.strokeDashoffset = 163.4 * (1 - p);
+    };
+    tick();
+    focusTimer = setInterval(tick, 1000);
+  }
+  function stopFocus() {
+    clearInterval(focusTimer);
+    $("#qt-focus").setAttribute("aria-pressed", "false");
+    $("#qt-focus small").textContent = "Off";
+    $("#fc-start").textContent = "Start";
+    $("#fc-count").textContent = "25:00";
+    $("#fc-ring").style.strokeDashoffset = 163.4;
+  }
+  $("#fc-start").addEventListener("click", () => { if ($("#fc-start").textContent === "Start") { startFocus(); rest("focus"); setFaces("focus"); } else { stopFocus(); rest("music"); setFaces("music"); } });
+
+  const facesSeg = $("#faces");
+  const placeFaces = Folio.seg(facesSeg, (v) => {
+    clearInterval(recTimer); stopFocus();
+    if (v === "focus") startFocus();
+    if (v === "rec") { recSecs = 0; recTimer = setInterval(() => { $("#is-rec").textContent = mmss(++recSecs); }, 1000); }
+    rest(v);
+  });
+  function setFaces(v) { facesSeg.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.value === v)); placeFaces(); }
+  $("#ping").addEventListener("click", () => flash("note", 2600));
+
+  // ---------------------------------------------------------------- Sidebar
+  const sidebar = $("#sidebar"), status = $("#status");
+  let open = false;
+  function toggleSidebar(force) {
+    const next = force ?? !open;
+    if (next === open) return;
+    open = next;
+    status.setAttribute("aria-expanded", open);
+    if (open) { sidebar.classList.remove("leaf-out"); sidebar.classList.add("open", "leaf-in"); Folio.cascade($("#sb"), 110); }
+    else { sidebar.classList.remove("leaf-in"); sidebar.classList.add("leaf-out"); sidebar.addEventListener("animationend", () => { if (!open) sidebar.classList.remove("open", "leaf-out"); }, { once: true }); }
+  }
+  status.addEventListener("click", () => toggleSidebar());
+  $("#sb-toggle").addEventListener("click", () => toggleSidebar());
+  document.addEventListener("pointerdown", (e) => { if (open && !e.target.closest("#sidebar, #status, #study, #island")) toggleSidebar(false); });
+  document.querySelectorAll(".qt:not(#qt-focus)").forEach((t) => t.addEventListener("click", () => t.setAttribute("aria-pressed", t.getAttribute("aria-pressed") !== "true")));
+  $("#qt-focus").addEventListener("click", () => $("#fc-start").click());
+
+  // World clock: Campana, New York, Los Angeles, Sydney (the world-clock plugin's cities).
+  let cities = [["Campana", "America/Argentina/Buenos_Aires"], ["New York", "America/New_York"], ["Los Angeles", "America/Los_Angeles"], ["Sydney", "Australia/Sydney"]];
+  function hourIn(tz) { const p = new Intl.DateTimeFormat("en-GB", { hour: "numeric", minute: "numeric", hour12: false, timeZone: tz }).formatToParts(new Date()); return +p.find((x) => x.type === "hour").value + +p.find((x) => x.type === "minute").value / 60; }
+  // Real UTC offsets and calendar dates, so +14 h reads as tomorrow.
+  const offset = (tz) => { const d = new Date(); return (new Date(d.toLocaleString("en-US", { timeZone: tz })) - new Date(d.toLocaleString("en-US", { timeZone: "UTC" }))) / 3600000; };
+  const ymd = (tz) => new Date().toLocaleDateString("en-CA", { timeZone: tz });
+  function offsetLabel(tz) {
+    const home = cities[0][1], diff = offset(tz) - offset(home);
+    if (tz === home) return "Home";
+    const day = ymd(tz) === ymd(home) ? "Today" : ymd(tz) > ymd(home) ? "Tomorrow" : "Yesterday";
+    const h = Math.trunc(diff), m = Math.round(Math.abs(diff - h) * 60);
+    return `${day}, ${diff >= 0 ? "+" : "−"}${Math.abs(h)} h${m ? ` ${m} m` : ""}`;
+  }
+  function renderWorld() {
+    $("#world").innerHTML = cities.map(([name, tz]) => {
+      const h = hourIn(tz);
+      // Night density: thick dots from dusk to dawn, none at noon.
+      const dark = Math.max(0, Math.min(1, Math.abs(h - 13) / 7 - 0.35));
+      return `<div class="city"><div><b>${name}</b><small>${offsetLabel(tz)}</small></div>
+        <div class="sky" title="${h < 6 || h > 20 ? "Night" : "Day"}"><span class="night" style="opacity:${dark.toFixed(2)}"></span><span class="sun" style="left:${(h / 24 * 100).toFixed(1)}%"></span></div>
+        <span class="time">${hm(new Date(), tz)}</span></div>`;
+    }).join("");
+  }
+  renderWorld(); setInterval(renderWorld, 30000);
+
+  // Calendar for the current month, Monday first.
+  (function calendar() {
+    const d = new Date(), y = d.getFullYear(), m = d.getMonth();
+    $("#cal-month").textContent = d.toLocaleDateString("es-AR", { month: "long", year: "numeric" });
+    const first = (new Date(y, m, 1).getDay() + 6) % 7, days = new Date(y, m + 1, 0).getDate(), prev = new Date(y, m, 0).getDate();
+    const events = new Set([d.getDate(), d.getDate() + 2, d.getDate() + 5, 3, 12]);
+    let html = ["L", "M", "M", "J", "V", "S", "D"].map((x) => `<span class="dow">${x}</span>`).join("");
+    for (let i = 0; i < first; i++) html += `<span class="out">${prev - first + 1 + i}</span>`;
+    for (let i = 1; i <= days; i++) html += `<span class="${i === d.getDate() ? "today " : ""}${events.has(i) ? "ev" : ""}">${i}</span>`;
+    const tail = (7 - ((first + days) % 7)) % 7;
+    for (let i = 1; i <= tail; i++) html += `<span class="out">${i}</span>`;
+    $("#cal").innerHTML = html;
+  })();
+
+  // AI quota, as the CodexBar plugin reports it: segments, warning at 60%.
+  $("#quota").innerHTML = [["Claude", "5 h", 0.42, "resets 01:10"], ["Claude", "week", 0.68, "resets Mon"], ["Codex", "5 h", 0.18, "resets 00:35"]].map(([name, win, used, reset]) => {
+    const on = Math.round(used * 20);
+    return `<div class="q"><b>${name} <span class="cap">${win}</span></b><div class="meter ${used >= 0.6 ? "warn" : ""}">${Array.from({ length: 20 }, (_, i) => `<i class="${i < on ? "on" : ""}"></i>`).join("")}</div><small>${Math.round(used * 100)}% · ${reset}</small></div>`;
+  }).join("");
+
+  let playing = true;
+  $("#sb-play").addEventListener("click", () => { playing = !playing; $("#sb-play").innerHTML = Folio.icon(playing ? "pause" : "play"); });
+
+  // Dock magnification (as in v1).
+  const dock = $("#dock"), apps = [...dock.querySelectorAll(".app")];  // fitDock() refills these
+  let pointer = null, restPos = [];
+  const measure = () => { apps.forEach((a) => a.style.setProperty("--s", 1)); restPos = apps.map((a) => { const r = a.getBoundingClientRect(); return r.left + r.width / 2; }); };
+  const scale = apps.map(() => 1);
+  dock.addEventListener("pointerenter", () => { if (scale.every((s) => Math.abs(s - 1) < 0.01)) measure(); });
+  dock.addEventListener("pointermove", (e) => { pointer = e.clientX; });
+  dock.addEventListener("pointerleave", () => { pointer = null; });
+  (function frame() {
+    apps.forEach((a, i) => {
+      const d = pointer === null ? Infinity : pointer - restPos[i];
+      const target = pointer === null ? 1 : 1 + 0.62 * Math.exp(-(d * d) / (2 * 105 * 105 * 0.45));
+      scale[i] += (target - scale[i]) * 0.2;
+      a.style.setProperty("--s", scale[i].toFixed(4));
+    });
+    requestAnimationFrame(frame);
+  })();
+  addEventListener("resize", measure);
+  measure();
+  apps.forEach((a) => (a.dataset.bound = "1") && a.addEventListener("click", () => a.querySelector(".tile").animate(
+    [{ transform: "none" }, { transform: "translateY(-22px)" }, { transform: "none" }, { transform: "translateY(-9px)" }, { transform: "none" }],
+    { duration: 820, easing: "cubic-bezier(0.3, 0, 0.3, 1)" })));
+
+  Folio.seg($("#mode"), (v, e) => Folio.set({ mode: v }, e));
+  Folio.seg($("#ink"), (v, e) => Folio.set({ ink: v }, e));
+  Folio.seg($("#plates"), (v) => Folio.setDarkPlates(v));
+
+  // ------------------------------------------------------- content modes
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const CONTENT = {
+    normal: {
+      app: "Ghostty", title: "~/Development/personal/nixos-config", song: ["Libertango", "Astor Piazzolla"], wifi: "Bonhart 5G",
+      event: ["Workshop review", "15:00 – 15:45 · with Lucía", "in 18m", "3 events"], battery: [84, false, "3 h 20 m left"], privacy: false, ws: 4, extraApps: 0,
+      cities: [["Campana", "America/Argentina/Buenos_Aires"], ["New York", "America/New_York"], ["Los Angeles", "America/Los_Angeles"], ["Sydney", "Australia/Sydney"]],
+      notes: [{ mark: "L", from: "Lucía", count: 2, ago: "2 min", body: "¿Mate a las cinco? Llevo facturas." }],
+      quota: [["Claude", "5 h", 0.42, "resets 01:10"], ["Claude", "week", 0.68, "resets Mon"], ["Codex", "5 h", 0.18, "resets 00:35"]],
+    },
+    stress: {
+      app: "Visual Studio Code — Insiders", title: "folio.js — nixos-config [SSH: bonhart-agent] — Visual Studio Code — Insiders (Workspace) — Restricted Mode — 3 problems",
+      song: ["Adiós Nonino (Live at the Teatro Colón, Buenos Aires — 40th Anniversary Remaster, Extended Version)", "Astor Piazzolla y su Quinteto Nuevo Tango with the Orquesta Filarmónica de Buenos Aires"],
+      wifi: "Starbucks Guest WiFi 5GHz — Captive portal sign-in required",
+      event: ["Quarterly planning with product, design, engineering and the extended leadership team (mandatory, cameras on)", "09:00 – 17:30 · 14 guests · Sala Grande del tercer piso, edificio norte", "now", "11 events"],
+      battery: [6, false, "Battery low · 14 min left"], privacy: true, ws: 12, extraApps: 9,
+      cities: [["Campana", "America/Argentina/Buenos_Aires"], ["Santa Cruz de la Sierra", "America/La_Paz"], ["Llanfairpwllgwyngyll", "Europe/London"], ["Kathmandu", "Asia/Kathmandu"], ["Chatham Islands", "Pacific/Chatham"]],
+      notes: [
+        { mark: "S", from: "Slack — #infra-alerts-production-eu-west-1-critical", count: 134, ago: "now", body: "[FIRING:3] KubePodCrashLooping production/payments-api-7d9f8b6c5d-x2k9q container payments-api is restarting 14 times in the last 10 minutes; see runbook https://runbooks.internal.example/payments-api/crashloop" },
+        { mark: "L", from: "Lucía Fernández de la Torre y Mendizábal", count: 12, ago: "4 min", body: "Mirá, te mando el audio de nuevo porque el anterior se cortó justo cuando te contaba lo del departamento de Palermo y la reunión del jueves con la inmobiliaria" },
+        { mark: "C", from: "Calendar", count: 3, ago: "9 min", body: "Quarterly planning with product, design, engineering and the extended leadership team starts now" },
+        { mark: "G", from: "GitHub", count: 27, ago: "1 h", body: "Review requested on #4821" },
+        { mark: "M", from: "Mail", count: 8, ago: "2 h", body: "Re: Re: Fwd: Invoice" },
+        { mark: "U", from: "Updates", count: 1, ago: "3 h", body: "nixos-unstable: 412 packages" },
+        { mark: "T", from: "Tailscale", count: 2, ago: "5 h", body: "Exit node offline" },
+      ],
+      quota: [["Claude", "5 h", 1, "resets 01:10"], ["Claude", "week", 0.97, "resets Mon"], ["Codex", "5 h", 0.61, "resets 00:35"]],
+    },
+    empty: {
+      app: "Desktop", title: "", song: null, wifi: "Bonhart 5G", event: null, battery: [100, true, "Charged"], privacy: false, ws: 1, extraApps: 0,
+      cities: [["Campana", "America/Argentina/Buenos_Aires"]], notes: [],
+      quota: [["Claude", "5 h", 0, "unused"], ["Codex", "5 h", 0, "unused"]],
+    },
+  };
+  const musicHTML = $("#music-card").innerHTML;
+  let mode = "normal";
+  function content(name) {
+    mode = name;
+    const c = CONTENT[name];
+    $("#app-name").textContent = c.app;
+    $("#win-title").textContent = c.title;
+    $("#wifi-name").textContent = c.wifi;
+    $("#privacy").hidden = !c.privacy;
+    // Workspaces
+    const ws = document.querySelector(".ws");
+    ws.innerHTML = Array.from({ length: c.ws }, (_, i) => `<i class="${i === 0 ? "on" : ""}"></i>`).join("");
+    ws.classList.toggle("many", c.ws > 6);
+    ws.querySelectorAll("i").forEach((dot) => dot.addEventListener("click", () => ws.querySelectorAll("i").forEach((d) => d.classList.toggle("on", d === dot))));
+    // Music
+    const card = $("#music-card");
+    if (c.song) {
+      if (!card.querySelector("#sb-title")) { card.innerHTML = musicHTML; new Folio.Plate($("#sb-art"), { plate: "argentina-buenos-aires", develop: false, zoom: 2.2 }); }
+      Folio.marquee($("#sb-title"), c.song[0]);
+      Folio.marquee($("#pl-title"), c.song[0]);
+      $("#sb-artist").textContent = c.song[1];
+      $("#pl-artist").textContent = c.song[1];
+      $("#is-song").textContent = c.song[0];
+      rest("music"); setFaces("music");
+    } else {
+      card.innerHTML = `<div class="empty-w">${Folio.icon("music")}<b>Nothing playing</b><span>Resume “Libertango” · Astor Piazzolla</span><button class="btn ink stamp" style="margin-top: 6px">${Folio.icon("play")}Play</button></div>`;
+      rest("idle"); setFaces("idle");
+    }
+    // Calendar
+    const ev = $("#event");
+    ev.style.display = c.event ? "" : "none";
+    if (c.event) { [$("#ev-title").textContent, $("#ev-sub").textContent, $("#ev-when").textContent, $("#ev-count").textContent] = c.event; }
+    else $("#ev-count").textContent = "Nothing today";
+    // Battery
+    const [pct, charging, left] = c.battery;
+    $("#pct").textContent = `${pct}%`;
+    $("#status").classList.toggle("low", pct <= 10 && !charging);
+    $("#batt-text").textContent = `${pct}% · ${left}`;
+    // World clock
+    cities = c.cities; renderWorld();
+    // Notifications: grouped by sender; three groups, then a summary row.
+    const notes = $("#notes");
+    if (!c.notes.length) notes.innerHTML = `<div class="card empty-w">${Folio.icon("check")}<b>All caught up</b><span class="cap">Nothing new since 14:02</span></div>`;
+    else {
+      const shown = c.notes.slice(0, 3), rest = c.notes.slice(3);
+      notes.innerHTML = shown.map((n) => `<div class="note"><span class="who">${esc(n.mark)}</span><span class="from">${esc(n.from)}</span><span class="ago">${n.count > 1 ? `<span class="count">${n.count > 99 ? "99+" : n.count}</span>` : ""}${esc(n.ago)}</span><span class="body clamp-2">${esc(n.body)}</span></div>`).join("")
+        + (rest.length ? `<button class="btn more-row"><span>${rest.reduce((a, n) => a + n.count, 0)} more from ${rest.map((n) => n.from).join(", ")}</span>${Folio.icon("down")}</button>` : "");
+      notes.querySelector(".more-row span")?.classList.add("ellipsis");
+    }
+    // Quota
+    $("#quota").innerHTML = c.quota.map(([nm, win, used, reset]) => {
+      const on = Math.round(Math.min(1, used) * 20);
+      return `<div class="q"><b>${nm} <span class="cap">${win}</span></b><div class="meter ${used >= 1 ? "full" : used >= 0.6 ? "warn" : ""}">${Array.from({ length: 20 }, (_, i) => `<i class="${i < on ? "on" : ""}"></i>`).join("")}</div><small>${used >= 1 ? "Limit" : `${Math.round(used * 100)}%`} · ${reset}</small></div>`;
+    }).join("");
+    // Dock: add apps, then fit.
+    dock.querySelectorAll(".app.extra").forEach((a) => a.remove());
+    const extras = ["code", "calendar", "vpn", "notes", "files", "browser", "mail", "music", "messages"];
+    for (let i = 0; i < c.extraApps; i++) dock.insertBefore(buildApp(extras[i % extras.length], true), dock.querySelector(".sep"));
+    fitDock();
+    if (name === "stress") Folio.wait(600).then(() => flash("battery", 2600));
+    if (name === "empty") { $("#bt-icon").innerHTML = Folio.icon("bolt"); $("#bt-pct").textContent = "100%"; $("#bt-msg").textContent = "Charged"; Folio.wait(600).then(() => flash("battery", 2200)); }
+    else { $("#bt-icon").innerHTML = Folio.icon("battery"); $("#bt-pct").textContent = `${pct}%`; $("#bt-msg").textContent = "Battery low · plug in soon"; }
+    $("#bt-msg").classList.toggle("warn", name === "stress");
+  }
+  function fitDock() {
+    const all = [...dock.querySelectorAll(".app")];
+    apps.length = 0; apps.push(...all);
+    while (scale.length < all.length) scale.push(1);
+    scale.length = all.length;
+    const avail = innerWidth - 48, gap = 8, pad = 28;
+    const base = Math.max(30, Math.min(50, Math.floor((avail - pad) / all.length - gap)));
+    dock.style.setProperty("--base", `${base}px`);
+    all.forEach((a) => a.dataset.bound || ((a.dataset.bound = "1") && a.addEventListener("click", () => a.querySelector(".tile").animate(
+      [{ transform: "none" }, { transform: "translateY(-22px)" }, { transform: "none" }, { transform: "translateY(-9px)" }, { transform: "none" }], { duration: 820, easing: "cubic-bezier(0.3, 0, 0.3, 1)" }))));
+    measure();
+  }
+  addEventListener("resize", fitDock);
+  Folio.seg($("#content"), (v) => content(v));
+
+  // Opening: music is playing, so the island rests on it; a message arrives.
+  content("normal");
+  Folio.wait(2600).then(() => flash("note", 2600));
+</script>
+</body>
+</html>

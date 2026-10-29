@@ -1,35 +1,87 @@
 #!/usr/bin/env python3
 """Desktop workshop tooling. See workshop/README.md.
 
-  workshop status                 parity counts
-  workshop render                 regenerate workshop/PARITY.md from parity.json
+  workshop status                 live look and taste counts
+  workshop look [list]            saved looks; * marks the one that is live
+  workshop look save NAME [--title T] [--note N]
+                                  keep the live look in workshop/looks/NAME.json
+  workshop look apply NAME        switch the running session to a saved look
+  workshop look diff A [B]        compare two looks (B defaults to the live one)
+  workshop taste [list]           the taste board
+  workshop taste set ID VERDICT [--note N]
+  workshop taste add ID THING --area A [--verdict V] [--from F] [--note N]
+  workshop render                 regenerate workshop/TASTE.md from taste.json
   workshop digest [--write] [--advance]
                                   what changed upstream since the last review
   workshop version TITLE [--summary TEXT]
                                   open the next workshop version
   workshop capture NAME [--version N] [--host H] [--display D] [--output O] [--title T]
                                   screenshot a real session into the version
-  workshop serve [--port P]       browse workshop/index.html locally
+  workshop serve [--port P]       the workshop page, with live looks and taste
+  workshop open [--port P]        serve in the background and open the page
 
-Needs only Python and, for digest, an authenticated `gh` CLI.
+Needs only Python and, for digest, an authenticated `gh` CLI. Looks need a
+DMS session; everything else works on any host.
 """
 import argparse
 import datetime
 import http.server
 import json
 import functools
+import os
+import re
 import shlex
+import shutil
 import subprocess
 import sys
+import tempfile
 from collections import Counter
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 WORKSHOP = ROOT / "workshop"
-PARITY = WORKSHOP / "parity.json"
+TASTE = WORKSHOP / "taste.json"
+LOOKS = WORKSHOP / "looks"
 UPSTREAMS = WORKSHOP / "upstreams.json"
 SESSIONS = WORKSHOP / "sessions.json"
-STATUS_ORDER = ["verified", "built", "building", "study", "missing", "deviation", "watching", "rejected"]
+VERDICTS = ["like", "unsure", "dislike"]
+
+# The live session. DMS reloads settings.json when it changes; the niri file is
+# included by dotfiles/niri/config.kdl after DMS's files and before the toggles.
+DMS_SETTINGS = Path.home() / ".config/DankMaterialShell/settings.json"
+NIRI_LOOK = Path.home() / ".config/niri/look.kdl"
+
+# DMS settings a look owns, with DMS's defaults for keys settings.json omits.
+# Colors stay with Azure Folio and themeport: a look is shape, motion,
+# material and depth.
+LOOK_KEYS = {
+    "Shape": {
+        "cornerRadius": 12, "niriLayoutRadiusOverride": -1, "niriLayoutGapsOverride": -1,
+        "niriLayoutBorderSize": -1,
+    },
+    "Motion": {
+        "animationSpeed": 1, "customAnimationDuration": 500, "syncComponentAnimationSpeeds": True,
+        "popoutAnimationSpeed": 1, "popoutCustomAnimationDuration": 150,
+        "modalAnimationSpeed": 1, "modalCustomAnimationDuration": 150,
+        "notificationAnimationSpeed": 1, "notificationCustomAnimationDuration": 400,
+        "animationVariant": 0, "motionEffect": 0, "springBounce": 1, "enableRippleEffects": True,
+    },
+    "Material": {
+        "popupTransparency": 1.0, "dockTransparency": 1.0, "floatingWindowTransparency": 1.0,
+        "foregroundLayerTransparency": 1.0, "blurEnabled": False, "blurForegroundLayers": True,
+        "blurLayerOutlineOpacity": 0.12, "blurBorderEnabled": True, "blurBorderOpacity": 0.35,
+        "frameBlurEnabled": True,
+    },
+    "Depth": {
+        "m3ElevationEnabled": True, "m3ElevationIntensity": 12, "m3ElevationOpacity": 30,
+        "modalElevationEnabled": True, "popoutElevationEnabled": True, "barElevationEnabled": True,
+        "notificationPopupShadowEnabled": True,
+    },
+}
+# Per-bar settings, read from the first bar and applied to every bar.
+BAR_KEYS = ["transparency", "widgetTransparency", "squareCorners", "borderOpacity", "widgetOutlineOpacity",
+            "shadowIntensity", "shadowOpacity", "spacing", "innerPadding"]
+NAME = re.compile(r"[a-z0-9][a-z0-9-]{0,40}")
 
 
 def load(path):
@@ -44,52 +96,186 @@ def today():
     return datetime.date.today().isoformat()
 
 
-def counts():
-    found = Counter(item["status"] for item in load(PARITY)["items"])
-    return {status: found[status] for status in STATUS_ORDER if found[status]}
+def check_name(name):
+    if not NAME.fullmatch(name or ""):
+        raise ValueError(f"{name!r}: use lowercase letters, digits and dashes")
+    return name
+
+
+# Looks
+
+def live_look():
+    settings = load(DMS_SETTINGS)
+    bar = (settings.get("barConfigs") or [{}])[0]
+    return {
+        "dms": {key: settings.get(key, default) for keys in LOOK_KEYS.values() for key, default in keys.items()},
+        "bar": {key: bar[key] for key in BAR_KEYS if key in bar},
+        "niri": NIRI_LOOK.read_text() if NIRI_LOOK.exists() else "",
+    }
+
+
+def saved_looks():
+    return {path.stem: load(path) for path in sorted(LOOKS.glob("*.json"))}
+
+
+def same_look(look, other):
+    return (look["dms"] == other["dms"] and look.get("bar", {}) == other.get("bar", {})
+            and look.get("niri", "").strip() == other.get("niri", "").strip())
+
+
+def live_name(looks=None):
+    """The saved look the session is running, or None for unsaved changes."""
+    if not DMS_SETTINGS.exists():
+        return None
+    live = live_look()
+    return next((name for name, look in (looks or saved_looks()).items() if same_look(look, live)), None)
+
+
+def check_niri(text):
+    with tempfile.NamedTemporaryFile("w", suffix=".kdl") as config:
+        config.write(text)
+        config.flush()
+        result = subprocess.run(["niri", "validate", "-c", config.name], capture_output=True, text=True)
+    if result.returncode:
+        raise ValueError("niri rejects this look: " + (result.stderr.strip().splitlines() or ["?"])[-1])
+
+
+def apply_look(name):
+    look = load(LOOKS / f"{check_name(name)}.json")
+    niri = look.get("niri", "")
+    if niri.strip():
+        check_niri(niri)
+    settings = load(DMS_SETTINGS)
+    settings.update(look["dms"])
+    for bar in settings.get("barConfigs", []):
+        bar.update(look.get("bar", {}))
+    # Written through the symlinks into mutable state, in place, so DMS's
+    # file watch sees the change and reloads.
+    save(DMS_SETTINGS, settings)
+    with tempfile.NamedTemporaryFile("w", dir=NIRI_LOOK.parent, delete=False) as staged:
+        staged.write(niri)
+    os.replace(staged.name, NIRI_LOOK)
+    return name
+
+
+def save_look(name, title="", note=""):
+    path = LOOKS / f"{check_name(name)}.json"
+    previous = load(path) if path.exists() else {}
+    look = {"title": title or previous.get("title") or name, "note": note or previous.get("note", ""),
+            "saved": today(), **live_look()}
+    LOOKS.mkdir(exist_ok=True)
+    save(path, look)
+    return name
+
+
+def cmd_look(args):
+    looks = saved_looks()
+    if args.action in (None, "list"):
+        live = live_name(looks)
+        for name, look in looks.items():
+            print(f"{'*' if name == live else ' '} {name:<16} {look.get('title', '')}")
+        if live is None:
+            print("  (live session has unsaved changes; `workshop look save NAME` keeps them)")
+    elif args.action == "save":
+        print(f"saved workshop/looks/{save_look(args.name, args.title, args.note)}.json")
+    elif args.action == "apply":
+        apply_look(args.name)
+        print(f"applied {args.name}; DMS reloads now, niri as soon as it sees look.kdl")
+    elif args.action == "diff":
+        a = looks[args.name]
+        b = looks[args.other] if args.other else live_look()
+        label = args.other or "live"
+        for section, keys in LOOK_KEYS.items():
+            for key in keys:
+                if a["dms"].get(key) != b["dms"].get(key):
+                    print(f"{section:<9} {key:<38} {a['dms'].get(key)!s:>8} -> {b['dms'].get(key)!s} ({label})")
+        for key in BAR_KEYS:
+            if a.get("bar", {}).get(key) != b.get("bar", {}).get(key):
+                print(f"{'Bar':<9} {key:<38} {a['bar'].get(key)!s:>8} -> {b['bar'].get(key)!s} ({label})")
+        if a.get("niri", "").strip() != b.get("niri", "").strip():
+            print(f"{'niri':<9} look.kdl differs")
+
+
+# Taste
+
+def taste_counts():
+    found = Counter(item["verdict"] for item in load(TASTE)["items"])
+    return {verdict: found[verdict] for verdict in VERDICTS if found[verdict]}
+
+
+def set_taste(item_id, verdict, note=None):
+    if verdict not in VERDICTS:
+        raise ValueError(f"verdict must be one of {', '.join(VERDICTS)}")
+    taste = load(TASTE)
+    item = next((i for i in taste["items"] if i["id"] == item_id), None)
+    if item is None:
+        raise ValueError(f"no taste item {item_id!r}")
+    if item["verdict"] != verdict:
+        item["verdict"], item["decided"] = verdict, today()
+    if note is not None:
+        item["notes"] = note
+    save(TASTE, taste)
+    return item
+
+
+def add_taste(item_id, thing, area, verdict="unsure", source="ours", note=""):
+    taste = load(TASTE)
+    if any(i["id"] == check_name(item_id) for i in taste["items"]):
+        raise ValueError(f"taste item {item_id!r} exists; use `taste set`")
+    if verdict not in VERDICTS:
+        raise ValueError(f"verdict must be one of {', '.join(VERDICTS)}")
+    item = {"id": item_id, "area": area, "thing": thing, "verdict": verdict, "from": source,
+            "notes": note, "decided": today()}
+    taste["items"].append(item)
+    save(TASTE, taste)
+    return item
+
+
+def cmd_taste(args):
+    if args.action in (None, "list"):
+        for item in load(TASTE)["items"]:
+            print(f"{item['verdict']:<8} {item['area']:<11} {item['id']:<22} {item['thing']}")
+    elif args.action == "set":
+        set_taste(args.id, args.verdict, args.note)
+        print(f"{args.id}: {args.verdict}")
+    elif args.action == "add":
+        add_taste(args.id, args.thing, args.area, args.verdict, args.source, args.note or "")
+        print(f"added {args.id}")
 
 
 def cmd_status(_args):
-    total = sum(counts().values())
-    for status, number in counts().items():
-        print(f"{status:<10} {number:>3}")
-    print(f"{'total':<10} {total:>3}")
+    if DMS_SETTINGS.exists():
+        print(f"{'look':<10} {live_name() or 'unsaved changes'}")
+    for verdict, number in taste_counts().items():
+        print(f"{verdict:<10} {number:>3}")
 
 
 def cmd_render(_args):
-    parity = load(PARITY)
+    taste = load(TASTE)
     lines = [
-        "# Pond session parity",
+        "# Taste board",
         "",
-        "Generated from `parity.json` by `scripts/workshop render`. Do not edit by hand.",
+        "Generated from `taste.json` by `scripts/workshop render`. Do not edit by hand.",
         "",
-        " · ".join(f"**{status}** {number}" for status, number in counts().items()),
+        " · ".join(f"**{verdict}** {number}" for verdict, number in taste_counts().items()),
         "",
     ]
     areas = {}
-    for item in parity["items"]:
+    for item in taste["items"]:
         areas.setdefault(item["area"], []).append(item)
     for area, items in areas.items():
-        lines += [f"## {area}", "", "| Capability | Status | Source | Tier | Where | Notes |", "|---|---|---|---|---|---|"]
+        lines += [f"## {area}", "", "| Thing | Verdict | From | Notes |", "|---|---|---|---|"]
         for item in items:
             cells = [
-                f"{item['capability']} <sub>`{item['id']}`</sub>",
-                item["status"] + (f" ({item['checked']})" if item.get("checked") else ""),
-                item["source"],
-                item["tier"],
-                f"`{item['where']}`" if item.get("where") else "",
+                f"{item['thing']} <sub>`{item['id']}`</sub>",
+                item["verdict"] + (f" ({item['decided']})" if item.get("decided") else ""),
+                item["from"],
                 item.get("notes", ""),
             ]
             lines.append("| " + " | ".join(cell.replace("|", "\\|") for cell in cells) + " |")
         lines.append("")
-    (WORKSHOP / "PARITY.md").write_text("\n".join(lines))
-
-    if SESSIONS.exists():
-        sessions = load(SESSIONS)
-        if sessions["versions"]:
-            sessions["versions"][-1]["parity"] = counts()
-            save(SESSIONS, sessions)
-    print("wrote workshop/PARITY.md")
+    (WORKSHOP / "TASTE.md").write_text("\n".join(lines))
+    print("wrote workshop/TASTE.md")
 
 
 def gh(path):
@@ -105,9 +291,9 @@ def locked_rev(flake_input):
 
 
 def ported_paths(repo):
-    """Upstream files the parity board says we consume or port."""
+    """Upstream files the taste board refers to."""
     paths = set()
-    for item in load(PARITY)["items"]:
+    for item in load(TASTE)["items"]:
         ref = item.get("upstream") or ""
         if ref.startswith(repo + ":"):
             paths.add(ref.split(":", 1)[1])
@@ -129,7 +315,7 @@ def digest_commits(upstream, out):
     watched = ported_paths(repo) | set(upstream.get("watchFiles", []))
     touched = [f for f in files if any(f["filename"] == p or f["filename"].startswith(p.rstrip("/") + "/") for p in watched)]
     if touched:
-        out.append("\nFiles the parity board depends on:\n")
+        out.append("\nFiles the taste board refers to:\n")
         for f in touched:
             out.append(f"- `{f['filename']}` {f['status']} +{f['additions']}/-{f['deletions']}")
             if f["filename"] in upstream.get("watchFiles", []) and f.get("patch"):
@@ -204,7 +390,8 @@ def cmd_version(args):
                           capture_output=True, text=True).stdout.strip()
     sessions["versions"].append({
         "version": number, "date": today(), "title": args.title, "summary": args.summary or "",
-        "tag": f"workshop-v{number}", "base": base, "captures": [], "studies": [], "parity": counts(),
+        "tag": f"workshop-v{number}", "base": base, "captures": [], "studies": [],
+        "look": live_name(), "taste": taste_counts(),
     })
     save(SESSIONS, sessions)
     print(f"opened workshop v{number}; commit the work, then: git tag workshop-v{number}")
@@ -233,17 +420,119 @@ def cmd_capture(args):
     print(f"captured {path.relative_to(ROOT)}")
 
 
+def page_state(_body=None):
+    looks = saved_looks()
+    live = DMS_SETTINGS.exists()
+    return {"looks": looks, "keys": LOOK_KEYS, "barKeys": BAR_KEYS, "live": live_name(looks) if live else None,
+            "liveLook": live_look() if live else None, "taste": load(TASTE)}
+
+
+API = {
+    "/api/look/apply": lambda body: apply_look(body["name"]),
+    "/api/look/save": lambda body: save_look(body["name"], body.get("title", ""), body.get("note", "")),
+    "/api/taste/set": lambda body: set_taste(body["id"], body["verdict"], body.get("notes")),
+    "/api/taste/add": lambda body: add_taste(body["id"], body["thing"], body["area"], body.get("verdict", "unsure"),
+                                             body.get("from", "ours"), body.get("notes", "")),
+}
+
+
+class WorkshopHandler(http.server.SimpleHTTPRequestHandler):
+    def translate_path(self, path):
+        # Studies link the repo's fonts as ../../../assets/..., which a browser
+        # resolves to /assets/ here and to the real folder when opened from disk.
+        if path.startswith("/assets/"):
+            return str(ROOT / "assets" / Path(super().translate_path(path)).relative_to(WORKSHOP / "assets"))
+        return super().translate_path(path)
+
+    def reply(self, status, data):
+        payload = json.dumps(data).encode()
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("Content-Length", str(len(payload)))
+        self.end_headers()
+        self.wfile.write(payload)
+
+    def local(self):
+        # Refuse other sites and DNS rebinding: the Host must be this server,
+        # and writes need a custom header, which forces a CORS preflight this
+        # server never answers.
+        host = (self.headers.get("Host") or "").rsplit(":", 1)[0]
+        return host in ("127.0.0.1", "localhost")
+
+    def do_GET(self):
+        if self.path == "/api/state":
+            if not self.local():
+                return self.reply(403, {"error": "forbidden"})
+            return self.reply(200, page_state())
+        super().do_GET()
+
+    def do_POST(self):
+        if not self.local() or self.headers.get("X-Workshop") != "1":
+            return self.reply(403, {"error": "forbidden"})
+        action = API.get(self.path)
+        if action is None:
+            return self.reply(404, {"error": f"no endpoint {self.path}"})
+        try:
+            body = json.loads(self.rfile.read(int(self.headers.get("Content-Length") or 0)) or b"{}")
+            action(body)
+        except (KeyError, ValueError, RuntimeError, OSError) as error:
+            return self.reply(400, {"error": str(error)})
+        self.reply(200, page_state())
+
+
 def cmd_serve(args):
-    handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(WORKSHOP))
+    handler = functools.partial(WorkshopHandler, directory=str(WORKSHOP))
     with http.server.ThreadingHTTPServer(("127.0.0.1", args.port), handler) as server:
         print(f"workshop at http://127.0.0.1:{args.port}/  (Ctrl+C to stop)")
         server.serve_forever()
+
+
+def cmd_open(args):
+    url = f"http://127.0.0.1:{args.port}/"
+    if not shutil.which("systemd-run"):
+        sys.exit(f"run `scripts/workshop serve` and open {url}")
+    unit = "workshop.service"
+    if subprocess.run(["systemctl", "--user", "is-active", "--quiet", unit]).returncode:
+        subprocess.run(["systemd-run", "--user", "--quiet", "--collect", f"--unit={unit}",
+                        f"--working-directory={ROOT}", sys.executable, str(Path(__file__).resolve()),
+                        "serve", "--port", str(args.port)], check=True)
+    print(f"workshop at {url}  (stop it with: systemctl --user stop {unit})")
+    if os.environ.get("WAYLAND_DISPLAY") or os.environ.get("DISPLAY"):
+        subprocess.run(["xdg-open", url])
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("status").set_defaults(func=cmd_status)
+    look = sub.add_parser("look")
+    look_sub = look.add_subparsers(dest="action")
+    look_sub.add_parser("list")
+    look_save = look_sub.add_parser("save")
+    look_save.add_argument("name")
+    look_save.add_argument("--title", default="")
+    look_save.add_argument("--note", default="")
+    look_sub.add_parser("apply").add_argument("name")
+    look_diff = look_sub.add_parser("diff")
+    look_diff.add_argument("name")
+    look_diff.add_argument("other", nargs="?")
+    look.set_defaults(func=cmd_look)
+    taste = sub.add_parser("taste")
+    taste_sub = taste.add_subparsers(dest="action")
+    taste_sub.add_parser("list")
+    taste_set = taste_sub.add_parser("set")
+    taste_set.add_argument("id")
+    taste_set.add_argument("verdict", choices=VERDICTS)
+    taste_set.add_argument("--note")
+    taste_add = taste_sub.add_parser("add")
+    taste_add.add_argument("id")
+    taste_add.add_argument("thing")
+    taste_add.add_argument("--area", required=True)
+    taste_add.add_argument("--verdict", choices=VERDICTS, default="unsure")
+    taste_add.add_argument("--from", dest="source", default="ours")
+    taste_add.add_argument("--note")
+    taste.set_defaults(func=cmd_taste)
     sub.add_parser("render").set_defaults(func=cmd_render)
     digest = sub.add_parser("digest")
     digest.add_argument("--write", action="store_true", help="save to workshop/digests/DATE.md")
@@ -265,8 +554,14 @@ def main():
     serve = sub.add_parser("serve")
     serve.add_argument("--port", type=int, default=8765)
     serve.set_defaults(func=cmd_serve)
+    open_page = sub.add_parser("open")
+    open_page.add_argument("--port", type=int, default=8765)
+    open_page.set_defaults(func=cmd_open)
     args = parser.parse_args()
-    args.func(args)
+    try:
+        args.func(args)
+    except (KeyError, ValueError) as error:
+        sys.exit(f"workshop: {error}")
 
 
 if __name__ == "__main__":

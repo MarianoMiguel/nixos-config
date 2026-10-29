@@ -1,65 +1,78 @@
 # Desktop workshop
 
-The place where this repo's desktop is developed toward one target: **Pond's
-look, Omarchy's features, NixOS underneath**. Everything lives in this folder
-and in git, so it survives any tool or AI account.
+Where this repo's desktop is designed. The target: **one native, coherent
+desktop that feels like its own product**, where every screen (settings,
+appearance, wallpapers, screensaver, themes, lock) is designed rather than
+stitched together. One design language, **Folio**: paper and ink, soft
+rounded form, a printmaker's motion, NixOS underneath. Pond, Omarchy, macOS
+and GNOME are sources of ideas, not parts of the design. Everything lives in
+this folder and in git, so it survives any tool or AI account.
 
-Decision (2026-10-27): copy Pond's design directly rather than restyle DMS.
-Pond's shell runs as a second login session, **Pond**, next to the DMS
-session. DMS stays the default until the parity board is green.
+## Decisions
+
+- **2026-10-28: design our own; Pond is a reference.** Pond's session was
+  not ready and much of it was not wanted, so it is no longer a login
+  session. What is liked from it (rounded corners, unhurried motion, soft
+  depth) comes over as design, not as code. `pond-preview` keeps Pond
+  runnable in a window for comparison. Folio's colors stay.
+- **2026-10-28: one language.** No look is named after where it came from;
+  the desktop has one design, Folio. `before` keeps the pre-revamp look.
+- **Open question: how far to move off DMS.** DMS is the runtime today, and
+  looks restyle it through the settings it exposes. Where it limits the
+  design (its settings window, appearance and wallpaper screens), the screen
+  is studied here first; the studies decide whether it can be done in DMS or
+  needs our own Quickshell shell.
+- 2026-10-27 (superseded): copy Pond directly and retire DMS. The parity
+  board from that attempt is in `archive/`.
 
 ## What is here
 
 | File | What it is |
 |---|---|
-| `parity.json` | The parity board: every capability we rely on, where it comes from, its status. Source of truth. |
-| `PARITY.md` | Rendered board for reading on GitHub (`scripts/workshop render`). |
-| `sessions.json` | Workshop versions: date, summary, git tag, captures, parity counts. |
-| `captures/vN/` | Screenshots of the real session for each version. |
-| `studies/` | Versioned HTML studies for components Pond lacks; `_kit/pond.css` holds Pond's tokens. |
-| `upstreams.json` | Watermarks: last reviewed commit or release per upstream. |
-| `UPSTREAMS.md` | Roles, tiers, never-adopt rules, Pond's Arch package map, update procedure. |
-| `digests/` | Saved upstream digests (`scripts/workshop digest --write`). |
-| `index.html` | The workshop page: parity, versions with captures, upstreams, studies. |
+| `looks/` | Saved looks: shape, motion, material and depth for the DMS session and niri, never colors. `folio` is the design; `before` is the desktop before the revamp. |
+| `taste.json` | The taste board: what the desktop should and should not have (`like`, `unsure`, `dislike`, with notes and where each idea came from). Source of truth for direction. |
+| `TASTE.md` | Rendered board for reading on GitHub (`scripts/workshop render`). |
+| `studies/` | Versioned HTML studies of screens, designed before any QML is written. |
+| `sessions.json` | Workshop versions: date, summary, git tag, look, captures, taste counts. |
+| `captures/vN/` | Screenshots of the real session for each version (v1 and v2 are Pond). |
+| `upstreams.json`, `UPSTREAMS.md` | Watermarks per upstream; rules for taking code and ideas. |
+| `archive/` | The Pond session parity board (2026-10-27). |
+| `index.html` | The workshop page. |
 
-## Look at it
+## Open it
 
 ```sh
-scripts/workshop serve        # http://127.0.0.1:8765, on the Mac or any Linux host
-scripts/workshop status       # counts in the terminal
+scripts/workshop open       # serves in the background and opens the page
+scripts/workshop serve      # or in the foreground, on any host: http://127.0.0.1:8765
 ```
 
-## Try the Pond session
+On the page, **Looks** applies a saved look to the running session and
+saves what you tuned in DMS Settings as a new one; **Taste** records verdicts
+and notes. Both write straight into this folder, so commit when you like
+what you have. The same from a terminal:
 
-- Log out, choose **Pond** in the login screen. Its niri config lives in
-  `~/.config/pond/niri` (Pond's settings panels write there); the DMS
-  session's `~/.config/niri` is never touched.
-- Or, from any running session: `pond-preview` opens Pond in a nested niri
-  window with throwaway config and state. It never locks or hibernates the
-  host.
+```sh
+scripts/workshop look                     # saved looks; * is live
+scripts/workshop look apply before        # back to the desktop before the revamp
+scripts/workshop look save mine --note "rounder bar, slower popouts"
+scripts/workshop look diff folio          # what the live session changed from the design
+scripts/workshop taste set sidebar like --note "but on the left, collapsible"
+```
 
-What is in the session and what is not yet is the parity board.
+A look writes DMS's `settings.json` (DMS reloads it at once) and
+`~/.config/niri/look.kdl`, which `dotfiles/niri/config.kdl` includes after
+DMS's files and before the style toggles. `pond-preview` opens Pond in a
+nested window to compare motion and screens.
 
 ## A workshop session
 
 1. `scripts/workshop version "what this session is about"`
 2. `scripts/workshop digest`: what Pond and Omarchy shipped since last time.
-3. Pick parity items. For a component Pond does not have, study it first in
-   `studies/<id>/vN.html` (see `studies/README.md`).
-4. Build it: plumbing in `packages/pond-interface.nix` or
-   `modules/nixos/pond.nix`; behaviour changes as small commits on our fork
-   `MarianoMiguel/pond-interface`.
-5. Look at it with `pond-preview` or the real session, then
-   `scripts/workshop capture <name> --host bonhart-agent`.
-6. Update `parity.json` and run `scripts/workshop render`.
-7. Commit, then `git tag workshop-vN` and push the tag.
-8. When the digest has been dealt with: `scripts/workshop digest --advance`.
-
-## Status rules
-
-- **built** means it is in the session. **verified** means someone used it in
-  a real Pond session on hardware; record the date and how in `checked`.
-  A nested preview is noted in `checked` but is not verification.
-- **deviation** and **rejected** need a reason in `notes`.
-- The cut-over to Pond as the default session happens when every item is
-  verified, deviation, watching or rejected.
+   Add what is worth judging to the taste board.
+3. Play: apply looks, tune in DMS Settings, save the ones you like. Judge
+   `unsure` items in `pond-preview`, the captures or a study.
+4. For a screen DMS cannot do well, study it in `studies/<id>/vN.html`
+   (see `studies/README.md`), then build it.
+5. `scripts/workshop capture <name>` from the session; `scripts/workshop render`.
+6. Commit, then `git tag workshop-vN` and push the tag.
+7. When the digest has been dealt with: `scripts/workshop digest --advance`.

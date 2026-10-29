@@ -60,6 +60,30 @@
         "watching": 4,
         "rejected": 2
       }
+    },
+    {
+      "version": 3,
+      "date": "2026-10-28",
+      "title": "Our own desktop: looks and taste",
+      "summary": "Pond's session dropped as not ready; Pond stays as a reference in pond-preview. Direction: one native, coherent desktop with Azure Folio's colors and Pond's form. The parity board is archived and replaced by a taste board; looks (before, folio) switch the live DMS session's shape, motion, translucency and depth from the workshop page. Studies: a kit (folio.css, folio.js) and seven screens; Pond and Azure Folio are no longer named as styles.",
+      "tag": "workshop-v3",
+      "base": "17805ba",
+      "captures": [],
+      "studies": [
+        "motion/v1.html",
+        "desktop/v1.html",
+        "desktop/v2.html",
+        "desktop/v3.html",
+        "lockscreen/v1.html",
+        "controls/v1.html",
+        "appearance/v1.html"
+      ],
+      "look": "folio",
+      "taste": {
+        "like": 6,
+        "unsure": 22,
+        "dislike": 1
+      }
     }
   ]
 }

@@ -3,6 +3,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 import qs.Common
+import qs.Widgets
 import qs.Services
 
 // Toasts (Services/Toasts) bottom-centre, just above the dock's band, on the
@@ -103,10 +104,11 @@ Scope {
             Region { item: win.hit[2] || null }
         }
         BackgroundEffect.blurRegion: Region {
-            Region { item: win.frost[0] || null; radius: Theme.rL }
-            Region { item: win.frost[1] || null; radius: Theme.rL }
-            Region { item: win.frost[2] || null; radius: Theme.rL }
+            Region { item: win.frost[0] || null; radius: Theme.rL + nudge.extra }
+            Region { item: win.frost[1] || null; radius: Theme.rL + nudge.extra }
+            Region { item: win.frost[2] || null; radius: Theme.rL + nudge.extra }
         }
+        BlurNudge { id: nudge; key: win.frost }
         property var hit: []
         property var frost: []
         function collect() {

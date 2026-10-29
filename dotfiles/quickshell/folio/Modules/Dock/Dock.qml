@@ -56,8 +56,11 @@ Scope {
         function press(index: int, how: string): void { root.pressed(index, how || "click"); }
         // Close an open menu.
         function close(): void { root.pressed(-1, "close"); }
+        // Tests: act as if a fullscreen window covered the dock.
+        function away(on: bool): void { root.fakeAway = on; }
     }
     signal pressed(int index, string how)
+    property bool fakeAway: false
 
     // ------------------------------------------------------------ the list
 

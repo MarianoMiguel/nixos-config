@@ -140,7 +140,8 @@ Scope {
         WlrLayershell.layer: WlrLayer.Top
         WlrLayershell.namespace: "folio:screenshot"
         mask: Region { item: card }
-        BackgroundEffect.blurRegion: Region { item: card; radius: Theme.rL }
+        BackgroundEffect.blurRegion: Region { item: card; radius: Theme.rL + frost.extra }
+        BlurNudge { id: frost; key: root.shown }
 
         // Holds while hovered, pressed or dragged.
         Timer {

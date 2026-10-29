@@ -45,7 +45,8 @@ PanelWindow {
     WlrLayershell.layer: WlrLayer.Top
     WlrLayershell.namespace: "folio:dock-menu"
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
-    BackgroundEffect.blurRegion: Region { item: win.open ? sheet : null; radius: Theme.rM }
+    BackgroundEffect.blurRegion: Region { item: win.open ? sheet : null; radius: Theme.rM + frost.extra }
+    BlurNudge { id: frost; key: win.open }
 
     MouseArea {
         anchors.fill: parent

@@ -130,7 +130,8 @@ Scope {
         // Frost only while settled: the leaf's curl cannot be a region. The
         // region stays and goes empty, so niri is told "no blur" in the same
         // commit; swapping it for null left the last frost behind.
-        BackgroundEffect.blurRegion: Region { item: root.settled ? sheet : null; radius: root.radius }
+        BackgroundEffect.blurRegion: Region { item: root.settled ? sheet : null; radius: root.radius + frost.extra }
+        BlurNudge { id: frost; key: root.settled }
 
         // Outside the sheet: a click closes.
         MouseArea {

@@ -46,7 +46,8 @@ PanelWindow {
     exclusionMode: ExclusionMode.Ignore
     anchors { top: true; bottom: true; left: true; right: true }
     color: "transparent"
-    BackgroundEffect.blurRegion: Region { item: sheet; radius: Theme.rM }
+    BackgroundEffect.blurRegion: Region { item: sheet; radius: Theme.rM + frost.extra }
+    BlurNudge { id: frost; key: root.visible }
 
     QsMenuOpener { id: rootMenu; menu: root.item ? root.item.menu : null }
     QsMenuOpener { id: subMenu; menu: root.stack.length ? root.stack[root.stack.length - 1] : null }

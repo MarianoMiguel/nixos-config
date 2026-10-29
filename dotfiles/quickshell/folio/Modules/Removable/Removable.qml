@@ -3,6 +3,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 import qs.Common
+import qs.Widgets
 import qs.Services
 
 // What the desktop does when a removable drive comes and goes
@@ -127,7 +128,8 @@ Scope {
         WlrLayershell.layer: WlrLayer.Top
         WlrLayershell.namespace: "folio:removable"
         mask: Region { item: card.leaving ? null : card.surface }
-        BackgroundEffect.blurRegion: Region { item: card.printed ? card.surface : null; radius: Theme.rL }
+        BackgroundEffect.blurRegion: Region { item: card.printed ? card.surface : null; radius: Theme.rL + frost.extra }
+        BlurNudge { id: frost; key: card.printed }
 
         // The band Folio's toasts rest on and the dock's top edge they rise
         // from (Modules/Toasts); this card sits above the toasts showing.

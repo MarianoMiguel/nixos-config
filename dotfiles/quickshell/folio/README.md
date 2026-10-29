@@ -60,7 +60,11 @@ the environment before `run`). QML timers need a window on screen, so load
   `modules` in `shell.qml` only when it works.
 - Layer-shell windows use namespace `folio:<name>` and set
   `BackgroundEffect.blurRegion` (from `Quickshell.Wayland`) to the sheets they
-  draw, with the sheet's radius, so niri frosts what is behind them.
+  draw, with the sheet's radius, so niri frosts what is behind them. Add a
+  `BlurNudge` keyed on whatever changes the region and add its `extra` to the
+  radius: niri 26.04 sometimes drops a region that arrives while the surface
+  keeps redrawing, and sending it again makes it stick. Empty a region by
+  clearing its `item`, never by swapping the region for `null`.
 - Each module has an `IpcHandler` with target `<name>` (lowercase), at least
   the actions its keybinds need, plus `fixture(name)` taking `normal`,
   `stress` and `empty` where it shows content, so tests can drive every state.

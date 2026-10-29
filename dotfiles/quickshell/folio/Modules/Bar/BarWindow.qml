@@ -26,7 +26,8 @@ PanelWindow {
     implicitHeight: 34
     exclusiveZone: 34
     color: "transparent"
-    BackgroundEffect.blurRegion: Region { item: paper }
+    BackgroundEffect.blurRegion: Region { item: paper; radius: frost.extra }
+    BlurNudge { id: frost; key: win.width }
 
     // Live data, or the fixture's.
     readonly property var workspaces: {

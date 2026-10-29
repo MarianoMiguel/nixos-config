@@ -708,8 +708,10 @@ Scope {
             y: Math.round(frame.y + frame.height * (1 - win.frost) / 2)
             width: Math.round(frame.width * win.frost)
             height: Math.round(frame.height * win.frost)
-            radius: Theme.rL * win.frost
+            radius: Theme.rL * win.frost + nudge.extra
         }
+        // Re-sent once the sheet has finished growing (or shrinking).
+        BlurNudge { id: nudge; key: win.frost > 0.99 }
 
         // A light scrim; a click on it closes.
         Rectangle {

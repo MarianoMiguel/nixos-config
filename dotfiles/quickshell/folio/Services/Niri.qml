@@ -23,6 +23,15 @@ Singleton {
     readonly property var focusedWindow: windows[focusedWindowId] || null
     readonly property string layoutName: layouts[layoutIndex] || ""
     function workspacesOn(output) { return workspaces.filter(w => w.output === output).sort((a, b) => a.idx - b.idx); }
+    // Whether the window showing on an output is fullscreen: niri reports no
+    // flag, but a fullscreen tile is exactly the output's size (a maximized
+    // one stops at the bar).
+    function fullscreenOn(output, width, height) {
+        const ws = workspaces.find(w => w.output === output && w.is_active);
+        const win = ws && ws.active_window_id !== null && ws.active_window_id !== undefined ? windows[ws.active_window_id] : null;
+        const t = win && win.layout ? win.layout.tile_size : null;
+        return !!t && Math.abs(t[0] - width) < 2 && Math.abs(t[1] - height) < 2;
+    }
     function windowsOn(workspaceId) { return Object.values(windows).filter(w => w.workspace_id === workspaceId); }
 
     function action(args) { if (available) Quickshell.execDetached(["niri", "msg", "action"].concat(args)); }
@@ -70,6 +79,11 @@ Singleton {
             delete map[ev.WindowClosed.id];
             windows = map;
             if (focusedWindowId === ev.WindowClosed.id) focusedWindowId = -1;
+        } else if (ev.WindowLayoutsChanged) {
+            const map = Object.assign({}, windows);
+            for (const [id, layout] of ev.WindowLayoutsChanged.changes)
+                if (map[id]) map[id] = Object.assign({}, map[id], { "layout": layout });
+            windows = map;
         } else if (ev.WindowFocusChanged) {
             focusedWindowId = ev.WindowFocusChanged.id === null ? -1 : ev.WindowFocusChanged.id;
         } else if (ev.KeyboardLayoutsChanged) {

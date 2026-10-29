@@ -24,7 +24,8 @@ PanelWindow {
     WlrLayershell.keyboardFocus: owner.open ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
     exclusionMode: ExclusionMode.Ignore
     anchors { top: true; bottom: true; left: true; right: true }
-    BackgroundEffect.blurRegion: Region { item: dialog; radius: 22 }
+    BackgroundEffect.blurRegion: Region { item: dialog; radius: 22 + frost.extra }
+    BlurNudge { id: frost; key: win.open }
 
     readonly property bool open: owner.open
     onOpenChanged: {

@@ -36,10 +36,19 @@ PanelWindow {
     anchors { bottom: true; left: true; right: true }
     implicitHeight: 200
     color: "transparent"
-    mask: Region { item: zone }
+    // A fullscreen window covers the dock: it slides down out of the way, as
+    // it arrived, rather than vanishing, and rises again when the window
+    // leaves fullscreen. A spring, so a quick toggle reverses smoothly.
+    readonly property bool away: !!dock && (dock.fakeAway || (!!screen && Niri.fullscreenOn(screen.name, screen.width, screen.height)))
+    property real awayY: away ? 110 : 0
+    Behavior on awayY { SpringPanel {} }
+
+    mask: Region { item: win.away ? null : zone }
+    // Re-sent once the sheet has settled after apps come and go.
+    BlurNudge { id: frost; key: Math.round(sheet.width) + (tip.opacity > 0.5 ? "t" : "") + (win.away ? "a" : "") }
     BackgroundEffect.blurRegion: Region {
-        item: sheet
-        radius: win.radius
+        item: win.away ? null : sheet
+        radius: win.radius + frost.extra
         Region { item: tip.opacity > 0.5 ? tip : null; radius: Theme.rS }
     }
 
@@ -103,6 +112,7 @@ PanelWindow {
     // Input and hover: the sheet, plus whatever the icons grew above it.
     Item {
         id: zone
+        transform: Translate { y: win.awayY }
         readonly property real grow: Math.max(0, win.base * win.peak + win.inset - 68)
         width: sheet.width
         x: Math.round((win.width - width) / 2)

@@ -493,7 +493,10 @@ def build_dms_theme(theme: Theme, other: Theme | None) -> dict:
 
 
 def render_browser_policy(colors: dict[str, str]) -> str:
-    return json.dumps({"BrowserThemeColor": colors["background"]}, indent=2) + "\n"
+    # Chrome derives its whole tonal palette from this seed. The background
+    # (Folio's paper or night) gives a tan or gray browser; the accent (Folio's
+    # ink) gives one tinted like the rest of the desktop.
+    return json.dumps({"BrowserThemeColor": colors["accent"]}, indent=2) + "\n"
 
 
 def render_tmux(colors: dict[str, str]) -> str:

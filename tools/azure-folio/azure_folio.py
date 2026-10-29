@@ -128,8 +128,9 @@ def apply(selection, previous, force=False):
         subprocess.run(['themeport','set',f'folio-{ink}-{mode}','--pair',f'folio-{ink}-{other}','--no-restart'],check=True)
     doc=appearance(selection)
     # Live IPC owns DMS settings writes. The Home Manager activation separately
-    # provides the same defaults before the shell has started.
-    for key,value in {'fontFamily':'Inter','monoFontFamily':'IBM Plex Mono','lockScreenFontFamily':'Jacquard 24','lockScreenShowDate':'true','greeterFontFamily':'Inter','fontWeight':'400','fontScale':'1','niriLayoutRadiusOverride':'5','niriLayoutBorderSize':'1','niriLayoutGapsOverride':'12','dockTransparency':'1','cornerRadius':'5','popupTransparency':'1','terminalsAlwaysDark':'false'}.items():
+    # provides the same defaults before the shell has started. Corners, gaps and
+    # transparency are not Folio's: they belong to the workshop's looks.
+    for key,value in {'fontFamily':'Inter','monoFontFamily':'IBM Plex Mono','lockScreenFontFamily':'Jacquard 24','lockScreenShowDate':'true','greeterFontFamily':'Inter','fontWeight':'400','fontScale':'1','terminalsAlwaysDark':'false'}.items():
         ipc('settings','set',key,value)
     selected=doc['images'][selection['art']]['desktop']
     if ipc('settings','get','currentThemeName') is not None:

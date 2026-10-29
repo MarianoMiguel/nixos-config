@@ -188,12 +188,10 @@ in
             | .greeterFontFamily = "Inter"
             | .fontWeight = 400
             | .fontScale = 1
-            | .niriLayoutGapsOverride = 12
-            | .niriLayoutRadiusOverride = 5
-            | .niriLayoutBorderSize = 1
-            | .popupTransparency = 1
-            | .dockTransparency = 1
-            | .cornerRadius = 5
+            # Corners, gaps, borders and transparency belong to the workshop
+            # looks (workshop/looks/, scripts/workshop look apply); the seed
+            # settings.json provides them on a fresh install. No apostrophes
+            # here: this program sits inside a single-quoted shell string.
             | .widgetRadius = 5
             | .runUserMatugenTemplates = false
             | .showThirdPartyPlugins = false

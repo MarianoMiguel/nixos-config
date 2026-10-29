@@ -44,7 +44,7 @@ in
   # storage.nix, so the choice must live in a committed file.
   mariano.displaylink.enable = true;
 
-  # Pond as a second login session while it reaches parity (workshop/).
+  # pond-preview, Pond's shell as a live design reference (workshop/).
   mariano.pond.enable = true;
 
   services.localWebHosting = {

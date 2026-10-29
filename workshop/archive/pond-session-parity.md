@@ -1,6 +1,6 @@
 # Pond session parity
 
-Generated from `parity.json` by `scripts/workshop render`. Do not edit by hand.
+Archived 2026-10-28 with the Pond session; see `../README.md`. Generated from the parity board, which is no longer maintained.
 
 **built** 26 · **missing** 15 · **deviation** 5 · **watching** 4 · **rejected** 2
 

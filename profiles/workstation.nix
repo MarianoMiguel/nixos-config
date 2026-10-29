@@ -15,6 +15,7 @@
     ../modules/nixos/nix.nix
     ../modules/nixos/pond.nix
     ../modules/nixos/folio-shell.nix
+    ../modules/nixos/folio-greeter.nix
     ../modules/nixos/reminders.nix
     ../modules/nixos/system-actions.nix
     ../modules/nixos/themeport.nix

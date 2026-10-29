@@ -185,7 +185,7 @@ def main() -> int:
             a = json.loads((fresh / ".obsidian/appearance.json").read_text())
             b = json.loads((chosen / ".obsidian/appearance.json").read_text())
             check((fresh / ".obsidian/themes/Folio/theme.css").read_text() == css, "[obsidian] theme not installed")
-            check(a["cssTheme"] == "Folio" and a["enabledCssSnippets"] == ["mine"], f"[obsidian] fresh vault not switched: {a}")
+            check(a["cssTheme"] == "Folio" and a["enabledCssSnippets"] == ["mine"] and a.get("accentColor") == "", f"[obsidian] fresh vault not switched: {a}")
             check(b == {"cssTheme": "Minimal", "enabledCssSnippets": ["dms-colors"]}, f"[obsidian] chosen vault changed: {b}")
             check((chosen / ".obsidian/themes/Folio/manifest.json").is_file(), "[obsidian] theme not offered in a vault with another theme")
         except Exception as exc:  # noqa: BLE001

@@ -1560,8 +1560,8 @@ def apply_browsers(meta: dict) -> None:
 def apply_obsidian(state: Path) -> None:
     """Install the generated theme into every vault Obsidian knows. A vault
     that has no theme chosen gets this one, and the stale DMS colour snippet
-    (which would paint over it) is switched off at that moment; a vault with
-    another theme chosen keeps it."""
+    and any custom accent (which would paint over it) are dropped at that
+    moment; a vault with another theme chosen keeps everything."""
     known = xdg_config_home() / "obsidian/obsidian.json"
     try:
         vaults = [v.get("path") for v in json.loads(known.read_text()).get("vaults", {}).values()]
@@ -1583,7 +1583,8 @@ def apply_obsidian(state: Path) -> None:
             current = None
         if current is not None and not current.get("cssTheme"):
             snippets = [n for n in current.get("enabledCssSnippets", []) if n != "dms-colors"]
-            _edit_json(appearance, {"cssTheme": OBSIDIAN_THEME, "enabledCssSnippets": snippets})
+            # A custom accent would paint over the palette's ink.
+            _edit_json(appearance, {"cssTheme": OBSIDIAN_THEME, "enabledCssSnippets": snippets, "accentColor": ""})
             print(f"  obsidian: {vault} now uses {OBSIDIAN_THEME}")
         else:
             print(f"  obsidian: {OBSIDIAN_THEME} updated in {vault}")

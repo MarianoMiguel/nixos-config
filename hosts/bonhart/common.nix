@@ -25,6 +25,7 @@ in
     ../../profiles/workstation.nix
     ../../modules/nixos/displaylink.nix
     ../../modules/nixos/fingerprint.nix
+    ../../modules/nixos/folio-boot.nix
     ../../modules/nixos/local-web-hosting.nix
     ../../modules/nixos/intervals.nix
     ../../modules/nixos/overfly.nix

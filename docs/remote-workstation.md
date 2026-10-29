@@ -493,6 +493,8 @@ Known audit findings:
 - Root and swap are LUKS encrypted. After a cold boot or relevant recovery path,
   the Comet must display the boot/disk-unlock prompt and send keyboard input.
   Tailscale on Linux only becomes available after the disk is unlocked.
+  Folio's graphical unlock page (`mariano.folio.boot`, Plymouth) is off; read
+  `docs/folio-boot.md` and test it in person before leaving with it on.
 - Backups are scheduled but skipped: the system journal specifically reports the
   missing `/var/lib/restic/password`. The root-only destination configuration has
   not been verified. Confirm an encrypted off-machine target, finish its credentials,

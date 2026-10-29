@@ -1,0 +1,587 @@
+# Folio: the boot and disk-unlock screen (a Plymouth script theme).
+#
+# The lock screen's composition (workshop/studies/lockscreen/v1.html): the
+# plate on the left, the paper page on the right with the machine's name tab
+# hanging from its top edge. When the disk asks for its passphrase the page
+# shows a well that prints one ink dot per typed character, with a breathing
+# caret; a refused passphrase shakes the well and says so. Esc shows the boot
+# messages (Plymouth's console viewer) and Esc again comes back.
+#
+# build.py draws every static image (Folio's fonts, icons and palette) and
+# writes the block below; this script only places images and renders the
+# strings that arrive at boot. Coordinates are canvas pixels: Plymouth
+# centres every display on the largest one.
+
+#@GENERATED@
+
+Z_ART = 1;
+Z_SPINE = 2;
+Z_CREDIT = 3;
+Z_PAGE = 10;
+Z_FIELD = 20;
+Z_DOT = 21;
+Z_CARET = 22;
+
+# ------------------------------------------------------------------ state
+
+mode = Plymouth.GetMode();
+state = "start";        # start | prompt | checking | unlocked | question
+answered = 0;           # passphrases entered in this run
+retry = 0;              # the last one was refused
+bullets = 0;
+caps = -1;
+frame = 0;
+shake_from = -1;
+progress_w = -1;
+prompt_raw = "";
+prompt_img = NULL;
+message = "";
+message_img = NULL;
+entry_img = NULL;
+status_raw = "";
+status_img = NULL;
+ready = 0;
+
+# ------------------------------------------------------------------ helpers
+
+fun px (v)
+{
+  return Math.Int(v * global.u + 0.5);
+}
+
+# A theme image at the current scale (pixel-exact near 1920x1200).
+fun load (name)
+{
+  local.image = Image(name);
+  if (!local.image || global.u == 1)
+    return local.image;
+  return local.image.Scale(Math.Max(1, px(local.image.GetWidth())), Math.Max(1, px(local.image.GetHeight())));
+}
+
+fun text (s, color, font)
+{
+  if (!s)
+    return NULL;
+  local.image = Image.Text(s, color.r, color.g, color.b, 1, font);
+  if (local.image && local.image.GetWidth() > global.content_w)
+    local.image = local.image.Crop(0, 0, global.content_w, local.image.GetHeight());
+  return local.image;
+}
+
+fun is_word_char (c)
+{
+  local.set = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  for (local.i = 0; local.i < local.set.Length(); local.i++)
+    if (local.set.CharAt(local.i) == c)
+      return 1;
+  return 0;
+}
+
+# systemd's prompt without a leading emoji or a trailing colon.
+fun clean_prompt (s)
+{
+  if (!s)
+    return "";
+  local.n = s.Length();
+  local.a = 0;
+  while (local.a < local.n && !is_word_char(s.CharAt(local.a)))
+    local.a++;
+  local.b = local.n;
+  while (local.b > local.a && (s.CharAt(local.b - 1) == ":" || s.CharAt(local.b - 1) == " "))
+    local.b--;
+  return s.SubString(local.a, local.b);
+}
+
+fun put (sprite, image, x, y, z)
+{
+  if (!image)
+    {
+      sprite.SetOpacity(0);
+      return;
+    }
+  sprite.SetImage(image);
+  sprite.SetPosition(x, y, z);
+  sprite.SetOpacity(1);
+}
+
+# A line under the field: the image centred on the line's band.
+fun put_line (sprite, image, y)
+{
+  if (!image)
+    {
+      sprite.SetOpacity(0);
+      return;
+    }
+  put(sprite, image, global.content_x, y + Math.Int((global.line_h - image.GetHeight()) / 2), Z_PAGE);
+}
+
+# ------------------------------------------------------------------ layout
+
+fun pick_art ()
+{
+  local.best = 0;
+  for (local.i = 0; local.i < art_count; local.i++)
+    {
+      if (art[local.i].w == global.W && art[local.i].h == global.H)
+        return local.i;
+      if (art[local.i].w * art[local.i].h > art[local.best].w * art[local.best].h)
+        local.best = local.i;
+    }
+  return local.best;
+}
+
+fun build ()
+{
+  global.ready = 0;
+  global.u = 1;
+  global.W = Window.GetWidth();
+  global.H = Window.GetHeight();
+  global.X0 = Window.GetX();
+  global.Y0 = Window.GetY();
+  Window.SetBackgroundTopColor(pal.paper.r, pal.paper.g, pal.paper.b);
+  Window.SetBackgroundBottomColor(pal.paper.r, pal.paper.g, pal.paper.b);
+  if (global.W < 1 || global.H < 1)
+    return;
+
+  # The page is drawn for 1920x1200 (Bonhart's panel and firmware console).
+  # Near that size every image stays pixel-exact; far from it, all scale.
+  global.u = Math.Min(global.W / 1920, global.H / 1200);
+  if (global.u > 0.84 && global.u < 1.34)
+    global.u = 1;
+
+  global.img.cap_prompt = load("cap-prompt.png");
+  global.img.title_prompt = load("title-prompt.png");
+  if (global.mode == "shutdown")
+    {
+      global.img.cap_rest = load("cap-shutdown.png");
+      global.img.title_rest = load("title-shutdown.png");
+    }
+  else if (global.mode == "reboot")
+    {
+      global.img.cap_rest = load("cap-reboot.png");
+      global.img.title_rest = load("title-reboot.png");
+    }
+  else if (global.mode == "updates" || global.mode == "system-upgrade" || global.mode == "firmware-upgrade")
+    {
+      global.img.cap_rest = load("cap-update.png");
+      global.img.title_rest = load("title-update.png");
+    }
+  else
+    {
+      global.img.cap_rest = load("cap-start.png");
+      global.img.title_rest = load("title-start.png");
+    }
+  global.img.hint = load("msg-hint.png");
+  global.img.checking = load("msg-checking.png");
+  global.img.retry = load("msg-retry.png");
+  global.img.unlocked = load("msg-unlocked.png");
+  global.img.caps = load("msg-caps.png");
+  global.img.esc = load("foot-esc.png");
+  global.img.tab = load("tab.png");
+  global.img.credit = load("credit.png");
+  global.img.field_l = load("field-l.png");
+  global.img.field_m = load("field-m.png");
+  global.img.field_r = load("field-r.png");
+  global.img.dot = load("dot.png");
+  global.img.caret = load("caret.png");
+  global.img.rule = Image("rule.png");
+  global.img.rule_soft = Image("rule-soft.png");
+  global.img.ink = Image("ink.png");
+
+  # Folio's split: the art on the left, the page on the right. A screen
+  # narrower than it is tall gets the page alone.
+  if (global.W < global.H * 1.15)
+    global.art_w = 0;
+  else
+    global.art_w = Math.Int(global.W * art_share + 0.5);
+  global.page_x = global.X0 + global.art_w;
+  global.page_w = global.W - global.art_w;
+  global.pad = Math.Clamp(global.W * 0.045, 28, 72);
+  if (global.art_w == 0)
+    global.pad = Math.Clamp(global.W * 0.08, 28, 120);
+  global.content_x = global.page_x + global.pad;
+  global.content_w = global.page_w - 2 * global.pad;
+
+  # The plate, printed for this screen size when build.py knew it.
+  global.art_sprite = Sprite();
+  global.spine_sprite = Sprite();
+  global.credit_sprite = Sprite();
+  if (global.art_w > 0)
+    {
+      local.a = Image(art[pick_art()].file);
+      if (local.a && (local.a.GetWidth() != global.art_w || local.a.GetHeight() != global.H))
+        {
+          local.s = Math.Max(global.art_w / local.a.GetWidth(), global.H / local.a.GetHeight());
+          local.sw = Math.Int(local.a.GetWidth() * local.s + 1);
+          local.sh = Math.Int(local.a.GetHeight() * local.s + 1);
+          local.a = local.a.Scale(local.sw, local.sh);
+          local.a = local.a.Crop(Math.Int((local.sw - global.art_w) / 2), Math.Int((local.sh - global.H) / 2), global.art_w, global.H);
+        }
+      put(global.art_sprite, local.a, global.X0, global.Y0, Z_ART);
+
+      local.spine = Image("spine.png");
+      if (local.spine)
+        {
+          local.spine = local.spine.Scale(Math.Max(local.spine.GetWidth(), px(local.spine.GetWidth())), global.H);
+          put(global.spine_sprite, local.spine, global.page_x - local.spine.GetWidth(), global.Y0, Z_SPINE);
+        }
+      if (global.img.credit && global.img.credit.GetWidth() <= global.art_w - px(40))
+        put(global.credit_sprite, global.img.credit, global.X0 + px(20),
+            global.Y0 + global.H - px(18) - global.img.credit.GetHeight(), Z_CREDIT);
+    }
+
+  # The name tab hangs from the page's top edge.
+  global.tab_sprite = Sprite();
+  put(global.tab_sprite, global.img.tab, global.page_x + Math.Int((global.page_w - global.img.tab.GetWidth()) / 2),
+      global.Y0, Z_PAGE);
+
+  # The foot: a hairline, "Esc · boot messages", the unit being started.
+  global.foot_y = global.Y0 + global.H - px(62);
+  global.foot_row_y = global.foot_y + px(20);
+  global.foot_sprite = Sprite();
+  put(global.foot_sprite, global.img.rule_soft.Scale(global.content_w, 1), global.content_x, global.foot_y, Z_PAGE);
+  global.progress_sprite = Sprite();
+  global.progress_w = -1;
+  global.esc_sprite = Sprite();
+  put(global.esc_sprite, global.img.esc, global.content_x, global.foot_row_y, Z_PAGE);
+  global.status_sprite = Sprite();
+
+  # The centre: caption, title, rule, field and two lines, centred
+  # between the tab and the foot.
+  global.title_h = Math.Max(global.img.title_prompt.GetHeight(), global.img.title_rest.GetHeight());
+  global.field_h = global.img.field_l.GetHeight();
+  global.line_h = px(34);
+  global.gap = Math.Clamp(global.H * 0.032, px(22), px(40));
+  local.block_h = global.img.cap_prompt.GetHeight() + px(14) + global.title_h + 2 * global.gap + 1
+                  + global.field_h + px(18) + global.line_h + px(4) + global.line_h;
+  local.top = global.Y0 + global.img.tab.GetHeight();
+  global.cap_y = local.top + Math.Int((global.foot_y - local.top - local.block_h) / 2);
+  global.title_y = global.cap_y + global.img.cap_prompt.GetHeight() + px(14);
+  global.rule_y = global.title_y + global.title_h + global.gap;
+  global.field_y = global.rule_y + 1 + global.gap;
+  global.line1_y = global.field_y + global.field_h + px(18);
+  global.line2_y = global.line1_y + global.line_h + px(4);
+
+  global.cap_sprite = Sprite();
+  global.title_sprite = Sprite();
+  global.rule_sprite = Sprite();
+  put(global.rule_sprite, global.img.rule.Scale(global.content_w, 1), global.content_x, global.rule_y, Z_PAGE);
+  global.line1 = Sprite();
+  global.line2 = Sprite();
+
+  # The field, in three slices so its corners never stretch.
+  global.field_w = global.content_w;
+  global.field_l = Sprite(global.img.field_l);
+  global.field_m = Sprite(global.img.field_m.Scale(global.field_w - global.img.field_l.GetWidth()
+                                                   - global.img.field_r.GetWidth(), global.field_h));
+  global.field_r = Sprite(global.img.field_r);
+  global.dot_pitch = px(30);
+  global.dot_first = px(32);
+  global.dot_cap = Math.Int((global.field_w - global.dot_first - px(72)) / global.dot_pitch) + 1;
+  global.dots = [];
+  global.caret = Sprite(global.img.caret);
+  global.count_sprite = Sprite();
+  global.entry_sprite = Sprite();
+
+  global.ready = 1;
+  place_field(0);
+  place_status();
+  render();
+}
+
+# ------------------------------------------------------------------ field
+
+fun place_field (dx)
+{
+  local.x = global.content_x + dx;
+  global.field_l.SetPosition(local.x, global.field_y, Z_FIELD);
+  global.field_m.SetPosition(local.x + global.img.field_l.GetWidth(), global.field_y, Z_FIELD);
+  global.field_r.SetPosition(local.x + global.field_w - global.img.field_r.GetWidth(), global.field_y, Z_FIELD);
+  local.cy = global.field_y + Math.Int(global.field_h / 2);
+  for (local.i = 0; global.dots[local.i]; local.i++)
+    global.dots[local.i].SetPosition(local.x + global.dot_first + local.i * global.dot_pitch
+                                     - Math.Int(global.img.dot.GetWidth() / 2),
+                                     local.cy - Math.Int(global.img.dot.GetHeight() / 2), Z_DOT);
+  local.slot = Math.Min(global.bullets, global.dot_cap);
+  global.caret.SetPosition(local.x + global.dot_first + local.slot * global.dot_pitch
+                           - Math.Int(global.img.caret.GetWidth() / 2),
+                           local.cy - Math.Int(global.img.caret.GetHeight() / 2), Z_CARET);
+  if (global.count_img)
+    global.count_sprite.SetPosition(local.x + global.field_w - px(24) - global.count_img.GetWidth(),
+                                    local.cy - Math.Int(global.count_img.GetHeight() / 2), Z_DOT);
+  if (global.entry_img)
+    global.entry_sprite.SetPosition(local.x + px(24), local.cy - Math.Int(global.entry_img.GetHeight() / 2), Z_DOT);
+}
+
+# One ink dot per character; past the well's width, the count instead.
+fun show_dots (alpha)
+{
+  local.shown = Math.Min(global.bullets, global.dot_cap);
+  if (global.bullets > global.dot_cap)
+    local.shown = global.dot_cap - 1;
+  for (local.i = 0; local.i < local.shown || global.dots[local.i]; local.i++)
+    {
+      if (!global.dots[local.i])
+        global.dots[local.i] = Sprite(global.img.dot);
+      if (local.i < local.shown)
+        global.dots[local.i].SetOpacity(alpha);
+      else
+        global.dots[local.i].SetOpacity(0);
+    }
+  global.count_img = NULL;
+  if (global.bullets > global.dot_cap)
+    global.count_img = Image.Text("" + global.bullets, pal.ink.r, pal.ink.g, pal.ink.b, 1,
+                                  "IBM Plex Mono Medium " + px(20) + "px");
+  if (global.count_img && alpha > 0)
+    {
+      global.count_sprite.SetImage(global.count_img);
+      global.count_sprite.SetOpacity(alpha);
+    }
+  else
+    global.count_sprite.SetOpacity(0);
+}
+
+# ------------------------------------------------------------------ state
+
+fun place_status ()
+{
+  if (!global.status_img)
+    {
+      global.status_sprite.SetOpacity(0);
+      return;
+    }
+  local.room = global.content_w - global.img.esc.GetWidth() - px(32);
+  local.image = global.status_img;
+  if (local.room < 1)
+    {
+      global.status_sprite.SetOpacity(0);
+      return;
+    }
+  if (local.image.GetWidth() > local.room)
+    local.image = local.image.Crop(local.image.GetWidth() - local.room, 0, local.room, local.image.GetHeight());
+  put(global.status_sprite, local.image, global.content_x + global.content_w - local.image.GetWidth(),
+      global.foot_row_y + Math.Int((global.img.esc.GetHeight() - local.image.GetHeight()) / 2), Z_PAGE);
+}
+
+fun render ()
+{
+  if (!global.ready)
+    return;
+  local.asking = (global.state == "prompt" || global.state == "checking" || global.state == "question");
+
+  if (local.asking)
+    {
+      put(global.cap_sprite, global.img.cap_prompt, global.content_x, global.cap_y, Z_PAGE);
+      put(global.title_sprite, global.img.title_prompt, global.content_x - px(2), global.title_y, Z_PAGE);
+    }
+  else
+    {
+      put(global.cap_sprite, global.img.cap_rest, global.content_x, global.cap_y, Z_PAGE);
+      put(global.title_sprite, global.img.title_rest, global.content_x - px(2), global.title_y, Z_PAGE);
+    }
+
+  local.field = 0;
+  if (local.asking)
+    local.field = 1;
+  global.field_l.SetOpacity(local.field);
+  global.field_m.SetOpacity(local.field);
+  global.field_r.SetOpacity(local.field);
+  if (global.state == "prompt")
+    show_dots(1);
+  else if (global.state == "checking")
+    show_dots(0.45);
+  else
+    show_dots(0);
+  global.caret_on = (global.state == "prompt" && global.bullets < global.dot_cap);
+  if (!global.caret_on)
+    global.caret.SetOpacity(0);
+  if (global.state == "question" && global.entry_img)
+    {
+      global.entry_sprite.SetImage(global.entry_img);
+      global.entry_sprite.SetOpacity(1);
+    }
+  else
+    global.entry_sprite.SetOpacity(0);
+  place_field(0);
+
+  if (global.state == "prompt" && global.retry)
+    put_line(global.line1, global.img.retry, global.line1_y);
+  else if (global.state == "prompt")
+    put_line(global.line1, global.img.hint, global.line1_y);
+  else if (global.state == "checking")
+    put_line(global.line1, global.img.checking, global.line1_y);
+  else if (global.state == "unlocked")
+    put_line(global.line1, global.img.unlocked, global.line1_y);
+  else
+    put_line(global.line1, NULL, global.line1_y);
+
+  local.second = global.message_img;
+  if (!local.second && local.asking)
+    local.second = global.prompt_img;
+  if (global.state == "prompt" && global.caps == 1)
+    local.second = global.img.caps;
+  put_line(global.line2, local.second, global.line2_y);
+}
+
+fun shake_offset (t)
+{
+  local.k[0] = 0;
+  local.k[1] = -14;
+  local.k[2] = 11;
+  local.k[3] = -7;
+  local.k[4] = 4;
+  local.k[5] = 0;
+  local.i = Math.Min(4, Math.Int(t * 5));
+  local.f = t * 5 - local.i;
+  return px(local.k[local.i] + (local.k[local.i + 1] - local.k[local.i]) * local.f);
+}
+
+# ------------------------------------------------------------------ callbacks
+
+fun password_cb (prompt, n)
+{
+  if (global.state != "prompt")
+    {
+      if (global.answered > 0)
+        {
+          global.retry = 1;
+          global.shake_from = global.frame;
+        }
+      global.state = "prompt";
+    }
+  if (n > 0)
+    global.retry = 0;
+  global.bullets = n;
+  if (prompt != global.prompt_raw)
+    {
+      global.prompt_raw = prompt;
+      global.prompt_img = text(clean_prompt(prompt), pal.text3, "Inter " + px(18) + "px");
+    }
+  render();
+}
+
+fun question_cb (prompt, entry)
+{
+  global.state = "question";
+  global.bullets = 0;
+  global.prompt_raw = prompt;
+  global.prompt_img = text(clean_prompt(prompt), pal.text3, "Inter " + px(18) + "px");
+  global.entry_img = text(entry, pal.text, "IBM Plex Mono Medium " + px(21) + "px");
+  render();
+}
+
+fun normal_cb ()
+{
+  if (global.state == "prompt" || global.state == "question")
+    {
+      global.answered++;
+      global.state = "checking";
+      render();
+    }
+}
+
+fun root_cb ()
+{
+  if (global.mode == "boot" && global.answered > 0)
+    {
+      global.state = "unlocked";
+      render();
+    }
+}
+
+fun message_cb (s)
+{
+  global.message = s;
+  global.message_img = text(s, pal.text, "Inter Medium " + px(19) + "px");
+  render();
+}
+
+fun hide_message_cb (s)
+{
+  if (s == global.message)
+    {
+      global.message = "";
+      global.message_img = NULL;
+      render();
+    }
+}
+
+fun status_cb (s)
+{
+  if (s == global.status_raw)
+    return;
+  global.status_raw = s;
+  global.status_img = Image.Text(s, pal.text3.r, pal.text3.g, pal.text3.b, 1, "IBM Plex Mono " + px(15) + "px");
+  if (global.ready)
+    place_status();
+}
+
+# Boot progress, printed in ink along the foot's hairline.
+fun progress_cb (duration, progress)
+{
+  if (!global.ready)
+    return;
+  local.w = Math.Int(global.content_w * Math.Clamp(progress, 0, 1));
+  if (local.w == global.progress_w || (local.w - global.progress_w < 4 && local.w < global.content_w && local.w > global.progress_w))
+    return;
+  global.progress_w = local.w;
+  if (local.w < 1)
+    {
+      global.progress_sprite.SetOpacity(0);
+      return;
+    }
+  put(global.progress_sprite, global.img.ink.Scale(local.w, Math.Max(2, px(2))), global.content_x, global.foot_y - 1, Z_PAGE + 1);
+}
+
+fun refresh_cb ()
+{
+  global.frame++;
+  if (!global.ready)
+    return;
+  if (global.state == "prompt")
+    {
+      if (global.frame % 5 == 0)
+        {
+          local.c = 0;
+          if (Plymouth.GetCapslockState())
+            local.c = 1;
+          if (local.c != global.caps)
+            {
+              global.caps = local.c;
+              render();
+            }
+        }
+      # The caret breathes (1.2 s), as on the lock screen.
+      if (global.caret_on)
+        global.caret.SetOpacity(0.3 + 0.7 * (Math.Cos(global.frame * 2 * Math.Pi / 60) + 1) / 2);
+    }
+  if (global.shake_from >= 0)
+    {
+      local.t = (global.frame - global.shake_from) / 26;
+      if (local.t >= 1)
+        {
+          global.shake_from = -1;
+          place_field(0);
+        }
+      else
+        place_field(shake_offset(local.t));
+    }
+}
+
+fun hotplug_cb ()
+{
+  build();
+}
+
+Plymouth.SetRefreshFunction(refresh_cb);
+Plymouth.SetDisplayPasswordFunction(password_cb);
+Plymouth.SetDisplayQuestionFunction(question_cb);
+Plymouth.SetDisplayNormalFunction(normal_cb);
+Plymouth.SetRootMountedFunction(root_cb);
+Plymouth.SetDisplayMessageFunction(message_cb);
+Plymouth.SetHideMessageFunction(hide_message_cb);
+Plymouth.SetUpdateStatusFunction(status_cb);
+Plymouth.SetBootProgressFunction(progress_cb);
+Plymouth.SetDisplayHotplugFunction(hotplug_cb);
+
+build();

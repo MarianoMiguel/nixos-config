@@ -24,6 +24,7 @@ Singleton {
         return t.id;
     }
     function undo(text, commit, restore, icon) {
+        Sounds.play("trash");                   // something set aside, still within reach
         return show(text, { "action": "Undo", "onAction": restore, "onTimeout": commit, "timeout": 6000, "icon": icon || "" });
     }
     function countdown(text, run, seconds, icon) {

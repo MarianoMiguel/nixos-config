@@ -34,6 +34,11 @@ Scope {
     onStageChanged: evaluate()
     // A charger ends the discharge: the warnings go and the next one counts again.
     onDrainingChanged: if (!draining) clear()
+    // The charger going in or out has a sound; the first reading does not.
+    readonly property bool onBattery: !!b.onBattery
+    property bool armed: false
+    Timer { running: true; interval: 3000; onTriggered: root.armed = true }
+    onOnBatteryChanged: if (armed) Sounds.play(onBattery ? "unplug" : "plug")
 
     function clear() {
         if (lowToast) Toasts.take(lowToast);
@@ -54,6 +59,7 @@ Scope {
     function low() {
         const m = Power.mode;
         const offer = m.available && m.profile !== "power-saver";
+        Sounds.play("low-battery");
         lowToast = Toasts.show("Battery at " + b.percent + "% · " + left(), {
             "icon": "battery", "timeout": 15000,
             "action": offer ? "Power Saver" : "",
@@ -66,6 +72,7 @@ Scope {
         const when = b.percent > policy.actionAt ? " at " + policy.actionAt + "%" : " any moment";
         const text = "Battery at " + b.percent + "% · plug in now" + (what && policy.actionAt > 0 ? ", it " + what + when : "");
         // Stays until the charger is in (or it is closed).
+        Sounds.play("low-battery");
         criticalToast = Toasts.show(text, { "icon": "battery", "timeout": 3600000 });
     }
 

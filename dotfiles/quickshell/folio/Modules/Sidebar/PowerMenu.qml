@@ -46,15 +46,18 @@ Item {
                 implicitHeight: 32
                 radius: Theme.inner(Theme.rM, 6)
                 sink: false
+                // A menu: the keyboard's item is inked as the pointer's is.
+                ring: false
+                readonly property bool hot: hovered || activeFocus
                 onClicked: root.chosen(modelData.id)
-                Rectangle { anchors.fill: parent; radius: parent.radius; color: item.hovered ? Theme.ink : "transparent" }
+                Rectangle { anchors.fill: parent; radius: parent.radius; color: item.hot ? Theme.ink : "transparent" }
                 RowLayout {
                     anchors.fill: parent
                     anchors.leftMargin: 10
                     anchors.rightMargin: 10
                     spacing: 10
-                    Icon { name: item.modelData.icon; size: 16; color: item.hovered ? Theme.inkText : Theme.text }
-                    Label { text: item.modelData.text; color: item.hovered ? Theme.inkText : Theme.text; Layout.fillWidth: true }
+                    Icon { name: item.modelData.icon; size: 16; color: item.hot ? Theme.inkText : Theme.text }
+                    Label { text: item.modelData.text; color: item.hot ? Theme.inkText : Theme.text; Layout.fillWidth: true }
                 }
             }
         }

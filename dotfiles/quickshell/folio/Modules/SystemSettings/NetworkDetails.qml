@@ -29,16 +29,26 @@ GridLayout {
             spacing: 10
             Label { text: fact.modelData[0]; color: Theme.text3; font.pixelSize: Theme.fsS; Layout.preferredWidth: 92; Layout.minimumWidth: 92 }
             Label {
+                id: value
                 text: String(fact.modelData[1])
                 font.pixelSize: Theme.fsS
-                color: copy.containsMouse ? Theme.ink : Theme.text
+                color: copy.containsMouse || activeFocus ? Theme.ink : Theme.text
                 Layout.fillWidth: true; Layout.minimumWidth: 0
+                function copyIt() { Quickshell.clipboardText = String(fact.modelData[1]); Toasts.show(fact.modelData[0] + " copied", { "icon": "check" }); }
+                // Space or Enter copies it too.
+                activeFocusOnTab: true
+                Keys.onPressed: event => KeyNav.press(event, () => value.copyIt())
                 MouseArea {
                     id: copy
                     anchors.fill: parent
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: { Quickshell.clipboardText = String(fact.modelData[1]); Toasts.show(fact.modelData[0] + " copied", { "icon": "check" }); }
+                    onClicked: value.copyIt()
+                }
+                FocusRing {
+                    anchors.fill: undefined
+                    width: Math.min(value.implicitWidth, value.width); height: value.height
+                    radius: Theme.rXs; gap: 2
                 }
             }
         }

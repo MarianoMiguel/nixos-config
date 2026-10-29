@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Window
 import qs.Common
 import qs.Widgets
 
@@ -32,6 +33,31 @@ Flickable {
     // Layouts place their children a frame late, so aim again for a moment.
     property int settled: 0
     Timer { id: settle; interval: 90; repeat: true; onTriggered: { root.reaim(); if (++root.settled >= 8) stop(); } }
+
+    // A control reached by the keyboard glides into view.
+    function reveal(item) {
+        const y = KeyNav.scrollFor(root, item, 24);
+        if (Math.abs(y - contentY) < 1) return;
+        settle.stop();
+        glide.to = y;
+        glide.restart();
+    }
+    // Keys a focused control leaves: Up and Down move to the control before
+    // or after it (as Shift+Tab and Tab, within the page); Page Up and Page
+    // Down scroll.
+    Keys.onPressed: event => {
+        if (!KeyNav.plain(event) || (event.modifiers & Qt.ShiftModifier)) return;
+        KeyNav.key();
+        if (event.key === Qt.Key_Up || event.key === Qt.Key_Down) {
+            const next = KeyNav.step(column, Window.activeFocusItem, event.key === Qt.Key_Down ? 1 : -1);
+            if (next) next.forceActiveFocus(event.key === Qt.Key_Down ? Qt.TabFocusReason : Qt.BacktabFocusReason);
+        } else if (event.key === Qt.Key_PageUp || event.key === Qt.Key_PageDown) {
+            settle.stop();
+            glide.to = Math.max(0, Math.min(contentHeight - height, contentY + (event.key === Qt.Key_PageDown ? 1 : -1) * height * 0.85));
+            glide.restart();
+        } else return;
+        event.accepted = true;
+    }
 
     contentHeight: column.y + column.implicitHeight + 80
     clip: true

@@ -97,6 +97,15 @@ SideCard {
                 Layout.fillWidth: true
                 implicitHeight: 16
                 readonly property real progress: root.m.length > 0 ? Math.min(1, root.m.position / root.m.length) : 0
+                // Keyboard: Left and Right seek 5 seconds when the player allows it.
+                activeFocusOnTab: root.m.canSeek
+                Keys.onPressed: event => {
+                    KeyNav.key();
+                    if (!root.m.canSeek || !KeyNav.plain(event) || (event.key !== Qt.Key_Left && event.key !== Qt.Key_Right)) return;
+                    root.feed.seek(Math.max(0, Math.min(root.m.length, root.m.position + (event.key === Qt.Key_Right ? 5 : -5))));
+                    event.accepted = true;
+                }
+                FocusRing { radius: 8 }
                 Rectangle {
                     anchors.verticalCenter: parent.verticalCenter
                     width: parent.width

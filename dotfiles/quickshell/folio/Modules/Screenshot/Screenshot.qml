@@ -123,6 +123,7 @@ Scope {
         stdout: SplitParser {
             onRead: line => {
                 if (!/\.png$/i.test(line) || Date.now() - (root.restoring[line] || 0) < 5000) return;
+                Sounds.play("screenshot");
                 root.show(line, false);
             }
         }

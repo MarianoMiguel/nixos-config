@@ -15,3 +15,5 @@ dotfiles/quickshell/folio/shaders/*.qsb
 dotfiles/quickshell/folio/Modules/*/qmldir
 # Built from nixpkgs' unicode-emoji and cldr-annotations by scripts/folio-emoji.
 dotfiles/quickshell/folio/Modules/Launcher/emoji.json
+# Synthesized by scripts/folio-sounds (the harness and the Nix package run it).
+dotfiles/quickshell/*/sounds/

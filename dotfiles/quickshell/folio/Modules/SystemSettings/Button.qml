@@ -2,7 +2,8 @@ import QtQuick
 import qs.Common
 import qs.Widgets
 
-// A button: plain (on the well) or primary (ink). Sinks like a stamp when pressed.
+// A button: plain (on the well) or primary (ink). Sinks like a stamp when
+// pressed, by the pointer or by Space or Enter when it has keyboard focus.
 Item {
     id: root
     property string text
@@ -13,8 +14,11 @@ Item {
     implicitWidth: row.implicitWidth + 26
     implicitHeight: 32
     opacity: enabled ? 1 : 0.45
-    scale: area.pressed ? 0.96 : 1
+    scale: area.pressed || keyDown.running ? 0.96 : 1
     Behavior on scale { SpringPress {} }
+    activeFocusOnTab: true
+    Keys.onPressed: event => KeyNav.press(event, () => { if (root.busy) return; keyDown.restart(); root.clicked(); })
+    Timer { id: keyDown; interval: 110 }
 
     Rectangle {
         anchors.fill: parent
@@ -53,4 +57,5 @@ Item {
         cursorShape: Qt.PointingHandCursor
         onClicked: root.clicked()
     }
+    FocusRing { radius: Theme.rS }
 }

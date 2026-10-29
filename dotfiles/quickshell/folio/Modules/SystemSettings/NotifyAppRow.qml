@@ -35,12 +35,16 @@ Item {
         id: head
         width: root.width
         height: Math.max(56, text.implicitHeight + 20)
+        // Space or Enter opens or closes its options (when it is allowed).
+        activeFocusOnTab: !!root.app.allow
+        Keys.onPressed: event => KeyNav.press(event, root.app.allow ? () => root.toggled() : null)
         Rectangle {
             anchors.fill: parent; anchors.margins: 3
             radius: Theme.inner(Theme.rM, 3)
             color: area.containsMouse && root.app.allow ? Theme.wellStrong : "transparent"
             Behavior on color { ColorAnimation { duration: Theme.tQuick } }
         }
+        FocusRing { radius: Theme.rM; gap: -3 }
         RowLayout {
             anchors.fill: parent; anchors.leftMargin: 14; anchors.rightMargin: 14; spacing: 12
             AppsIcon {
@@ -80,6 +84,8 @@ Item {
         spacing: 0
         opacity: root.open ? 1 : 0
         Behavior on opacity { SpringSoft {} }
+        // Closed, its switches leave the Tab order.
+        visible: root.open || root.height > head.height + 0.5
         Option { label: "Banners"; hint: "Peek from the island when they arrive."; field: "banners" }
         Option { label: "Sound"; hint: "A soft chime, unless the app asks for silence."; field: "sound" }
     }

@@ -1,0 +1,537 @@
+#!/usr/bin/env python3
+"""Folio's interface sounds, synthesized from scratch.
+
+  folio-sounds OUT [--report] [--only a,b]   write OUT/<name>.wav for each sound
+  folio-sounds --measure DIR                 measure the .wav files in DIR
+
+Nothing is sampled, downloaded or copied: every sound is built here from sine
+partials, filtered noise and envelopes, so the set is ours and the same on
+every build (the noise comes from a fixed xorshift seed per sound; the WAV
+header carries no date).
+
+The family, in the workshop's words: ink on paper, a printmaker's restraint.
+One tonal centre, D (D major pentatonic: D E F# A B), and three materials: a
+felt mallet on a wooden bar (taps), a soft felt-struck bell (alerts) and
+paper (a slide, a press, a crumple). Intervals are open fourths and fifths, a
+minor third at most; nothing glides in pitch but the low body of a press.
+
+Each file is 16-bit 48 kHz mono and ends on a short fade at a designed length
+(most under 250 ms). All are normalized to one loudness, the loudest 100 ms
+K-weighted (ITU-R BS.1770), taken half on full-range speakers and half on a
+laptop's (the same with everything under 350 Hz gone), so no sound jumps out
+on either; `message` sits 2 dB under the rest by design. Peaks stay below
+-1 dBFS. scripts/folio-harness and packages/folio-shell.nix run this; the
+files are git-ignored. Services/Sounds.qml plays them.
+"""
+import argparse
+import array
+import math
+import os
+import sys
+import wave
+import zlib
+
+SR = 48000
+TWO_PI = 2 * math.pi
+TARGET = -20.0          # loudest 100 ms, LUFS (K-weighted; see loudness())
+CEILING = -1.0          # sample peak, dBFS
+TRIM = {"message": -2.0}
+
+# D major pentatonic around the tonal centre.
+NOTE = {"A4": 440.00, "D5": 587.33, "F#5": 739.99, "A5": 880.00, "D6": 1174.66}
+
+
+def n_(sec):
+    return int(round(sec * SR))
+
+
+class Rand:
+    """xorshift32: the same noise on every machine and every Python."""
+
+    def __init__(self, seed):
+        self.s = (seed * 2654435761) & 0xFFFFFFFF or 1
+
+    def u(self):
+        x = self.s
+        x ^= (x << 13) & 0xFFFFFFFF
+        x ^= x >> 17
+        x ^= (x << 5) & 0xFFFFFFFF
+        self.s = x
+        return x / 4294967296.0
+
+    def white(self):
+        return 2.0 * self.u() - 1.0
+
+
+# ---------------------------------------------------------------- building blocks
+
+def mix(dst, src, at=0.0, gain=1.0):
+    o = n_(at)
+    if o + len(src) > len(dst):
+        dst.extend([0.0] * (o + len(src) - len(dst)))
+    for i, v in enumerate(src):
+        dst[o + i] += v * gain
+    return dst
+
+
+def partial(freq, amp, decay, attack=0.003, dur=None, bend=0.0, bend_time=0.008):
+    """One sine: a raised-cosine attack, then an exponential decay (time
+    constant `decay` s). `bend` starts the pitch that much higher and lets it
+    settle (only the low body of a press uses it)."""
+    n = n_(dur if dur is not None else attack + decay * 7)
+    a = max(1, n_(attack))
+    k = math.exp(-1.0 / (decay * SR))
+    out = [0.0] * n
+    ph, g = 0.0, 1.0
+    for i in range(n):
+        f = freq * (1.0 + bend * math.exp(-i / (bend_time * SR))) if bend else freq
+        ph += TWO_PI * f / SR
+        if i < a:
+            e = 0.5 - 0.5 * math.cos(math.pi * i / a)
+        else:
+            e = g
+            g *= k
+        out[i] = amp * e * math.sin(ph)
+    return out
+
+
+def onepole(x, fc, high=False):
+    """First-order low-pass (or high-pass) at fc Hz."""
+    a = 1.0 - math.exp(-TWO_PI * fc / SR)
+    y, out = 0.0, [0.0] * len(x)
+    for i, v in enumerate(x):
+        y += a * (v - y)
+        out[i] = v - y if high else y
+    return out
+
+
+def band(x, lo, hi):
+    """A gentle band: two poles up at lo, two poles down at hi."""
+    return onepole(onepole(onepole(onepole(x, lo, True), lo, True), hi), hi)
+
+
+def bandpass(x, centre, q, end=None):
+    """RBJ band-pass (0 dB at the centre); the centre may glide to `end`
+    (exponentially), the way paper's hiss falls as it slides away."""
+    out = [0.0] * len(x)
+    x1 = x2 = y1 = y2 = 0.0
+    n = len(x)
+    b0 = b2 = a1 = a2 = 0.0
+    for i, v in enumerate(x):
+        if i % 16 == 0:
+            f = centre if end is None else centre * (end / centre) ** (i / max(1, n - 1))
+            w = TWO_PI * f / SR
+            alpha = math.sin(w) / (2 * q)
+            a0 = 1 + alpha
+            b0, b2 = alpha / a0, -alpha / a0
+            a1, a2 = -2 * math.cos(w) / a0, (1 - alpha) / a0
+        y = b0 * v + b2 * x2 - a1 * y1 - a2 * y2
+        x2, x1 = x1, v
+        y2, y1 = y1, y
+        out[i] = y
+    return out
+
+
+def burst(rnd, dur, lo, hi, amp, decay=None, attack=0.0004):
+    """A short noise burst in a band: a tap of felt, a click of a latch."""
+    n = n_(dur)
+    a = max(1, n_(attack))
+    k = math.exp(-1.0 / ((decay or dur / 4) * SR))
+    shaped = band([rnd.white() for _ in range(n + n_(0.004))], lo, hi)
+    g, out = 1.0, [0.0] * len(shaped)
+    for i in range(len(shaped)):
+        if i < a:
+            e = 0.5 - 0.5 * math.cos(math.pi * i / a)
+        elif i < n:
+            e = g
+            g *= k
+        else:
+            e = g * (1 - (i - n) / (len(shaped) - n))
+        out[i] = amp * e * shaped[i]
+    return out
+
+
+def mallet(rnd, freq, amp=1.0, decay=0.05, bright=1.0, felt=1.0):
+    """A felt mallet on a wooden bar: the fundamental, the bar's inharmonic
+    overtones (3.93x, 9.2x, gone in a moment) and the felt's soft knock."""
+    out = partial(freq, amp, decay, attack=0.0025)
+    mix(out, partial(freq * 3.93, amp * 0.11 * bright, decay * 0.22, attack=0.0015))
+    mix(out, partial(freq * 9.2, amp * 0.025 * bright, decay * 0.07, attack=0.001))
+    if felt:
+        mix(out, burst(rnd, 0.005, 300, 2400, amp * 0.06 * felt))
+    return out
+
+
+def bell(freq, amp=1.0, decay=0.15, attack=0.005, beat=0.0018):
+    """A soft felt-struck bell: the fundamental and a quieter twin a hair
+    sharp (a slow, warm beat), the octave and twelfth fading sooner, a faint
+    shimmer."""
+    out = partial(freq, amp * 0.75, decay, attack)
+    mix(out, partial(freq * (1 + beat), amp * 0.25, decay * 0.9, attack))
+    mix(out, partial(freq * 2.0, amp * 0.15, decay * 0.45, attack))
+    mix(out, partial(freq * 3.0, amp * 0.045, decay * 0.25, attack))
+    mix(out, partial(freq * 5.04, amp * 0.012, decay * 0.12, attack * 0.6))
+    return out
+
+
+def press(rnd, amp=1.0, body=210.0, decay=0.016, contact=0.8):
+    """A press on paper: the paper's dull contact, and under it a low body
+    that drops to its pitch. The contact carries it (laptop speakers lose the
+    body), so the body stays a hint."""
+    out = partial(body, amp * 0.22, decay, attack=0.0015, bend=0.45)
+    mix(out, burst(rnd, 0.016, 280, 2600, amp * contact, decay=0.0045))
+    return out
+
+
+def latch(rnd, amp, lo=2000, hi=6500):
+    """A small latch or connector click."""
+    return burst(rnd, 0.004, lo, hi, amp, decay=0.0009)
+
+
+def grain(rnd, n, rate):
+    """Slow random wobble around 1 (paper's uneven fibres)."""
+    w = onepole([rnd.white() for _ in range(n)], rate)
+    peak = max(1e-9, max(abs(v) for v in w))
+    return [1.0 + 0.45 * v / peak for v in w]
+
+
+# ---------------------------------------------------------------- the sounds
+# Each returns raw samples; LENGTH is where its closing fade ends.
+
+def volume(rnd):
+    # One short tap, mid-low in the family: it must not tire when a key is held.
+    return mallet(rnd, NOTE["D5"], decay=0.014, bright=0.8)
+
+
+def pop(rnd):
+    # A tap with the fifth under it: settled, done.
+    out = mallet(rnd, NOTE["A5"], decay=0.034)
+    return mix(out, mallet(rnd, NOTE["D5"], 0.38, decay=0.024, felt=0))
+
+
+def notification(rnd):
+    # Two bell notes rising a fourth to the tonic.
+    out = bell(NOTE["A5"], 0.8, decay=0.11)
+    return mix(out, bell(NOTE["D6"], 1.0, decay=0.14), at=0.11)
+
+
+def message(rnd):
+    # Its quieter sibling for chats: wood instead of bell, a minor third, quick.
+    out = mallet(rnd, NOTE["F#5"], 0.75, decay=0.045, bright=0.6, felt=0.6)
+    return mix(out, mallet(rnd, NOTE["A5"], 1.0, decay=0.07, bright=0.6, felt=0.6), at=0.07)
+
+
+def error(rnd):
+    # A soft double knock on wood, low: not now, nothing broken.
+    out = mallet(rnd, NOTE["A4"], 1.0, decay=0.036, bright=1.1, felt=1.4)
+    return mix(out, mallet(rnd, NOTE["A4"], 0.72, decay=0.04, bright=1.0, felt=1.4), at=0.095)
+
+
+def screenshot(rnd):
+    # The press comes down on the paper, then lifts with a faint glint of D.
+    out = press(rnd, 1.0)
+    mix(out, burst(rnd, 0.008, 1800, 7000, 0.32, decay=0.0016), at=0.07)
+    return mix(out, mallet(rnd, NOTE["D6"], 0.13, decay=0.03, felt=0), at=0.072)
+
+
+def trash(rnd):
+    # A sheet slid aside: hiss falling in pitch, grainy, gone.
+    n = n_(0.24)
+    hiss = bandpass([rnd.white() for _ in range(n)], 3000, 1.3, end=700)
+    body = onepole(onepole([rnd.white() for _ in range(n)], 520), 520)
+    wob = grain(rnd, n, 90)
+    a, k = n_(0.028), math.exp(-1.0 / (0.05 * SR))
+    out, g = [0.0] * n, 1.0
+    for i in range(n):
+        if i < a:
+            e = 0.5 - 0.5 * math.cos(math.pi * i / a)
+        else:
+            e = g
+            g *= k
+        out[i] = e * wob[i] * (hiss[i] + 0.6 * body[i])
+    return out
+
+
+def empty_trash(rnd):
+    # Paper crumpled in the hand, then dropped: a run of dry crackles over a
+    # soft rustle, and one dull landing. Final.
+    span = 0.3
+    out = [0.0] * n_(span + 0.12)
+    t = 0.004
+    while True:
+        t += -math.log(1 - rnd.u()) / (190 * math.exp(-t / 0.16) + 25)
+        if t >= span:
+            break
+        level = math.exp(-t / 0.2) * (0.2 + 0.8 * rnd.u() ** 2)
+        centre = 1300 * (4.6 ** rnd.u())
+        dur = 0.0004 + 0.0018 * rnd.u()
+        crack = bandpass([rnd.white() for _ in range(n_(dur + 0.003))], centre, 1.4 + 2.5 * rnd.u())
+        k = math.exp(-1.0 / (dur / 3 * SR))
+        g = level
+        for i in range(len(crack)):
+            crack[i] *= g
+            g *= k
+        mix(out, crack, at=t)
+    n = n_(span)
+    rustle = band([rnd.white() for _ in range(n)], 300, 1600)
+    for i in range(n):
+        x = i / SR
+        rustle[i] *= 0.16 * min(1.0, x / 0.02) * math.exp(-x / 0.14)
+    mix(out, rustle)
+    return mix(out, press(rnd, 0.5, body=180, decay=0.02), at=span)
+
+
+def lock(rnd):
+    # The latch catches, then the bar sounds low: closed.
+    out = latch(rnd, 0.6)
+    mix(out, partial(230, 0.25, 0.01, attack=0.001, bend=0.3))
+    return mix(out, mallet(rnd, NOTE["A4"], 0.95, decay=0.05, bright=1.1), at=0.032)
+
+
+def unlock(rnd):
+    # The latch lets go, then the bar sounds an octave higher, light: open.
+    out = latch(rnd, 1.3, 2600, 7500)
+    mix(out, mallet(rnd, NOTE["D5"], 0.3, decay=0.03, felt=0), at=0.02)
+    return mix(out, mallet(rnd, NOTE["A5"], 0.9, decay=0.05, bright=0.8), at=0.02)
+
+
+def plug(rnd):
+    # Power arrives: the tonic swells and the fifth opens over it.
+    out = bell(NOTE["D5"], 0.8, decay=0.12, attack=0.014)
+    return mix(out, bell(NOTE["A5"], 0.75, decay=0.12, attack=0.014), at=0.05)
+
+
+def unplug(rnd):
+    # Power leaves: the fifth, then the tonic, shorter.
+    out = bell(NOTE["A5"], 0.75, decay=0.08, attack=0.008)
+    return mix(out, bell(NOTE["D5"], 0.85, decay=0.09, attack=0.008), at=0.06)
+
+
+def device_in(rnd):
+    # Something fits in: a small click and two taps rising a fourth.
+    out = latch(rnd, 0.8, 1500, 5000)
+    mix(out, mallet(rnd, NOTE["A4"], 0.8, decay=0.04, bright=1.0), at=0.008)
+    return mix(out, mallet(rnd, NOTE["D5"], 1.0, decay=0.05, bright=0.9), at=0.075)
+
+
+def device_out(rnd):
+    # Something comes away: two taps falling a fourth.
+    out = mallet(rnd, NOTE["D5"], 1.0, decay=0.04, bright=0.9)
+    return mix(out, mallet(rnd, NOTE["A4"], 0.8, decay=0.05, bright=1.0), at=0.067)
+
+
+def low_battery(rnd):
+    # Running down: a low bell falls a fourth, slowly, with a wider beat.
+    out = bell(NOTE["D5"], 0.9, decay=0.12, attack=0.01, beat=0.004)
+    return mix(out, bell(NOTE["A4"], 1.0, decay=0.15, attack=0.01, beat=0.004), at=0.14)
+
+
+# name: (recipe, length in seconds)
+SOUNDS = {
+    "volume": (volume, 0.07),
+    "pop": (pop, 0.15),
+    "notification": (notification, 0.62),
+    "message": (message, 0.3),
+    "error": (error, 0.24),
+    "screenshot": (screenshot, 0.17),
+    "trash": (trash, 0.24),
+    "empty-trash": (empty_trash, 0.42),
+    "lock": (lock, 0.2),
+    "unlock": (unlock, 0.2),
+    "plug": (plug, 0.44),
+    "unplug": (unplug, 0.34),
+    "device-in": (device_in, 0.24),
+    "device-out": (device_out, 0.22),
+    "low-battery": (low_battery, 0.62),
+}
+
+
+# ---------------------------------------------------------------- finishing
+
+def biquad(x, b, a):
+    y, x1, x2, y1, y2 = [0.0] * len(x), 0.0, 0.0, 0.0, 0.0
+    for i, v in enumerate(x):
+        r = b[0] * v + b[1] * x1 + b[2] * x2 - a[0] * y1 - a[1] * y2
+        x2, x1, y2, y1 = x1, v, y1, r
+        y[i] = r
+    return y
+
+
+def kweight(x):
+    """ITU-R BS.1770 K-weighting at 48 kHz (high shelf, then RLB high-pass)."""
+    x = biquad(x, (1.53512485958697, -2.69169618940638, 1.19839281085285), (-1.69065929318241, 0.73248077421585))
+    return biquad(x, (1.0, -2.0, 1.0), (-1.99004745483398, 0.99007225036621))
+
+
+def highpass(x, fc, q=0.707):
+    """RBJ second-order high-pass."""
+    w = TWO_PI * fc / SR
+    alpha = math.sin(w) / (2 * q)
+    a0, c = 1 + alpha, math.cos(w)
+    return biquad(x, ((1 + c) / 2 / a0, -(1 + c) / a0, (1 + c) / 2 / a0), (-2 * c / a0, (1 - alpha) / a0))
+
+
+def loudness(x, window=0.1, hop=0.005, laptop=False):
+    """The loudest `window` seconds, K-weighted, in LUFS. Windows run past
+    the end into silence, so a 70 ms tap counts over 100 ms, as the ear
+    integrates it. `laptop` first takes away what small speakers cannot play
+    (two second-order high-passes at 350 Hz)."""
+    x = x + [0.0] * n_(window)
+    if laptop:
+        x = highpass(highpass(x, 350), 350)
+    sq = [v * v for v in kweight(x)]
+    w, h = n_(window), n_(hop)
+    acc = [0.0]
+    for v in sq:
+        acc.append(acc[-1] + v)
+    best = max(acc[i + w] - acc[i] for i in range(0, max(1, len(sq) - w + 1), h)) / w
+    return -0.691 + 10 * math.log10(max(best, 1e-12))
+
+
+def heard(x):
+    """The level the set is matched on: halfway between full-range and laptop."""
+    return (loudness(x) + loudness(x, laptop=True)) / 2
+
+
+def finish(x, length, cutoff=9500):
+    """Soften the top, take out DC, and close with a raised-cosine fade that
+    ends at `length` (the last 40%, at most 150 ms)."""
+    x = onepole(onepole(x, cutoff), cutoff)
+    x = onepole(x, 30, True)
+    n = n_(length)
+    x = (x + [0.0] * n)[:n]
+    fade = max(n_(0.012), min(int(n * 0.4), n_(0.15)))
+    for i in range(fade):
+        x[n - fade + i] *= 0.5 + 0.5 * math.cos(math.pi * (i + 1) / fade)
+    return x
+
+
+def limit(x, ceiling):
+    """A safety net: a soft knee 2 dB under the ceiling; nothing reaches it.
+    The recipes are balanced so that it rarely acts (a crackle or two)."""
+    knee = ceiling * 0.8
+    span = ceiling - knee
+    return [v if abs(v) <= knee else math.copysign(knee + span * math.tanh((abs(v) - knee) / span), v) for v in x]
+
+
+def render(name):
+    recipe, length = SOUNDS[name]
+    x = finish(recipe(Rand(zlib.crc32(name.encode()))), length)
+    gain = 10 ** ((TARGET + TRIM.get(name, 0.0) - heard(x)) / 20)
+    return limit([v * gain for v in x], 10 ** (CEILING / 20))
+
+
+def write(path, x):
+    pcm = array.array("h", (max(-32767, min(32767, int(round(v * 32767)))) for v in x))
+    if sys.byteorder == "big":
+        pcm.byteswap()
+    tmp = path + ".tmp"
+    with wave.open(tmp, "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(SR)
+        w.writeframes(pcm.tobytes())
+    os.replace(tmp, path)
+
+
+# ---------------------------------------------------------------- measuring
+
+def read(path):
+    with wave.open(path, "rb") as w:
+        assert (w.getnchannels(), w.getsampwidth(), w.getframerate()) == (1, 2, SR), path
+        pcm = array.array("h", w.readframes(w.getnframes()))
+    if sys.byteorder == "big":
+        pcm.byteswap()
+    return [v / 32767 for v in pcm]
+
+
+def spectrum(x, size=32768):
+    """Power spectrum (radix-2 FFT, no window: the sounds start and end at
+    rest) of the first `size` samples, zero-padded."""
+    re = (x + [0.0] * size)[:size]
+    im = [0.0] * size
+    j = 0
+    for i in range(1, size):
+        bit = size >> 1
+        while j & bit:
+            j ^= bit
+            bit >>= 1
+        j |= bit
+        if i < j:
+            re[i], re[j] = re[j], re[i]
+    m = 2
+    while m <= size:
+        wr, wi = math.cos(-TWO_PI / m), math.sin(-TWO_PI / m)
+        half = m // 2
+        for s in range(0, size, m):
+            cr, ci = 1.0, 0.0
+            for k in range(half):
+                a, b = s + k, s + k + half
+                tr = cr * re[b] - ci * im[b]
+                ti = cr * im[b] + ci * re[b]
+                re[b], im[b] = re[a] - tr, im[a] - ti
+                re[a] += tr
+                im[a] += ti
+                cr, ci = cr * wr - ci * wi, cr * wi + ci * wr
+        m <<= 1
+    return [re[i] ** 2 + im[i] ** 2 for i in range(size // 2)], SR / size
+
+
+def measure(path):
+    x = read(path)
+    peak = max(abs(v) for v in x)
+    rms = math.sqrt(sum(v * v for v in x) / len(x))
+    power, hz = spectrum(x)
+    total = sum(power) or 1.0
+    acc, f95 = 0.0, 0.0
+    for i, p in enumerate(power):
+        acc += p
+        if acc >= 0.95 * total:
+            f95 = i * hz
+            break
+    return {
+        "ms": len(x) / SR * 1000, "kb": os.path.getsize(path) / 1024,
+        "peak": 20 * math.log10(max(peak, 1e-9)), "rms": 20 * math.log10(max(rms, 1e-9)),
+        "full": loudness(x), "laptop": loudness(x, laptop=True),
+        "centroid": sum(i * hz * p for i, p in enumerate(power)) / total, "f95": f95,
+        "strongest": max(range(1, len(power)), key=lambda i: power[i]) * hz,
+        "ends": max(abs(x[0]), abs(x[-1])) * 32767,
+    }
+
+
+def report(folder):
+    """One line per sound: length, size, sample peak and RMS (dBFS), loudest
+    100 ms on full-range and laptop speakers (LUFS), spectral centroid, the
+    frequency under which 95% of the energy lies, the strongest frequency."""
+    print(f"{'sound':<13}{'ms':>5}{'KB':>6}{'peak':>7}{'rms':>7}{'full':>7}{'laptop':>8}{'centroid':>9}{'95%<':>7}{'strongest':>10}")
+    for name in SOUNDS:
+        m = measure(os.path.join(folder, name + ".wav"))
+        print(f"{name:<13}{m['ms']:5.0f}{m['kb']:6.1f}{m['peak']:7.1f}{m['rms']:7.1f}{m['full']:7.1f}{m['laptop']:8.1f}"
+              f"{m['centroid']:9.0f}{m['f95']:7.0f}{m['strongest']:10.0f}" + ("  (edge not at rest)" if m["ends"] > 2 else ""))
+
+
+def main():
+    p = argparse.ArgumentParser(description="Folio's interface sounds, synthesized from scratch.")
+    p.add_argument("out", nargs="?", help="folder to write <name>.wav into")
+    p.add_argument("--only", help="comma-separated sounds to write (all when omitted)")
+    p.add_argument("--report", action="store_true", help="measure what was written")
+    p.add_argument("--measure", metavar="DIR", help="only measure the files in DIR")
+    args = p.parse_args()
+    if args.measure:
+        report(args.measure)
+        return
+    if not args.out:
+        p.error("give a folder to write into, or --measure DIR")
+    names = args.only.split(",") if args.only else list(SOUNDS)
+    unknown = [n for n in names if n not in SOUNDS]
+    if unknown:
+        p.error("unknown sounds: " + ", ".join(unknown))
+    os.makedirs(args.out, exist_ok=True)
+    for name in names:
+        write(os.path.join(args.out, name + ".wav"), render(name))
+    if args.report:
+        report(args.out)
+
+
+if __name__ == "__main__":
+    main()

@@ -296,6 +296,11 @@ window-rule {
     match app-id=r#"com.danklinux.dms$"#
     open-floating true
 }
+// Folio's windows (Settings) float in the middle, like a settings window.
+window-rule {
+    match app-id=r#"^folio$"#
+    open-floating true
+}
 // Blur behind every window: invisible on opaque windows, gives transparent
 // ones (ghostty at 0.9 etc.) a frosted backdrop. xray=false opts out of the
 // cheap default that blurs only the wallpaper backdrop once, so blur samples
@@ -357,6 +362,9 @@ include "dms/cursor.kdl"
 // The workshop's current look (window motion, shadows), written by
 // `scripts/workshop look apply`. Empty or missing means this file as is.
 include optional=true "look.kdl"
+// Folio's Motion setting for windows (Gentle: faster, Still: none), after the
+// look so it can slow, speed or switch off the look's animations.
+include optional=true "folio-motion.kdl"
 
 // User-controlled layout toggles load last so they can temporarily override
 // DMS values without modifying DMS's generated files.

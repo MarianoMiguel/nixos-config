@@ -25,8 +25,16 @@ Item {
         return Math.abs(v) < 0.06 ? 0 : Math.round(v * 100) / 100;
     }
     function nudge(d) { root.moved(Math.max(-1, Math.min(1, Math.round((root.value + d) * 100) / 100))); }
-    Keys.onLeftPressed: nudge(-step)
-    Keys.onRightPressed: nudge(step)
+    // Left and Right step; Home centres.
+    Keys.onPressed: event => {
+        KeyNav.key();
+        if (!KeyNav.plain(event)) return;
+        if (event.key === Qt.Key_Left) nudge(-step);
+        else if (event.key === Qt.Key_Right) nudge(step);
+        else if (event.key === Qt.Key_Home) moved(0);
+        else return;
+        event.accepted = true;
+    }
 
     Rectangle {
         id: track
@@ -48,11 +56,12 @@ Item {
         anchors.verticalCenter: parent.verticalCenter
         x: track.x + (root.shown + 1) / 2 * track.width - width / 2
         color: Theme.sheetBase
-        border.width: root.activeFocus ? 2 : 1
-        border.color: root.activeFocus ? Theme.ink : Theme.ruleStrong
+        border.width: 1
+        border.color: Theme.ruleStrong
         scale: root.dragging ? 1.15 : 1
         Behavior on scale { SpringPress {} }
         Behavior on x { enabled: !root.dragging; SpringPanel {} }
+        FocusRing { on: root.activeFocus; radius: 9; gap: 2 }
     }
     MouseArea {
         id: area

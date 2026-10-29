@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
+import Quickshell.Io
 import Quickshell.Services.SystemTray
 import Quickshell.Widgets
 import qs.Common
@@ -64,6 +65,50 @@ Item {
     }
 
     TrayMenu { id: menu; bar: root.bar }
+
+    // Tests (the harness has no tray apps): `tray menu normal|stress|empty`
+    // opens a made-up menu in TrayMenu, anything else closes it; `tray
+    // chosen` is the last entry it ran. One bar answers: the first screen's.
+    function entry(text, more) {
+        return Object.assign({ "text": text, "enabled": true, "isSeparator": false, "hasChildren": false, "buttonType": 0, "checkState": 0, "icon": "",
+                               "children": [], "triggered": () => {} }, more || {});
+    }
+    function sub(text, children) { return entry(text, { "hasChildren": true, "children": children }); }
+    readonly property var sep: entry("", { "isSeparator": true })
+    function fixtureMenu(name) {
+        if (name === "normal") return [
+            entry("Open Signal"), sep,
+            entry("Show notifications", { "buttonType": 1, "checkState": Qt.Checked }),
+            sub("Status", [entry("Available", { "buttonType": 2, "checkState": Qt.Checked }), entry("Away", { "buttonType": 2 }), entry("Do not disturb", { "buttonType": 2 })]),
+            entry("Check for updates", { "enabled": false }), sep,
+            entry("Quit")
+        ];
+        if (name === "stress") {
+            const many = [];
+            for (let i = 1; i <= 24; i++) many.push(entry("Recent conversation number " + i + " with a name long enough to need eliding at the edge"));
+            return [
+                sub("Accounts", [sub("work@example.com — Payments Reconciliation Console (staging, eu-west-1)", [entry("Sign out"), entry("Switch to this account")]), entry("personal@example.com")]),
+                sub("Recent", many), sep,
+                entry("A very long action label that runs well past the width a tray menu allows itself"),
+                entry("Disabled", { "enabled": false }), sep, entry("Quit")
+            ];
+        }
+        if (name === "empty") return [];
+        return null;
+    }
+    function openFixture(name) {
+        const list = fixtureMenu(name);
+        if (list) menu.showFixture(list, root); else menu.close();
+    }
+    function chosenFixture() { return menu.lastChosen; }
+    LazyLoader {
+        active: !!root.bar && root.bar.screen === Quickshell.screens[0]
+        IpcHandler {
+            target: "tray"
+            function menu(name: string): void { root.openFixture(name); }
+            function chosen(): string { return root.chosenFixture(); }
+        }
+    }
 
     component Slot: Rectangle {
         id: s

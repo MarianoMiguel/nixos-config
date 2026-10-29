@@ -28,6 +28,8 @@ PanelWindow {
 
     WlrLayershell.layer: WlrLayer.Top
     WlrLayershell.namespace: "folio:dock"
+    // The keyboard only while the dock is asked for it (Mod+Ctrl+D).
+    WlrLayershell.keyboardFocus: keyMode ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
     // Windows stop above the dock's band (10 px margin + 68 px), as on a Mac,
     // unless Settings says they may run under it. Magnified icons still rise
     // over windows. A zone of 0 reserves nothing.
@@ -39,7 +41,7 @@ PanelWindow {
     // A fullscreen window covers the dock: it slides down out of the way, as
     // it arrived, rather than vanishing, and rises again when the window
     // leaves fullscreen. A spring, so a quick toggle reverses smoothly.
-    readonly property bool away: !!dock && (dock.fakeAway || (!!screen && Niri.fullscreenOn(screen.name, screen.width, screen.height)))
+    readonly property bool away: !!dock && !keyMode && (dock.fakeAway || (!!screen && Niri.fullscreenOn(screen.name, screen.width, screen.height)))
     property real awayY: away ? 110 : 0
     Behavior on awayY { SpringPanel {} }
 
@@ -124,6 +126,8 @@ PanelWindow {
             onPointChanged: win.pointer = hovered ? zone.x + point.position.x : -1
             onHoveredChanged: win.pointer = hovered ? zone.x + point.position.x : -1
         }
+        // Pointer use here hides focus rings elsewhere in Folio.
+        PointerWatch { }
 
         Sheet {
             id: sheet
@@ -143,7 +147,9 @@ PanelWindow {
                 id: apps
                 model: win.dock.model
                 DockItem {
+                    id: slotItem
                     required property var model
+                    keyFocus: win.keyItem !== null && win.keyItem === slotItem
                     corner: win.corner
                     key: model.key
                     appId: model.appId
@@ -184,6 +190,7 @@ PanelWindow {
 
             DockItem {
                 id: launcher
+                keyFocus: win.keyItem !== null && win.keyItem === launcher
                 corner: win.corner
                 key: "folio:settings"
                 name: "Settings"
@@ -209,7 +216,7 @@ PanelWindow {
     property var tipFor: null
     function hoverChanged(it) {
         if (it.hovered) tipFor = it;
-        else if (tipFor === it) tipFor = null;
+        else if (tipFor === it) tipFor = keyItem;
         placeTip();
     }
     function placeTip() {
@@ -256,7 +263,7 @@ PanelWindow {
         if (button === Qt.MiddleButton) { if (dock.launch(it.key)) it.bounce(); return; }
         if (dock.activate(it.key) === "launch") it.bounce();
     }
-    function openMenu(it, at) {
+    function openMenu(it, at, keyed) {
         const list = [];
         const fake = !!dock.fx;
         if (fake || dock.entries[it.key]) list.push({ "label": "New window", "run": () => { if (dock.newWindow(it.key)) it.bounce(); } });
@@ -265,11 +272,111 @@ PanelWindow {
             list.push({ "rule": true });
             list.push({ "label": it.running > 1 ? "Close " + it.running + " windows" : "Close window", "danger": true, "run": () => dock.closeAll(it.key) });
         }
+        // From the keyboard: what it chooses gives the keyboard back first,
+        // so the app it opens or focuses gets it; the first item is lit.
+        if (keyed) for (const x of list) if (x.run) { const run = x.run; x.run = () => { win.leaveKeys(); run(); }; }
         heldAt = pointer;
         // Above the icon, from the pointer's x. The menu covers the screen;
         // this window is its bottom band.
         const top = it.mapToItem(null, 0, it.height - it.size - it.hop).y - 4;
         menu.popup(Qt.point(at.x, top + (screen ? screen.height : height) - height), it.name + (it.running > 1 ? " · " + it.running + " windows" : ""), list);
+        if (keyed) menu.step(1);
+    }
+
+    // ------------------------------------------------------------ keyboard
+
+    // Mod+Ctrl+D (dock.keyboard over IPC) hands this screen's dock the
+    // keyboard: a ring marks an app and its name shows above it. Left and
+    // Right move, Home and End go to the ends, Enter or Space opens it, Up,
+    // Shift+F10 or the Menu key open its menu, Esc gives the keyboard back.
+    // Opening an app gives it back too, and so does using the pointer
+    // (a still, transparent layer over the screen notices), so keys never
+    // stay with the dock once you are elsewhere.
+    property bool keyMode: false
+    property int cursor: 0
+    property Item keyItem: null
+    function keyItems() { return slots().filter(it => !it.leaving).concat([launcher]); }
+    function moveKey(i) {
+        const list = keyItems();
+        cursor = Math.max(0, Math.min(list.length - 1, i));
+        keyItem = keyMode ? list[cursor] : null;
+        if (keyItem) tipFor = keyItem;
+        placeTip();
+        dock.keyState = keyMode && keyItem ? cursor + ":" + keyItem.name : "";
+    }
+    function enterKeys() {
+        // Start at the app that has the focused window, else the first.
+        const list = keyItems();
+        const i = list.findIndex(it => (dock.windowIds[it.key] || []).some(id => Niri.windows[id] && Niri.windows[id].is_focused));
+        keyMode = true;
+        KeyNav.key();
+        keys.forceActiveFocus();
+        moveKey(Math.max(0, i));
+    }
+    function leaveKeys() {
+        if (!keyMode) return;
+        keyMode = false;
+        keyItem = null;
+        if (tipFor && !tipFor.hovered) tipFor = null;
+        dock.keyState = "";
+    }
+    function keyAt(it) { return it.mapToItem(null, it.width / 2, it.height - it.size - it.hop); }
+    Item {
+        id: keys
+        focus: true
+        Keys.onPressed: event => {
+            if (!win.keyMode) return;
+            KeyNav.key();
+            const it = win.keyItem;
+            const k = event.key;
+            if (k === Qt.Key_Escape) win.leaveKeys();
+            else if (KeyNav.opensMenu(event) || (k === Qt.Key_Up && KeyNav.plain(event))) {
+                if (it && it !== launcher) win.openMenu(it, win.keyAt(it), true);
+            } else if (KeyNav.activates(event)) {
+                if (!it || event.isAutoRepeat) { event.accepted = true; return; }
+                win.leaveKeys();
+                if (it === launcher) { it.stamp(); if (!win.dock.fx) Shell.openSettings(""); }
+                else win.activate(it, Qt.LeftButton, win.keyAt(it));
+            } else if (!KeyNav.plain(event)) return;
+            else if (k === Qt.Key_Left) win.moveKey(win.cursor - 1);
+            else if (k === Qt.Key_Right) win.moveKey(win.cursor + 1);
+            else if (k === Qt.Key_Home) win.moveKey(0);
+            else if (k === Qt.Key_End) win.moveKey(1e6);
+            else if (k === Qt.Key_Tab || k === Qt.Key_Backtab) win.moveKey(win.cursor + (k === Qt.Key_Tab ? 1 : -1));
+            event.accepted = true;
+        }
+    }
+    // Apps coming and going keep the ring on a real item.
+    Connections {
+        target: apps
+        function onCountChanged() { if (win.keyMode) Qt.callLater(() => win.moveKey(win.cursor)); }
+    }
+    Connections {
+        target: win.dock
+        function onKeysRequested() {
+            if (win.screen !== Shell.screenFor(Quickshell.screens)) return;
+            if (win.keyMode) win.leaveKeys(); else win.enterKeys();
+        }
+    }
+    // While the dock has the keyboard: a still layer over the screen that
+    // gives the keyboard back the moment the pointer moves or presses, so
+    // keys go where you go. It sits under the app menu.
+    PanelWindow {
+        id: watch
+        screen: win.screen
+        visible: win.keyMode && !menu.open
+        color: "transparent"
+        anchors { top: true; bottom: true; left: true; right: true }
+        exclusionMode: ExclusionMode.Ignore
+        WlrLayershell.layer: WlrLayer.Top
+        WlrLayershell.namespace: "folio:dock-keys"
+        WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+        MouseArea {
+            anchors.fill: parent
+            acceptedButtons: Qt.AllButtons
+            onPressed: win.leaveKeys()
+            PointerWatch { onMoved: win.leaveKeys() }
+        }
     }
     // IPC presses, on the focused screen only.
     Connections {

@@ -48,6 +48,8 @@ PanelWindow {
     }
     readonly property string windowTitle: fx ? fx.title : window ? (window.title || "") : ""
 
+    PointerWatch { }
+
     Rectangle {
         id: paper
         anchors.fill: parent

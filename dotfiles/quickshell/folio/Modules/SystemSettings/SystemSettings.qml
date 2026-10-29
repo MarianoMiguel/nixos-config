@@ -22,7 +22,7 @@ Scope {
         { "id": "lock", "title": "Lock & screensaver", "icon": "lock", "group": "Look", "page": "appearance", "anchor": "lock", "keys": "idle hibernate screensaver timeout" },
         { "id": "desktop", "title": "Desktop & dock", "icon": "grid", "group": "Look", "page": "appearance", "anchor": "desktop", "keys": "dock sidebar island icons login" },
         { "id": "displays", "title": "Displays", "icon": "display", "group": "System", "page": "displays", "keys": "monitor screen resolution refresh scale rotation arrange layout night light external" },
-        { "id": "sound", "title": "Sound", "icon": "speaker", "group": "System", "page": "sound", "keys": "audio volume output input microphone speakers headphones mixer" },
+        { "id": "sound", "title": "Sound", "icon": "speaker", "group": "System", "page": "sound", "keys": "audio volume output input microphone speakers headphones mixer sound effects alerts" },
         { "id": "network", "title": "Network", "icon": "wifi", "group": "System", "page": "network", "keys": "wifi wi-fi wireless ethernet wired vpn tailscale internet ip dns" },
         { "id": "bluetooth", "title": "Bluetooth", "icon": "bluetooth", "group": "System", "page": "bluetooth", "keys": "devices pair headphones airpods mouse keyboard" },
         { "id": "power", "title": "Power & battery", "icon": "battery", "group": "System", "page": "power", "keys": "battery charge profile performance saver lid health" },
@@ -110,6 +110,8 @@ Scope {
             RowLayout {
                 anchors.fill: parent
                 spacing: 0
+                // Pointer use hides the focus ring until the next key.
+                PointerWatch { }
 
                 // Navigation: search, then the pages in two groups.
                 Rectangle {
@@ -135,17 +137,47 @@ Scope {
                             onTextChanged: win.query = text
                             onAccepted: if (win.shown.length) { win.go(win.shown[0].id); text = ""; }
                             onCancelled: text = ""
+                            // Down goes on to the matches.
+                            Keys.onDownPressed: { KeyNav.key(); nav.cursor = 0; nav.forceActiveFocus(); }
                         }
                         Flickable {
+                            id: navFlick
                             Layout.fillWidth: true; Layout.fillHeight: true
                             contentHeight: nav.implicitHeight
                             clip: true
                             boundsBehavior: Flickable.StopAtBounds
+                            // The list takes the keyboard as one stop: Up and Down
+                            // move the ring through the pages, Enter or Space opens
+                            // one, typing searches. It has focus when Settings opens.
                             ColumnLayout {
                                 id: nav
                                 width: parent.width
                                 spacing: 2
+                                focus: true
+                                activeFocusOnTab: true
+                                property int cursor: -1
+                                readonly property int here: Math.max(0, win.shown.findIndex(p => p.id === win.current.id))
+                                function place(i) {
+                                    cursor = Math.max(0, Math.min(win.shown.length - 1, i));
+                                    const row = rows.itemAt(cursor);
+                                    if (row) navFlick.contentY = KeyNav.scrollFor(navFlick, row, 8);
+                                }
+                                onActiveFocusChanged: if (activeFocus && (cursor < 0 || cursor >= win.shown.length)) cursor = here
+                                Connections { target: win; function onShownChanged() { nav.cursor = win.query ? 0 : nav.here; } }
+                                Keys.onPressed: event => {
+                                    KeyNav.key();
+                                    const plain = KeyNav.plain(event);
+                                    if (event.key === Qt.Key_Down && plain) nav.place(nav.cursor + 1);
+                                    else if (event.key === Qt.Key_Up && plain) { if (nav.cursor <= 0) search.focusNow(); else nav.place(nav.cursor - 1); }
+                                    else if (event.key === Qt.Key_Home && plain) nav.place(0);
+                                    else if (event.key === Qt.Key_End && plain) nav.place(win.shown.length - 1);
+                                    else if (KeyNav.activates(event)) { if (!event.isAutoRepeat && win.shown[nav.cursor]) win.go(win.shown[nav.cursor].id); }
+                                    else if (plain && event.text.length === 1 && event.text > " " && event.text !== "\u007f") { search.focusNow(); search.text = event.text; }
+                                    else return;
+                                    event.accepted = true;
+                                }
                                 Repeater {
+                                    id: rows
                                     model: win.shown
                                     ColumnLayout {
                                         id: item
@@ -167,6 +199,7 @@ Scope {
                                                 Label { text: item.modelData.title; color: item.on ? Theme.inkText : Theme.text; Layout.fillWidth: true; Layout.minimumWidth: 0 }
                                             }
                                             MouseArea { id: hover; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: win.go(item.modelData.id) }
+                                            FocusRing { on: nav.activeFocus && nav.cursor === item.index; radius: 9; gap: -2; color: item.on ? Theme.inkText : Theme.ink }
                                         }
                                     }
                                 }
@@ -207,11 +240,25 @@ Scope {
                 }
             }
             // Escape in a text field is the field's (cancel, then let go of
-            // the caret); otherwise it clears the search, then closes.
-            Item { id: focusProbe; readonly property Item item: Window.activeFocusItem }
+            // the caret), and so is it in an open list that holds it
+            // (`holdsEscape` on the focused item or a parent: it closes the
+            // list); otherwise it clears the search, then closes.
+            Item {
+                id: focusProbe
+                readonly property Item item: Window.activeFocusItem
+                readonly property bool held: {
+                    for (let it = item; it; it = it.parent) if (it.holdsEscape === true) return true;
+                    return false;
+                }
+                // A control reached by the keyboard scrolls into view.
+                onItemChanged: {
+                    if (!item || !KeyNav.keyboard) return;
+                    if (pageLoader.item && KeyNav.inside(item, pageLoader.item)) pageLoader.item.reveal(item);
+                }
+            }
             Shortcut {
                 sequence: "Escape"
-                enabled: !(focusProbe.item && "echoMode" in focusProbe.item && focusProbe.item !== search.input)
+                enabled: !(focusProbe.item && "echoMode" in focusProbe.item && focusProbe.item !== search.input) && !focusProbe.held
                 onActivated: { if (search.text) search.text = ""; else Shell.closeAll(); }
             }
             Shortcut { sequence: "Ctrl+F"; onActivated: search.focusNow() }

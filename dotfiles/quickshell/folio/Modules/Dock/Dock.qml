@@ -58,8 +58,17 @@ Scope {
         function close(): void { root.pressed(-1, "close"); }
         // Tests: act as if a fullscreen window covered the dock.
         function away(on: bool): void { root.fakeAway = on; }
+        // The keyboard (Mod+Ctrl+D): the dock on the focused screen takes it
+        // and a ring marks an app; Left and Right move, Enter opens, Up,
+        // Shift+F10 or the Menu key open its menu, Esc gives the keyboard
+        // back. Calling it again leaves too.
+        function keyboard(): void { root.keysRequested(); }
+        // Tests: whether the dock holds the keyboard, and which item.
+        function keys(): string { return root.keyState; }
     }
     signal pressed(int index, string how)
+    signal keysRequested()
+    property string keyState: ""
     property bool fakeAway: false
 
     // ------------------------------------------------------------ the list

@@ -77,9 +77,16 @@ SettingsPage {
 
     // ------------------------------------------------------------ lock screen
     Section { title: "Lock screen"; Component.onCompleted: page.mark("lock", this) }
-    Notice {
-        icon: "lock"
-        text: "The lock screen shows no notifications, so nothing previews while it is locked."
+    Card {
+        SettingRow {
+            icon: "lock"; label: "Show previews"
+            hint: Settings.get("lock.previews") === "always" ? "What each notification says, readable while locked." : "Only the app and how many are waiting."
+            Choice {
+                options: [{ "value": "always", "label": "Always" }, { "value": "never", "label": "Never" }]
+                value: Settings.get("lock.previews") || "never"
+                onChosen: v => Settings.set("lock.previews", v)
+            }
+        }
     }
 
     // ------------------------------------------------------------ apps

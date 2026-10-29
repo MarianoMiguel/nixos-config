@@ -127,9 +127,13 @@ SettingsPage {
             Repeater {
                 model: page.sizes
                 Rectangle {
+                    id: sizeChip
                     required property var modelData
                     readonly property bool on: page.curMode && modelData.w === page.curMode.w && modelData.h === page.curMode.h
                     width: chip.implicitWidth + 20; height: 30; radius: Theme.rS
+                    activeFocusOnTab: true
+                    Keys.onPressed: event => KeyNav.press(event, () => { page.pickingSize = false; if (!sizeChip.on) page.pickSize(sizeChip.modelData.w, sizeChip.modelData.h); })
+                    FocusRing { radius: Theme.rS }
                     color: on ? Theme.ink : (chipArea.containsMouse ? Theme.wellStrong : Theme.sheetStrong)
                     border.width: on ? 0 : 1; border.color: Theme.rule
                     Label {

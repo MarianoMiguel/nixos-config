@@ -12,6 +12,13 @@ import qs.Widgets
 // leaf hinged at its spine while its rows follow 34 ms apart (the cascade);
 // closing mirrors it, and a reversal mid-turn keeps its velocity (spring).
 // Esc or a click outside closes it. It stops above the dock's band.
+//
+// The keyboard (it has the keyboard while open): the arrows move a focus
+// ring through the tiles and controls (Up and Down to the nearest one above
+// or below, Left and Right through them in reading order; Left and Right
+// adjust a focused slider instead), Space or Enter presses, Page Up and Page
+// Down scroll, Esc closes the power menu, then the sidebar. It opens with
+// nothing focused; the first arrow lands on the first control in view.
 Scope {
     id: root
 
@@ -57,7 +64,53 @@ Scope {
         if (open) {
             Tailscale.refresh();
             revealTimer.restart();
+            keys.forceActiveFocus();
         }
+    }
+
+    // ------------------------------------------------------------ keyboard
+
+    // The controls the arrows move through: the power menu's while it is
+    // open, else the page's.
+    readonly property Item navScope: power.open ? power : column
+    property Item focusItem: null           // the window's, kept by the probe below
+    function focused() {
+        const it = focusItem;
+        return it && KeyNav.inside(it, navScope) && it !== navScope ? it : null;
+    }
+    // The first (or last) control at least partly in view.
+    function inView(dir) {
+        const all = KeyNav.focusables(navScope);
+        if (navScope !== column) return dir > 0 ? all[0] : all[all.length - 1];
+        const seen = all.filter(i => { const r = i.mapToItem(flick.contentItem, 0, 0); return r.y + i.height > flick.contentY + 4 && r.y < flick.contentY + flick.height - 4; });
+        const list = seen.length ? seen : all;
+        return dir > 0 ? list[0] : list[list.length - 1];
+    }
+    function navKey(event) {
+        KeyNav.key();
+        const k = event.key;
+        if (k === Qt.Key_Escape) {
+            if (power.open) { power.open = false; footer.powerButton.forceActiveFocus(); }
+            else Shell.sidebarOpen = false;
+        } else if (k === Qt.Key_PageDown || k === Qt.Key_PageUp) {
+            root.scrollBy(flick.height * 0.8 * (k === Qt.Key_PageUp ? -1 : 1));
+        } else if ((k === Qt.Key_Down || k === Qt.Key_Up || k === Qt.Key_Left || k === Qt.Key_Right) && KeyNav.plain(event)) {
+            const dir = k === Qt.Key_Down || k === Qt.Key_Right ? 1 : -1;
+            const from = focused();
+            const next = !from ? inView(dir)
+                : (k === Qt.Key_Down || k === Qt.Key_Up) && !power.open ? KeyNav.vertical(navScope, from, dir)
+                : KeyNav.step(navScope, from, dir);
+            if (next) next.forceActiveFocus(dir > 0 ? Qt.TabFocusReason : Qt.BacktabFocusReason);
+        } else return;
+        event.accepted = true;
+    }
+    // A control reached by the keyboard glides into view.
+    function show(item) {
+        if (!item || !KeyNav.inside(item, column)) return;
+        const y = KeyNav.scrollFor(flick, item, 12);
+        if (Math.abs(y - flick.contentY) < 1) return;
+        follow = null; glide = true; glideEnd.restart();
+        flick.contentY = y;
     }
 
     // A leaf turning about its spine with perspective (the kit's
@@ -141,20 +194,20 @@ Scope {
             id: catcher
             anchors.fill: parent
             onClicked: Shell.sidebarOpen = false
+            PointerWatch { }
         }
 
+        // Holds the keyboard while no control has it.
         Item {
             id: keys
             anchors.fill: parent
             focus: true
-            Keys.onPressed: event => {
-                if (event.key === Qt.Key_Escape) {
-                    if (power.open) power.open = false; else Shell.sidebarOpen = false;
-                } else if (event.key === Qt.Key_Down || event.key === Qt.Key_PageDown || event.key === Qt.Key_Up || event.key === Qt.Key_PageUp) {
-                    root.scrollBy((event.key === Qt.Key_PageDown || event.key === Qt.Key_PageUp ? flick.height * 0.8 : 60) * (event.key === Qt.Key_Up || event.key === Qt.Key_PageUp ? -1 : 1));
-                } else return;
-                event.accepted = true;
-            }
+            Keys.onPressed: event => root.navKey(event)
+        }
+        // A control reached by the keyboard scrolls into view.
+        Item {
+            readonly property Item item: Window.activeFocusItem
+            onItemChanged: { root.focusItem = item; if (KeyNav.keyboard) root.show(item); }
         }
 
         Item {
@@ -165,6 +218,9 @@ Scope {
             height: Math.max(200, parent.height - root.top - root.bottom)
             opacity: Math.max(0, Math.min(1, root.leaf / 100))
             transform: Matrix4x4 { matrix: root.leafMatrix(root.leaf / 100, page.width, page.height, root.onLeft) }
+            // Keys a focused control leaves come here.
+            Keys.onPressed: event => root.navKey(event)
+            PointerWatch { }
 
             Sheet {
                 id: sheet
@@ -174,10 +230,14 @@ Scope {
                 // Clicks on the sheet stay on it.
                 MouseArea { anchors.fill: parent }
 
+                // Wider than the column by the room a focus ring needs, so
+                // rings at the edges are not clipped.
                 Flickable {
                     id: flick
                     anchors.fill: parent
                     anchors.margins: root.pad
+                    anchors.leftMargin: root.pad - 6
+                    anchors.rightMargin: root.pad - 6
                     anchors.bottomMargin: root.pad - 4
                     contentWidth: width
                     contentHeight: column.implicitHeight + 4
@@ -191,7 +251,8 @@ Scope {
 
                     ColumnLayout {
                         id: column
-                        width: flick.width
+                        x: 6
+                        width: flick.width - 12
                         spacing: 10
 
                         HeroCard {
@@ -298,6 +359,15 @@ Scope {
                     x: root.pad + footer.x + footer.powerButton.x + footer.powerButton.width - width
                     y: root.pad + footer.y - flick.contentY + footer.powerButton.y - height - 8
                     onChosen: what => { power.open = false; feed.power(what); }
+                    // Opened from the keyboard, the keyboard goes into it (once
+                    // it shows); closing with it inside hands it back to the button.
+                    property bool keyed: false
+                    function takeFocus() { const first = KeyNav.focusables(power)[0]; if (first) first.forceActiveFocus(); keyed = false; }
+                    onOpenChanged: {
+                        if (open && footer.powerButton.activeFocus) { keyed = true; if (visible) takeFocus(); }
+                        else if (!open && KeyNav.inside(root.focusItem, power)) footer.powerButton.forceActiveFocus();
+                    }
+                    onVisibleChanged: if (visible && keyed) takeFocus()
                 }
             }
         }

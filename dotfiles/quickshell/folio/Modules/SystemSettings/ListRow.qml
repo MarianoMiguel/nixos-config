@@ -19,6 +19,10 @@ Item {
     signal clicked()
     Layout.fillWidth: true
     implicitHeight: Math.max(52, text.implicitHeight + 18)
+    // A clickable row is in the Tab order; Space or Enter clicks it. Its
+    // ring sits inside the card, on the edge of its hover fill.
+    activeFocusOnTab: clickable
+    Keys.onPressed: event => KeyNav.press(event, root.clickable ? () => root.clicked() : null)
 
     Rectangle {
         anchors.fill: parent; anchors.margins: 3
@@ -26,6 +30,7 @@ Item {
         color: area.containsMouse && root.clickable ? Theme.wellStrong : "transparent"
         Behavior on color { ColorAnimation { duration: Theme.tQuick } }
     }
+    FocusRing { radius: Theme.rM; gap: -3 }
     RowLayout {
         anchors.fill: parent; anchors.leftMargin: 14; anchors.rightMargin: 12; spacing: 12
         Rectangle {

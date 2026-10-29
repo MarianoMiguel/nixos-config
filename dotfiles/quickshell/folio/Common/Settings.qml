@@ -26,10 +26,13 @@ Singleton {
         "idle.screensOff": 30,                  // seconds after locking
         "idle.hibernateBattery": 900,
         "plates.breathe": 1,
+        "plates.breatheOnBattery": false,       // the dither holds still on battery
+        "lock.previews": "never",               // notification text on the lock screen: always | never
         "plates.dark": "moonlit",               // moonlit | negative
         "island.live": true,
         "login.score": true,
-        "sounds": false,
+        "sounds": false,                        // interface sounds (Settings › Sound)
+        "sounds.volume": 0.7,                   // sound effects, 0 to 1
         "night.schedule": "off",                // off | sunset | custom | always
         "night.from": "22:00",
         "night.to": "07:00",

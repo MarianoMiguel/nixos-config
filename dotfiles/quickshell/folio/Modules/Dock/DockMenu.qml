@@ -7,7 +7,8 @@ import qs.Widgets
 
 // An app's menu: prints in from the cursor, above it, and lifts off back
 // into it. A transparent full-screen layer catches the click that closes it;
-// the keyboard works (arrows, Return, Escape).
+// the keyboard works: Up and Down (from nothing lit, Down lights the first
+// and Up the last), Home and End, Return, Enter or Space choose, Escape.
 PanelWindow {
     id: win
 
@@ -62,9 +63,16 @@ PanelWindow {
         Keys.onDownPressed: win.step(1)
         Keys.onReturnPressed: win.choose(win.current)
         Keys.onEnterPressed: win.choose(win.current)
+        Keys.onSpacePressed: win.choose(win.current)
+        Keys.onPressed: event => {
+            if (event.key === Qt.Key_Home) { win.current = -1; win.step(1); }
+            else if (event.key === Qt.Key_End) { win.current = -1; win.step(-1); }
+            else return;
+            event.accepted = true;
+        }
     }
     function step(d) {
-        let i = current;
+        let i = current < 0 && d < 0 ? items.length : current;
         for (let n = 0; n < items.length; n++) {
             i = (i + d + items.length) % items.length;
             if (!items[i].rule) { current = i; return; }

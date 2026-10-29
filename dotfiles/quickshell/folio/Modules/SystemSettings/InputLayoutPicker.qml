@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Window
 import qs.Common
 import qs.Services
 import qs.Widgets
@@ -15,10 +16,18 @@ Item {
     Layout.fillWidth: true
     implicitHeight: open ? body.implicitHeight : 0
     opacity: open ? 1 : 0
+    // Closed, its field and list leave the Tab order.
+    visible: open || height > 0.5
     clip: true
     Behavior on implicitHeight { SpringPanel {} }
     Behavior on opacity { SpringSoft {} }
-    onOpenChanged: if (open) Qt.callLater(search.focusNow); else search.text = ""
+    // Where the keyboard goes back to when it closes with focus inside.
+    property Item returnFocus: null
+    onOpenChanged: {
+        if (open) { Qt.callLater(search.focusNow); return; }
+        if (returnFocus && KeyNav.inside(Window.activeFocusItem, root)) returnFocus.forceActiveFocus();
+        search.text = "";
+    }
 
     // Plain layouts before their variants, each alphabetical.
     readonly property var all: Input.catalog.layouts.slice().sort((a, b) => ((a.variant ? 1 : 0) - (b.variant ? 1 : 0)) || a.name.localeCompare(b.name))

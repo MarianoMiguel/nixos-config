@@ -1,5 +1,6 @@
 import QtQuick
 import qs.Common
+import qs.Widgets
 
 // One slot in the dock: the icon, the running dot and the press (sink, ink
 // ring, two-hop bounce). The window drives s, the magnification; the slot
@@ -27,6 +28,7 @@ Item {
     readonly property real size: base * s
     readonly property bool hovered: hit.containsMouse
     readonly property bool pressed: hit.pressed
+    property bool keyFocus: false           // the dock's keyboard is on this item
     signal activated(int button, point at)
     signal gone()
 
@@ -72,6 +74,16 @@ Item {
         border.color: Theme.rgba(Theme.ink, 0.4 * (1 - spread / 14))
     }
     Ease { id: ringAnim; target: ring; property: "spread"; from: 0; to: 14; duration: 520 * Theme.motion }
+
+    // The keyboard's ring, around the icon and concentric with its tile.
+    Item {
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.bottom: parent.bottom
+        anchors.bottomMargin: root.hop
+        width: root.size * root.press
+        height: width
+        FocusRing { on: root.keyFocus; radius: parent.width * root.corner }
+    }
 
     Item {
         id: box

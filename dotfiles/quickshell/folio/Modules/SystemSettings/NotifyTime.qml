@@ -20,18 +20,23 @@ Item {
         const snapped = Math.round(root.value / root.step) * root.step;
         root.moved(((snapped + d * root.step) % 1440 + 1440) % 1440);
     }
-    Keys.onUpPressed: nudge(1)
-    Keys.onRightPressed: nudge(1)
-    Keys.onDownPressed: nudge(-1)
-    Keys.onLeftPressed: nudge(-1)
+    Keys.onPressed: event => {
+        KeyNav.key();
+        if (!KeyNav.plain(event)) return;
+        if (event.key === Qt.Key_Up || event.key === Qt.Key_Right) nudge(1);
+        else if (event.key === Qt.Key_Down || event.key === Qt.Key_Left) nudge(-1);
+        else return;
+        event.accepted = true;
+    }
 
     Rectangle {
         anchors.fill: parent
         radius: Theme.rS
         color: Theme.well
-        border.width: root.activeFocus ? 2 : 1
-        border.color: root.activeFocus ? Theme.ink : Theme.rule
+        border.width: 1
+        border.color: Theme.rule
     }
+    FocusRing { radius: Theme.rS }
     MouseArea {
         anchors.fill: parent
         onWheel: wheel => root.nudge(wheel.angleDelta.y > 0 ? 1 : -1)

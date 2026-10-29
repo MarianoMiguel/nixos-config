@@ -62,11 +62,14 @@ Item {
                 Label { text: root.s.app; font.weight: Font.Medium; Layout.fillWidth: true }
                 Label { visible: root.s.title !== ""; text: root.s.title; color: Theme.text2; font.pixelSize: Theme.fsS; Layout.fillWidth: true }
             }
-            // Where it plays: a pill that opens the outputs.
+            // Where it plays: a pill that opens the outputs (Space or Enter too).
             Rectangle {
                 Layout.preferredWidth: Math.min(220, pick.implicitWidth + 18)
                 Layout.preferredHeight: 30
                 radius: Theme.rS
+                activeFocusOnTab: true
+                Keys.onPressed: event => KeyNav.press(event, () => Audio.openPanel = root.open ? "" : "move:" + root.key)
+                FocusRing { radius: Theme.rS }
                 color: pickArea.containsMouse || root.open ? Theme.wellStrong : Theme.well
                 border.color: Theme.rule
                 Behavior on color { ColorAnimation { duration: Theme.tQuick } }

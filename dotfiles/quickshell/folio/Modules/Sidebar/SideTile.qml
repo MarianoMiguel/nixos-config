@@ -22,6 +22,9 @@ SideTap {
     radius: Theme.inner(26, 14)
     stamp: !readOnly
     sink: !readOnly
+    ringInside: false
+    // A tile that only shows a state is not a keyboard stop.
+    activeFocusOnTab: !readOnly
 
     Rectangle {
         anchors.fill: parent
@@ -58,6 +61,7 @@ SideTap {
             implicitHeight: 46
             radius: Theme.inner(Theme.inner(26, 14), 6)
             stamp: false
+            ringInside: true
             onClicked: root.expand()
             Rectangle { anchors.fill: parent; radius: parent.radius; color: parent.hovered ? Theme.wellStrong : "transparent" }
             Icon {

@@ -84,6 +84,10 @@ Item {
             Behavior on height { SpringPanel {} }
             scale: area.pressed ? 1.02 : 1
             Behavior on scale { SpringPress {} }
+            // Space or Enter selects it, as a click does.
+            activeFocusOnTab: true
+            Keys.onPressed: event => KeyNav.press(event, () => canvas.select(tile.key))
+            FocusRing { radius: Theme.rXs }
 
             Rectangle {
                 anchors.fill: parent
@@ -148,9 +152,13 @@ Item {
         Repeater {
             model: canvas.off
             Rectangle {
+                id: offChip
                 required property var modelData
                 width: offLabel.implicitWidth + 24; height: 34
                 radius: Theme.rS
+                activeFocusOnTab: true
+                Keys.onPressed: event => KeyNav.press(event, () => canvas.select(offChip.modelData.key))
+                FocusRing { radius: Theme.rS }
                 color: canvas.selected === modelData.key ? Theme.well : "transparent"
                 border.width: canvas.selected === modelData.key ? 2 : 1
                 border.color: canvas.selected === modelData.key ? Theme.ink : Theme.ruleStrong

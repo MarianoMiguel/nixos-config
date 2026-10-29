@@ -7,7 +7,7 @@ import qs.Widgets
 
 // Sound: where sound plays and where it comes from, how loud each is, the
 // card profile where there is a choice (Bluetooth high fidelity or headset,
-// HDMI), the apps playing now, and interface sounds. Everything reads and
+// HDMI), the apps playing now, and sound effects. Everything reads and
 // writes through Audio, which also serves the fixtures (`sound fixture …`).
 SettingsPage {
     id: page
@@ -160,16 +160,20 @@ SettingsPage {
         text: "No apps are playing sound right now."
     }
 
-    // ---------------------------------------------------------------- sounds
+    // ---------------------------------------------------------------- sound effects
     Section {
-        title: "Sounds"
+        title: "Sound effects"
+        hint: "Short, quiet sounds for what the desktop does; press one to hear it. Notification sounds follow each app's switch in Notifications and keep quiet in Do not disturb."
         Component.onCompleted: page.mark("sounds", this)
     }
     Card {
+        divided: true
         SettingRow {
-            icon: "bell"; label: "Interface sounds"
-            hint: "Short sounds for alerts, volume changes and screenshots."
+            icon: "sparkle"; label: "Interface sounds"
+            hint: "Volume keys, screenshots, the Trash, devices, power and the lock screen"
             Toggle { checked: Audio.sounds; onToggled: v => Audio.setSounds(v) }
         }
+        SoundEffectsLevel {}
+        SoundEffects {}
     }
 }

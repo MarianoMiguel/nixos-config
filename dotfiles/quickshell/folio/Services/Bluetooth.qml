@@ -39,6 +39,23 @@ Singleton {
     readonly property var fxDevices: fake ? (fx.devices || []).map(d => Object.assign({}, d, {
         "connect": () => root.connectDevice(d.address), "disconnect": () => root.disconnectDevice(d.address) })) : []
 
+    // A device connecting or going away has a sound (Sounds device-in,
+    // device-out), judged once the change settles. The first look (BlueZ
+    // fills in after start) and a switch to or from a fixture only note what
+    // is connected.
+    readonly property var linked: connected.map(d => d.address)
+    property var heard: null
+    property string heardFixture: ""
+    Timer { running: true; interval: 4000; onTriggered: { root.heard = root.linked; root.heardFixture = root.fixture; } }
+    onLinkedChanged: Qt.callLater(root.listen)
+    function listen() {
+        if (heard === null) return;
+        if (heardFixture === fixture && linked.some(a => heard.indexOf(a) < 0)) Sounds.play("device-in");
+        else if (heardFixture === fixture && heard.some(a => linked.indexOf(a) < 0)) Sounds.play("device-out");
+        heard = linked;
+        heardFixture = fixture;
+    }
+
     // ---------------------------------------------------------- describing
 
     function describe(d) {
@@ -122,6 +139,7 @@ Singleton {
     }
     function couldNot(address) {
         const d = find(address);
+        Sounds.play("error");
         Toasts.show("Could not connect to “" + (d ? (d.name || d.deviceName || address) : address) + "”. Is it on and nearby?", { "icon": "bluetooth" });
     }
     function setPending(address, what) {

@@ -116,6 +116,7 @@ SettingsPage {
             }
         }
         ListRow {
+            id: addRow
             icon: "plus"
             title: picker.open ? "Choose a layout to add" : "Add a layout…"
             subtitle: page.full ? "xkb holds four layouts at once; remove one to add another." : (Input.catalog.layouts.length ? "" : "Reading xkb's layouts…")
@@ -125,6 +126,7 @@ SettingsPage {
         }
         InputLayoutPicker {
             id: picker
+            returnFocus: addRow
             onPicked: id => { if (Input.addLayout(id)) open = false; }
         }
     }

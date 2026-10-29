@@ -37,6 +37,11 @@ Singleton {
     function focus(id) { const p = plate(id); return p ? Qt.vector2d(p.focus[0], p.focus[1]) : Qt.vector2d(0.5, 0.5); }
 
     // The desktop's plate: the selection's collection and art index.
+    // How much the plate's dither keeps moving (Settings "plates.breathe").
+    // On battery it holds still unless asked otherwise: a moving plate
+    // re-renders the wallpaper, and every blurred panel over it, 9 times a second.
+    readonly property real breathe: (Settings.get("plates.breathe") || 0)
+        * (Battery.onBattery && Settings.get("plates.breatheOnBattery") !== true ? 0 : 1)
     readonly property string current: {
         const c = collections.find(x => x.id === Theme.selection.collection);
         if (!c) return "dore-nightfall";

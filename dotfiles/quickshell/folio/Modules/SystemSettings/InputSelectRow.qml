@@ -21,13 +21,33 @@ Item {
 
     readonly property var current: options.find(o => o.value === value) || null
 
+    // Keyboard: Space or Enter on the select opens the list at the current
+    // choice; Up and Down move through it, Space or Enter picks, Escape
+    // closes it and goes back to the select (Settings lets it have Escape).
+    readonly property bool holdsEscape: open
+    Keys.onEscapePressed: { root.open = false; pickBox.forceActiveFocus(); }
+    function openByKey() {
+        root.open = true;
+        const i = Math.max(0, root.options.findIndex(o => o.value === root.value));
+        Qt.callLater(() => { const it = optionRows.itemAt(i); if (it) it.forceActiveFocus(); });
+    }
+    function pick(v) {
+        root.open = false;
+        pickBox.forceActiveFocus();
+        if (v !== root.value) root.chosen(v);
+    }
+
     SettingRow {
         id: head
         width: parent.width
         icon: root.icon; label: root.label; hint: root.hint
         Item {
+            id: pickBox
             implicitWidth: Math.min(240, pick.implicitWidth + 40)
             implicitHeight: 32
+            activeFocusOnTab: true
+            Keys.onPressed: event => KeyNav.press(event, () => { if (root.open) root.open = false; else root.openByKey(); })
+            FocusRing { radius: Theme.rS }
             Rectangle {
                 anchors.fill: parent; radius: Theme.rS
                 color: area.containsMouse || root.open ? Theme.wellStrong : Theme.well
@@ -56,6 +76,7 @@ Item {
         width: parent.width
         height: root.open ? list.implicitHeight + 8 : 0
         opacity: root.open ? 1 : 0
+        visible: root.open || height > 0.5
         clip: true
         Behavior on height { SpringPanel {} }
         Behavior on opacity { SpringSoft {} }
@@ -64,6 +85,7 @@ Item {
             id: list
             x: 6; y: 4; width: parent.width - 12
             Repeater {
+                id: optionRows
                 model: root.options
                 Item {
                     id: opt
@@ -71,6 +93,9 @@ Item {
                     readonly property bool on: modelData.value === root.value
                     width: list.width
                     height: 36
+                    activeFocusOnTab: root.open
+                    Keys.onPressed: event => KeyNav.press(event, () => root.pick(opt.modelData.value))
+                    FocusRing { radius: Theme.inner(Theme.rM, 6) + 1; gap: -1 }
                     Rectangle {
                         anchors.fill: parent; anchors.margins: 1
                         radius: Theme.inner(Theme.rM, 6)

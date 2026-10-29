@@ -8,7 +8,7 @@ stdenvNoCC.mkDerivation {
   version = "0.1.0";
   src = lib.cleanSourceWith {
     src = ../dotfiles/quickshell/folio;
-    filter = path: _type: !(lib.hasSuffix ".qsb" path) && !(builtins.elem (baseNameOf path) [ "qmldir" "emoji.json" ]);
+    filter = path: _type: !(lib.hasSuffix ".qsb" path) && !(builtins.elem (baseNameOf path) [ "qmldir" "emoji.json" "sounds" ]);
   };
   nativeBuildInputs = [ qt6.qtshadertools python3 ];
   # QML and shaders only: nothing to wrap.
@@ -26,6 +26,8 @@ stdenvNoCC.mkDerivation {
     python3 ${../scripts/folio-emoji} Modules/Launcher/emoji.json \
       --emoji-test ${unicode-emoji}/share/unicode/emoji/emoji-test.txt \
       --cldr ${cldr-annotations}/share/unicode/cldr/common
+    # Interface sounds, synthesized here: no samples, nothing downloaded.
+    python3 ${../scripts/folio-sounds} sounds
     runHook postBuild
   '';
   installPhase = ''

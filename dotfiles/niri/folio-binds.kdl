@@ -9,6 +9,8 @@ binds {
     Mod+N repeat=false hotkey-overlay-title="Sidebar" { spawn "mariano-shell" "ipc" "sidebar" "toggle"; }
     Mod+Ctrl+N repeat=false hotkey-overlay-title="Notifications" { spawn "mariano-shell" "ipc" "sidebar" "open" "notifications"; }
     Mod+Comma repeat=false hotkey-overlay-title="Settings" { spawn "mariano-shell" "ipc" "settings" "toggle"; }
+    // The dock takes the keyboard: Left/Right, Enter opens, Up or Shift+F10 the app's menu, Esc gives it back.
+    Mod+Ctrl+D repeat=false hotkey-overlay-title="Dock (keyboard)" { spawn "mariano-shell" "ipc" "dock" "keyboard"; }
     Mod+Y repeat=false hotkey-overlay-title="Wallpapers" { spawn "mariano-shell" "ipc" "settings" "open" "wallpaper"; }
     // Mod+P mirrors to the KVM (DMS's binds); this steps through the layouts saved for the displays connected.
     Mod+Ctrl+P repeat=false hotkey-overlay-title="Next Display Layout" { spawn "mariano-shell" "ipc" "displays" "cycle"; }

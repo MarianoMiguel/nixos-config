@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Window
 import qs.Common
 import qs.Widgets
 
@@ -26,11 +27,16 @@ Item {
     Layout.fillWidth: true
     Layout.minimumWidth: 0
     implicitHeight: head.height + drawer.h
+    // The panel closing with the keyboard in it hands focus back to the row.
+    onOpenChanged: if (!open && KeyNav.inside(Window.activeFocusItem, drawer)) head.forceActiveFocus()
 
     Item {
         id: head
         width: parent.width
         height: Math.max(52, text.implicitHeight + 18)
+        // As ListRow: clickable, it is in the Tab order and Space or Enter clicks it.
+        activeFocusOnTab: root.clickable
+        Keys.onPressed: event => KeyNav.press(event, root.clickable ? () => root.clicked() : null)
 
         Rectangle {
             anchors.fill: parent; anchors.margins: 3
@@ -38,6 +44,7 @@ Item {
             color: area.containsMouse && root.clickable ? Theme.wellStrong : "transparent"
             Behavior on color { ColorAnimation { duration: Theme.tQuick } }
         }
+        FocusRing { radius: Theme.rM; gap: -3 }
         RowLayout {
             anchors.fill: parent; anchors.leftMargin: 14; anchors.rightMargin: 12; spacing: 12
             Rectangle {

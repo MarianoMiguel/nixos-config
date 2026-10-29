@@ -138,6 +138,7 @@ Singleton {
         trashToast = Toasts.countdown("Emptying the Trash", () => { root.trashToast = 0; root.emptyTrash(); }, 5, Icons.get("trash").length ? "trash" : "folder");
     }
     function emptyTrash() {
+        Sounds.play("empty-trash");
         if (fake) {
             if (Sys.harness) Sys.run(["gio", "trash", "--empty"]);
             patch(r => r.trash = { "known": true, "items": 0, "size": 0 });

@@ -70,9 +70,10 @@ Scope {
 
     Connections {
         target: Drives
-        function onAdded(d) { root.show(d, "connected"); }
-        function onEjected(d) { root.show(d, "safe"); }
+        function onAdded(d) { Sounds.play("device-in"); root.show(d, "connected"); }
+        function onEjected(d) { Sounds.play("device-out"); root.show(d, "safe"); }
         function onUnplugged(d, wasMounted) {
+            Sounds.play("device-out");
             if (wasMounted) root.show(d, "unsafe");
             else if (root.shown && root.drive && root.drive.id === d.id) root.hide();
         }
@@ -81,6 +82,7 @@ Scope {
             if (!root.shown || !root.drive || root.drive.id !== d.id || (root.mode !== "ejecting" && root.mode !== "opening")) return;
             root.kind = kind;
             root.reason = reason;
+            Sounds.play("error");
             root.show(d, "failed");
         }
     }

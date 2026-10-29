@@ -130,8 +130,12 @@ SettingsPage {
         implicitHeight: wpRows.implicitHeight
         ColumnLayout {
             id: wpRows; width: parent.width; spacing: 0
-            SettingRow { icon: "sparkle"; label: "Moving dither"; hint: "The plate keeps re-printing itself, in a quiet loop."
-                Toggle { checked: Settings.get("plates.breathe") > 0; onToggled: v => Settings.set("plates.breathe", v ? 1 : 0) } }
+            SettingRow { icon: "sparkle"; label: "Moving dither"; hint: "The plate keeps re-printing itself. Plugged in: it holds still on battery, which also spares the blur behind panels."
+                Choice {
+                    options: [{ "value": "always", "label": "Always" }, { "value": "plugged", "label": "Plugged in" }, { "value": "off", "label": "Off" }]
+                    value: !(Settings.get("plates.breathe") > 0) ? "off" : Settings.get("plates.breatheOnBattery") === true ? "always" : "plugged"
+                    onChosen: v => { Settings.set("plates.breathe", v === "off" ? 0 : 1); Settings.set("plates.breatheOnBattery", v === "always"); }
+                } }
             SettingRow { icon: "moon"; label: "Plates in dark mode"; hint: "Moonlit keeps the picture's tones; Negative prints it light on night."
                 Choice { options: [{ "value": "moonlit", "label": "Moonlit" }, { "value": "negative", "label": "Negative" }]; value: Settings.get("plates.dark"); onChosen: v => Settings.set("plates.dark", v) } }
         }

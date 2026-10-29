@@ -13,7 +13,10 @@ Item {
     implicitWidth: 28
     implicitHeight: 28
     opacity: enabled ? 1 : 0.3
-    scale: area.pressed ? 0.9 : 1
+    scale: area.pressed || keyDown.running ? 0.9 : 1
+    activeFocusOnTab: true
+    Keys.onPressed: event => KeyNav.press(event, () => { keyDown.restart(); root.clicked(); })
+    Timer { id: keyDown; interval: 110 }
     Behavior on scale { SpringPress {} }
     Behavior on opacity { NumberAnimation { duration: Theme.tQuick } }
 
@@ -32,4 +35,5 @@ Item {
         cursorShape: Qt.PointingHandCursor
         onClicked: root.clicked()
     }
+    FocusRing { radius: Theme.inner(Theme.rS, 2) }
 }

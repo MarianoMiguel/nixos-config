@@ -69,8 +69,16 @@ compile_shaders() {
 # The launcher's emoji list (git-ignored), from Unicode's data in nixpkgs.
 emoji_data() {
   local out="$SHELL_DIR/Modules/Launcher/emoji.json"
+  [ -d "$SHELL_DIR/Modules/Launcher" ] || return 0     # a config without the launcher (the greeter)
   [ -f "$out" ] && [ "$out" -nt "$ROOT/scripts/folio-emoji" ] && return
   "$(tool python3 python3)" -I "$ROOT/scripts/folio-emoji" "$out" >/dev/null || echo "folio-harness: no emoji list (scripts/folio-emoji failed)" >&2
+}
+
+# The interface sounds (git-ignored), synthesized by scripts/folio-sounds.
+sound_files() {
+  local out="$SHELL_DIR/sounds"
+  [ -f "$out/volume.wav" ] && [ "$out/volume.wav" -nt "$ROOT/scripts/folio-sounds" ] && return
+  "$(tool python3 python3)" -I "$ROOT/scripts/folio-sounds" "$out" || echo "folio-harness: no sounds (scripts/folio-sounds failed)" >&2
 }
 
 case "${1:-}" in
@@ -105,6 +113,7 @@ EOF
     envfile
     compile_shaders
     emoji_data
+    sound_files
     module_qmldirs
     export FOLIO_MODULES="${2:-}"
     # Its own process group, so stopping it also stops what its services

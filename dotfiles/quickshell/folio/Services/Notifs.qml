@@ -183,23 +183,15 @@ Singleton {
     }
 
     // ------------------------------------------------------------ sound
-    // The freedesktop chime, or the app's own sound-file; never twice in a
-    // burst; never when the app asks for silence. pw-play goes through Sys.
-    property string chimeFile: ""
-    property real lastChime: 0
+    // Folio's notification sound ("message" for chat apps), or the app's own
+    // sound-file; never when the app asks for silence. Sounds keeps it to one
+    // in a burst, holds it while quiet (a critical one plays through) and
+    // plays it at the effects volume, through Sys.
     function chime(n) {
         const h = n.hints || {};
-        if (h["suppress-sound"] === true || Date.now() - lastChime < 1500) return;
+        if (h["suppress-sound"] === true) return;
         const own = String(h["sound-file"] || "").replace(/^file:\/\//, "");
-        const f = own || chimeFile;
-        if (!f) return;
-        lastChime = Date.now();
-        Sys.run(["pw-play", "--volume", "0.6", f]);
-    }
-    Process {
-        running: true
-        command: ["sh", "-c", "IFS=:; for d in ${XDG_DATA_DIRS:-/usr/local/share:/usr/share}; do f=\"$d/sounds/freedesktop/stereo/message-new-instant.oga\"; [ -f \"$f\" ] && { echo \"$f\"; exit; }; done"]
-        stdout: StdioCollector { onStreamFinished: root.chimeFile = text.trim() }
+        Sounds.play(Sounds.chat(n) ? "message" : "notification", { "urgent": n.urgency === NotificationUrgency.Critical, "file": own });
     }
 
     // ------------------------------------------------------------ the Settings page
@@ -305,7 +297,7 @@ Singleton {
         function state(): string {
             return JSON.stringify({
                 "fixture": !!root.fx, "quiet": root.quiet, "reason": root.quietReason, "scheduled": root.scheduled,
-                "waiting": root.waiting, "recent": root.recent, "live": root.live.length, "chime": root.chimeFile,
+                "waiting": root.waiting, "recent": root.recent, "live": root.live.length,
                 "file": file.path, "prefs": root.view
             });
         }

@@ -90,7 +90,7 @@ Singleton {
     readonly property real rM: 14
     readonly property real rL: 20
     readonly property real rXl: 28
-    readonly property real rWindow: 14
+    readonly property real rWindow: 12          // windows, as niri clips them (the look's 12 px)
     function inner(outer, pad) { return Math.max(4, outer - pad); }
 
     // Type

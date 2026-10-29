@@ -21,6 +21,21 @@ Item {
     implicitHeight: 30
 
     function at(x) { return Math.max(0, Math.min(1, x / Math.max(1, width))); }
+    function nudge(d) { root.moved(Math.max(0, Math.min(1, Math.round((root.value + d) * 100) / 100))); }
+
+    // Keyboard: Left and Right step by 5%, Home and End go to the ends.
+    activeFocusOnTab: true
+    Keys.onPressed: event => {
+        KeyNav.key();
+        if (!KeyNav.plain(event)) return;
+        if (event.key === Qt.Key_Left) nudge(-0.05);
+        else if (event.key === Qt.Key_Right) nudge(0.05);
+        else if (event.key === Qt.Key_Home) root.moved(0);
+        else if (event.key === Qt.Key_End) root.moved(1);
+        else return;
+        event.accepted = true;
+    }
+    FocusRing { radius: root.height / 2 }
 
     ClippingRectangle {
         anchors.fill: parent
@@ -49,6 +64,6 @@ Item {
         preventStealing: true
         onPressed: mouse => { root.dragValue = root.at(mouse.x); root.moved(root.dragValue); }
         onPositionChanged: mouse => { if (pressed) { root.dragValue = root.at(mouse.x); root.moved(root.dragValue); } }
-        onWheel: wheel => root.moved(Math.max(0, Math.min(1, Math.round((root.value + (wheel.angleDelta.y > 0 ? 0.05 : -0.05)) * 100) / 100)))
+        onWheel: wheel => root.nudge(wheel.angleDelta.y > 0 ? 0.05 : -0.05)
     }
 }

@@ -27,6 +27,19 @@ Item {
     clip: true
     Behavior on implicitHeight { SpringPanel {} }
 
+    // Keyboard: Space or Enter on the select opens the list at the current
+    // app; Up and Down move through it, Space or Enter chooses, Escape closes
+    // it and goes back to the select (Settings lets it have Escape).
+    readonly property bool holdsEscape: open
+    Keys.onEscapePressed: { if (root.open) root.toggled(); pick.forceActiveFocus(); }
+    property bool keyOpened: false
+    onOpenChanged: if (open && keyOpened) Qt.callLater(() => {
+        keyOpened = false;
+        const i = Math.max(0, root.candidates.findIndex(c => !!root.current && c.id === root.current.id));
+        const it = cands.itemAt(i);
+        if (it) it.forceActiveFocus();
+    })
+
     Rectangle { visible: !root.first; x: 14; width: root.width - 28; height: 1; color: Theme.rule }
 
     Item {
@@ -54,6 +67,9 @@ Item {
                 Layout.preferredWidth: Math.min(300, pickRow.implicitWidth + 22)
                 Layout.preferredHeight: 34
                 radius: Theme.rS
+                activeFocusOnTab: root.canOpen
+                Keys.onPressed: event => KeyNav.press(event, root.canOpen ? () => { root.keyOpened = !root.open; root.toggled(); } : null)
+                FocusRing { radius: Theme.rS }
                 color: root.readOnly ? "transparent" : (area.containsMouse && root.canOpen ? Theme.wellStrong : Theme.well)
                 border.width: 1
                 border.color: root.open ? Theme.ruleStrong : Theme.rule
@@ -99,6 +115,7 @@ Item {
         opacity: root.open ? 1 : 0
         Behavior on opacity { SpringSoft {} }
         Repeater {
+            id: cands
             model: root.open || root.height > head.height + 1 ? root.candidates : []
             Item {
                 id: cand
@@ -106,11 +123,14 @@ Item {
                 readonly property bool on: !!root.current && root.current.id === modelData.id
                 Layout.fillWidth: true
                 implicitHeight: 42
+                activeFocusOnTab: root.open
+                Keys.onPressed: event => KeyNav.press(event, () => { pick.forceActiveFocus(); root.chosen(cand.modelData.id); })
                 Rectangle {
                     anchors.fill: parent; anchors.leftMargin: 50; anchors.rightMargin: 8; anchors.topMargin: 1; anchors.bottomMargin: 1
                     radius: Theme.inner(Theme.rM, 4)
                     color: candArea.containsMouse ? Theme.wellStrong : "transparent"
                     Behavior on color { ColorAnimation { duration: Theme.tQuick } }
+                    FocusRing { on: cand.activeFocus; inside: true; gap: 0; radius: parent.radius }
                 }
                 RowLayout {
                     anchors.fill: parent; anchors.leftMargin: 58; anchors.rightMargin: 20; spacing: 10

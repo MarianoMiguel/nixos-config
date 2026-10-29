@@ -16,8 +16,12 @@ Item {
     signal chosen()
     Layout.fillWidth: true
     implicitHeight: col.implicitHeight + 18
-    scale: press.pressed ? 0.97 : 1
+    scale: press.pressed || keyDown.running ? 0.97 : 1
     Behavior on scale { SpringPress {} }
+    // Space or Enter chooses it when it has keyboard focus.
+    activeFocusOnTab: true
+    Keys.onPressed: event => KeyNav.press(event, () => { keyDown.restart(); root.chosen(); })
+    Timer { id: keyDown; interval: 110 }
 
     Rectangle {
         anchors.fill: parent; radius: 16; color: Theme.well
@@ -57,4 +61,5 @@ Item {
         }
     }
     MouseArea { id: press; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.chosen() }
+    FocusRing { radius: 16 }
 }

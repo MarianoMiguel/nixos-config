@@ -38,7 +38,7 @@
   --r-m: 14px;
   --r-l: 20px;
   --r-xl: 28px;
-  --r-window: 14px;
+  --r-window: 12px;   /* as niri clips windows (the Folio look) */
 
   /* Type */
   --ui: "Inter", system-ui, sans-serif;

@@ -21,7 +21,7 @@ FocusScope {
     readonly property var fx: lock.fx
     readonly property bool opening: lock.phase === "opening"
     readonly property real share: 0.56
-    readonly property real gentle: 0.6 * Settings.get("plates.breathe")
+    readonly property real gentle: 0.6 * Art.breathe
     property real artFrac: main ? share : 1
     property real slide: 0                  // 0 in place, 1 off the right edge
     property real chrome: 1                 // edge tabs and caption
@@ -142,13 +142,19 @@ FocusScope {
                 }
             }
 
-            // Date, clock, rule and the entry, centred between tab and foot.
+            // Date, clock, rule and the entry, centred between tab and foot;
+            // with notifications waiting, the entry moves up and they take
+            // the room under it.
             Item {
+                id: middle
                 anchors { top: tab.bottom; bottom: foot.top; left: parent.left; right: parent.right; leftMargin: page.pad; rightMargin: page.pad }
+                readonly property real edge: Math.max(20, height * 0.05)
+                readonly property real notesWant: waiting.naturalHeight > 0 ? waiting.naturalHeight + center.gap : 0
                 Column {
                     id: center
                     width: parent.width
-                    anchors.verticalCenter: parent.verticalCenter
+                    y: Math.max(middle.edge, (middle.height - height - middle.notesWant) / 2)
+                    Behavior on y { SpringPanel {} }
                     readonly property real gap: Math.max(22, Math.min(40, root.height * 0.04))
 
                     Cap {
@@ -225,6 +231,13 @@ FocusScope {
                             Cap { visible: root.lock.harness; text: "Try “folio”" }
                         }
                     }
+                }
+                LockNotes {
+                    id: waiting
+                    lock: root.lock
+                    y: center.y + center.height + center.gap
+                    width: Math.min(parent.width, 620)
+                    maxHeight: Math.max(0, middle.height - y - middle.edge * 0.5)
                 }
             }
 
@@ -345,7 +358,7 @@ FocusScope {
         ScriptAction { script: { pageInk.lift(380); root.dissolve(); } }
         ParallelAnimation {
             Ease { target: root; property: "artFrac"; to: 1; duration: 900 * Theme.motion }
-            NumberAnimation { target: plate; property: "breathe"; to: Settings.get("plates.breathe"); duration: 900 * Theme.motion }
+            NumberAnimation { target: plate; property: "breathe"; to: Art.breathe; duration: 900 * Theme.motion }
             NumberAnimation { target: root; property: "chrome"; to: 0; duration: 300 * Theme.motion }
             SequentialAnimation {
                 PauseAnimation { duration: Math.max(1, 240 * Theme.motion) }

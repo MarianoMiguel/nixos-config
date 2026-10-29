@@ -73,8 +73,12 @@ Item {
         property bool lead: false
         sink: false
         stamp: false
+        // Its text runs to its edges, so the keyboard's ring sits outside.
+        ringInside: false
         implicitHeight: lines.implicitHeight
         onClicked: root.feed.activate(item)
+        // Delete dismisses it from the keyboard, as × does.
+        Keys.onDeletePressed: root.feed.dismiss([note.item])
         HoverHandler { id: hover }
         ColumnLayout {
             id: lines
@@ -109,7 +113,8 @@ Item {
                 }
                 SideButton {
                     id: closeBtn
-                    visible: hover.hovered
+                    // For the pointer on hover; for the keyboard while the note has it.
+                    visible: hover.hovered || note.activeFocus || activeFocus
                     kind: "ghost"; round: true; size: 20; iconSize: 12; icon: "close"
                     onClicked: root.feed.dismiss([note.item])
                 }
@@ -184,6 +189,7 @@ Item {
                     implicitHeight: 16
                     sink: false
                     stamp: false
+                    ringInside: false
                     onClicked: root.toggled()
                     RowLayout {
                         anchors.fill: parent

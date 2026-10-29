@@ -43,6 +43,9 @@ Item {
         font.pixelSize: Theme.fsM
         clip: true
         echoMode: root.password && !root.reveal ? TextInput.Password : TextInput.Normal
+        // In the Tab order; its ink edge is its focus mark, for the pointer too.
+        activeFocusOnTab: true
+        Keys.onPressed: KeyNav.key()
         onAccepted: root.accepted(text)
         Keys.onEscapePressed: event => { root.cancelled(); input.focus = false; event.accepted = true; }
         Label {
@@ -57,6 +60,9 @@ Item {
         visible: root.password
         anchors { right: parent.right; rightMargin: 10; verticalCenter: parent.verticalCenter }
         name: "eye"; size: 15; color: root.reveal ? Theme.ink : Theme.text3
+        activeFocusOnTab: root.password
+        Keys.onPressed: event => KeyNav.press(event, () => root.reveal = !root.reveal)
         MouseArea { anchors.fill: parent; anchors.margins: -6; cursorShape: Qt.PointingHandCursor; onClicked: root.reveal = !root.reveal }
+        FocusRing { radius: width / 2 }
     }
 }

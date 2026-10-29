@@ -244,8 +244,8 @@ Scope {
     // Volume, microphone and brightness keys (niri binds call these).
     IpcHandler {
         target: "osd"
-        function volumeUp(): void { Audio.step(0.05); }
-        function volumeDown(): void { Audio.step(-0.05); }
+        function volumeUp(): void { Audio.step(0.05); Sounds.play("volume"); }
+        function volumeDown(): void { Audio.step(-0.05); Sounds.play("volume"); }
         function mute(): void { Audio.toggleMute(); }
         function micMute(): void { Audio.toggleMic(); }
         function brightnessUp(): void { if (Brightness.available) Brightness.step(0.05); }

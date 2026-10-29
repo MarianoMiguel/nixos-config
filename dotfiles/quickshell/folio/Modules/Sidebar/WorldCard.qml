@@ -7,28 +7,34 @@ import qs.Widgets
 // World clock: one row per city (Settings "world.cities", the first is
 // home): name, how far it is from home ("Tomorrow, +14 h", "+8 h 45 m"), a
 // sky strip whose dots thicken at night with the sun at the hour, and the
-// time. QML has no time zones, so `date` reports each zone's UTC offset; it
-// is asked again every ten minutes, which catches daylight-saving changes.
+// time. QML has no time zones, so `date` reports each zone's UTC offset and
+// abbreviation; it is asked again every ten minutes, which catches
+// daylight-saving changes. A city with no name shows its zone's abbreviation
+// (Central Europe reads CET in winter and CEST in summer).
 SideCard {
     id: root
     required property var feed
     readonly property var cities: feed.cities
     readonly property string zones: cities.map(c => c[1]).join(" ")
     property var offsets: ({})         // zone -> minutes east of UTC
+    property var abbrs: ({})           // zone -> "CET", "CEST", "EDT"…
 
     implicitHeight: col.implicitHeight + 12
 
     Process {
         id: probe
-        command: ["sh", "-c", "for z in \"$@\"; do echo \"$z $(TZ=\"$z\" date +%z)\"; done", "sh"].concat(root.cities.map(c => c[1]))
+        command: ["sh", "-c", "for z in \"$@\"; do echo \"$z $(TZ=\"$z\" date '+%z %Z')\"; done", "sh"].concat(root.cities.map(c => c[1]))
         stdout: StdioCollector {
             onStreamFinished: {
-                const o = {};
+                const o = {}, a = {};
                 for (const l of text.split("\n")) {
-                    const m = /^(\S+) ([+-])(\d\d)(\d\d)$/.exec(l.trim());
-                    if (m) o[m[1]] = (m[2] === "-" ? -1 : 1) * (Number(m[3]) * 60 + Number(m[4]));
+                    const m = /^(\S+) ([+-])(\d\d)(\d\d) (\S+)$/.exec(l.trim());
+                    if (!m) continue;
+                    o[m[1]] = (m[2] === "-" ? -1 : 1) * (Number(m[3]) * 60 + Number(m[4]));
+                    a[m[1]] = m[5];
                 }
                 root.offsets = o;
+                root.abbrs = a;
             }
         }
     }
@@ -74,7 +80,7 @@ SideCard {
                         Layout.fillWidth: true
                         Layout.minimumWidth: 0
                         spacing: 0
-                        Label { text: city.modelData[0]; font.weight: Font.DemiBold; Layout.fillWidth: true; Layout.minimumWidth: 0 }
+                        Label { text: city.modelData[0] || root.abbrs[city.modelData[1]] || city.modelData[1]; font.weight: Font.DemiBold; Layout.fillWidth: true; Layout.minimumWidth: 0 }
                         Label { text: root.label(city.index, city.modelData[1]); visible: text !== ""; color: Theme.text2; font.pixelSize: Theme.fsS - 1; Layout.fillWidth: true; Layout.minimumWidth: 0 }
                     }
                     Sky { visible: city.known; hour: city.hour; Layout.preferredWidth: 88; Layout.preferredHeight: 22 }

@@ -17,7 +17,8 @@ Singleton {
         "dock.reserve": true,                   // windows stop above the dock
         "dock.pinned": ["org.gnome.Nautilus", "google-chrome", "com.mitchellh.ghostty", "spotify", "code"],
         "sidebar.side": "right",
-        "world.cities": [["Campana", "America/Argentina/Buenos_Aires"], ["New York", "America/New_York"], ["Los Angeles", "America/Los_Angeles"], ["Sydney", "Australia/Sydney"]],
+        // A city with no name shows its zone's abbreviation (CET, or CEST in summer).
+        "world.cities": [["Campana", "America/Argentina/Buenos_Aires"], ["", "Europe/Berlin"], ["New York", "America/New_York"], ["Los Angeles", "America/Los_Angeles"], ["Sydney", "Australia/Sydney"]],
         "weather.place": ["Campana", -34.16, -58.96],
         "screensaver.after": 300,               // seconds idle; 0 never
         "idle.lockBattery": 300,

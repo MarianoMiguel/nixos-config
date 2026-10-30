@@ -3,6 +3,13 @@
 {
   networking.networkmanager.enable = true;
 
+  # Root certificates the system no longer trusts, by their name in the CA
+  # bundle.
+  security.pki.caCertificateBlacklist = [
+    "Comodo AAA Services root"
+    "emSign ECC Root CA - G3"
+  ];
+
   services.avahi = {
     enable = true;
     nssmdns4 = true;

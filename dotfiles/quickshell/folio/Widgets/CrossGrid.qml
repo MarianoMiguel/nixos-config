@@ -94,19 +94,23 @@ Item {
     }
 
     // The caret: a dot breathing in the centre cell while nothing is typed.
+    // Its loops read their own item's visibility by id: inside an animation
+    // `parent` is the grid's parent, so they ran while the caret was hidden
+    // (and Lumen's caret in Folio, Folio's in Lumen), redrawing every frame.
     Rectangle {
+        id: dotCaret
         x: 2.5 * root.cell - 3.5
         y: 2.5 * root.cell - 3.5
         width: 7; height: 7; radius: 3.5
         color: Theme.ink
         visible: Theme.prints && root.caret && root.count === 0 && root.floodStep < 0
         SequentialAnimation on scale {
-            running: parent.visible; loops: Animation.Infinite
+            running: dotCaret.visible; loops: Animation.Infinite
             NumberAnimation { to: 0.4; duration: 600; easing.type: Easing.InOutCubic }
             NumberAnimation { to: 1; duration: 600; easing.type: Easing.InOutCubic }
         }
         SequentialAnimation on opacity {
-            running: parent.visible; loops: Animation.Infinite
+            running: dotCaret.visible; loops: Animation.Infinite
             NumberAnimation { to: 0.35; duration: 600; easing.type: Easing.InOutCubic }
             NumberAnimation { to: 1; duration: 600; easing.type: Easing.InOutCubic }
         }
@@ -144,12 +148,13 @@ Item {
         }
         // The caret, until something is typed.
         Rectangle {
+            id: lineCaret
             x: 20; anchors.verticalCenter: parent.verticalCenter
             width: 2; height: parent.height * 0.42; radius: 1
             color: Theme.ink
             visible: root.caret && root.count === 0 && root.floodStep < 0
             SequentialAnimation on opacity {
-                running: parent.visible; loops: Animation.Infinite
+                running: lineCaret.visible; loops: Animation.Infinite
                 NumberAnimation { to: 0; duration: 530; easing.type: Easing.InOutCubic }
                 NumberAnimation { to: 1; duration: 530; easing.type: Easing.InOutCubic }
             }

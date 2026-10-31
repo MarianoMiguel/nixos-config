@@ -1,15 +1,23 @@
 import QtQuick
 import QtQuick.Effects
+import QtQuick.Window
 import qs.Common
+import qs.Services
 
 // One line that glides back and forth only when it overflows, at reading
-// pace, pausing at each end, with faded edges. Otherwise plain text.
+// pace, pausing at each end, with faded edges. Otherwise plain text. It
+// glides only where it can be seen: in a window that is showing (a closed
+// sidebar keeps its items "visible") and not while nobody could see it
+// (desktop text under the lock; the lock's own sets unseen to
+// Unseen.screensOff). Stopped, it rests at its start.
 Item {
     id: root
     property alias text: label.text
     property alias font: label.font
     property alias color: label.color
+    property bool unseen: Unseen.desktop
     readonly property real overflow: Math.max(0, label.implicitWidth - width)
+    readonly property bool seen: visible && Window.visibility !== Window.Hidden && !unseen
     implicitHeight: label.implicitHeight
     clip: true
 
@@ -29,7 +37,7 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             x: 0
             SequentialAnimation on x {
-                running: root.overflow > 1 && root.visible
+                running: root.overflow > 1 && root.seen
                 loops: Animation.Infinite
                 PauseAnimation { duration: 1800 }
                 NumberAnimation { to: -root.overflow - 8; duration: Math.max(2500, (root.overflow + 8) * 36); easing.type: Easing.InOutSine }

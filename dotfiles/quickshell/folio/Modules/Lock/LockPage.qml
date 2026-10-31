@@ -11,7 +11,9 @@ import qs.Widgets
 // tab, the date and clock, the cross grid and the status foot; the eye on
 // the spine and power on the screen's edge. Other screens: the plate alone.
 // Unlocking: every cell floods, the page's print lifts, the paper slides
-// aside and the art opens out into the desktop's own plate.
+// aside and the art opens out into the desktop's own plate. A locked screen
+// shows this page, so it keeps moving under the lock and holds still only
+// while the screens are off (Unseen.screensOff).
 FocusScope {
     id: root
     required property var lock
@@ -59,6 +61,7 @@ FocusScope {
         width: root.width * root.artFrac
         portrait: root.main
         breathe: root.gentle
+        unseen: Unseen.screensOff
     }
     // The desktop's composition of the same plate, dissolved in as the art
     // opens out, so the lock hands over to the wallpaper without a seam.
@@ -78,7 +81,7 @@ FocusScope {
         anchors.bottomMargin: 18
         width: Math.min(creditText.implicitWidth + 22, root.width * root.share - 40)
         height: creditText.implicitHeight + 14
-        Frost { anchors.fill: parent; source: plate; radius: 10 }
+        Frost { anchors.fill: parent; source: plate; radius: 10; unseen: Unseen.screensOff }
         Sheet { anchors.fill: parent; radius: 10; color: Theme.sheetStrong }
         Cap {
             id: creditText
@@ -200,6 +203,8 @@ FocusScope {
                             count: root.lock.shown
                             text: root.lock.buffer
                             peek: root.lock.peek
+                            // The caret breathes every frame; dark screens need none.
+                            caret: !Unseen.screensOff
                         }
                         Column {
                             id: how
@@ -215,10 +220,12 @@ FocusScope {
                                 visible: root.fingerprint
                                 spacing: 10
                                 Icon {
+                                    id: fingerprintIcon
                                     name: "fingerprint"; size: 20; color: Theme.ink
                                     anchors.verticalCenter: parent.verticalCenter
+                                    // Only on the main screen's page, and not while the screens are off.
                                     SequentialAnimation on opacity {
-                                        running: root.fingerprint && root.visible; loops: Animation.Infinite
+                                        running: fingerprintIcon.visible && !Unseen.screensOff; loops: Animation.Infinite
                                         NumberAnimation { to: 0.35; duration: 1300; easing.type: Easing.InOutCubic }
                                         NumberAnimation { to: 1; duration: 1300; easing.type: Easing.InOutCubic }
                                     }
@@ -302,6 +309,7 @@ FocusScope {
                                 text: root.songTitle
                                 font.pixelSize: Theme.fsS
                                 font.weight: Font.DemiBold
+                                unseen: Unseen.screensOff
                             }
                             Label {
                                 Layout.fillWidth: true

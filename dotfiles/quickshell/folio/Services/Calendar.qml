@@ -4,7 +4,10 @@ import Quickshell
 import Quickshell.Io
 
 // Events from khal, when it is configured with at least one calendar;
-// otherwise connected stays false and events empty. Refreshes every 10 min.
+// otherwise connected stays false and events empty. Read once at start, then
+// only while the sidebar (which shows them) is open and the screen unlocked:
+// on opening when the last read is 10 min old, and every 10 min while open
+// (khal is a Python program: each read starts several processes).
 // khal prints dates in its configured format, so the format is learned from
 // `khal printformats` (it prints 2013-12-21 in each one).
 // events: [{date: "YYYY-MM-DD", start: "15:00", end: "15:45", allDay, title, location, at (ms)}]
@@ -16,7 +19,11 @@ Singleton {
     property var parser: null       // {re, order, year2} from the long date format
     property string sample: ""
 
-    function refresh() { if (!probe.running && !list.running) probe.running = true; }
+    property real asked: 0
+    function refresh() { if (!probe.running && !list.running) { asked = Date.now(); probe.running = true; } }
+    readonly property bool watched: Shell.sidebarOpen && !Session.locked
+    onWatchedChanged: if (watched && Date.now() - asked >= 600000) refresh()
+    Component.onCompleted: refresh()
     function ymd(d) { return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
     function on(date) { return events.filter(e => e.date === date); }
 
@@ -89,5 +96,5 @@ Singleton {
             }
         }
     }
-    Timer { interval: 600000; running: true; repeat: true; triggeredOnStart: true; onTriggered: root.refresh() }
+    Timer { interval: 600000; running: root.watched; repeat: true; onTriggered: root.refresh() }
 }

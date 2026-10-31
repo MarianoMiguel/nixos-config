@@ -1,21 +1,26 @@
 import QtQuick
 import QtQuick.Effects
 import qs.Common
+import qs.Services
 
 // The blur niri gives a sheet, for a sheet drawn over a plate inside the same
 // window (the compositor only frosts what is behind a window). Put it under
-// the Sheet with the same geometry; source is the plate it sits on.
+// the Sheet with the same geometry; source is the plate it sits on. It
+// follows the plate live, except while nobody could see it (desktop sheets
+// under the lock; the lock's own sets unseen to Unseen.screensOff), when it
+// keeps its last frame.
 Item {
     id: root
     property Item source
     property real radius: Theme.rL
     property real amount: 1
+    property bool unseen: Unseen.desktop
 
     ShaderEffectSource {
         id: grab
         anchors.fill: parent
         visible: false
-        live: true
+        live: !root.unseen
         sourceItem: root.source
         // Depends on x and y so a moving sheet keeps sampling under itself.
         sourceRect: {

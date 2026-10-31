@@ -159,10 +159,16 @@ ShaderEffect {
         onFinished: { root.front = !root.front; root.mixAB = 0; }
     }
 
-    // The moving dither changes nine times a second; render only then.
+    // The moving dither changes nine times a second; render only then, and
+    // only where it can be seen: in a window that is showing (a hidden one,
+    // or one never shown, keeps its items "visible"), and not while nobody
+    // could see it. Desktop plates hold still under the lock; the lock's own
+    // sets unseen to Unseen.screensOff.
+    property bool unseen: Unseen.desktop
+    readonly property bool seen: visible && Window.visibility !== Window.Hidden && !unseen
     Timer {
         interval: 111; repeat: true
-        running: root.breathe > 0 && root.visible
+        running: root.breathe > 0 && root.seen
         onTriggered: root.time += 0.111
     }
 

@@ -190,9 +190,27 @@ SettingsPage {
     // Wallpaper
     Label { text: "Wallpaper"; font.weight: Font.DemiBold; font.pixelSize: 15; Layout.topMargin: 32; Component.onCompleted: page.mark("wallpaper", this) }
     Label {
-        text: Theme.lumen ? "Lumen draws its sky from your color: soft light by day, stars at night, on every screen and behind the lock."
+        text: Theme.lumen ? "Lumen lights its wallpaper with your color, on every screen, behind the lock and on the disk-unlock screen."
                           : "A collection is a theme bundle: its plates and its lock art. Plates print in the current ink."
         color: Theme.text2; font.pixelSize: Theme.fsS; Layout.fillWidth: true; Layout.bottomMargin: 10; wrapMode: Text.WordWrap; maximumLineCount: 2
+    }
+    // Lumen's skies, each previewed in the current color and mode.
+    RowLayout {
+        visible: Theme.lumen
+        Layout.fillWidth: true; spacing: 10
+        Repeater {
+            model: [{ "id": "prism", "t": "Prism", "s": "Light through fluted glass" }, { "id": "glow", "t": "Glow", "s": "One soft luminous shape" }, { "id": "haze", "t": "Haze", "s": "A full-bleed gradient" }]
+            OptionCard {
+                id: scard
+                required property var modelData
+                title: modelData.t; subtitle: modelData.s
+                previewRatio: 16 / 10
+                selected: (Theme.selection.sky || "prism") === modelData.id
+                busy: selected && Theming.busy && "sky" in Theme.pending
+                onChosen: if (!selected) Theming.set({ "sky": modelData.id }, modelData.t)
+                Plate { anchors.fill: parent; forceTheme: "lumen"; forceSky: scard.modelData.id; developOnLoad: false }
+            }
+        }
     }
     GridLayout {
         visible: !Theme.lumen

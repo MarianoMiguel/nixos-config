@@ -54,7 +54,8 @@ PanelWindow {
         id: paper
         anchors.fill: parent
         color: Theme.sheet
-        Rectangle { anchors { left: parent.left; right: parent.right; bottom: parent.bottom } height: 1; color: Theme.rule }
+        // Folio rules the bar off like a page's running head; Lumen's glass ends clean.
+        Rectangle { visible: Theme.prints; anchors { left: parent.left; right: parent.right; bottom: parent.bottom } height: 1; color: Theme.rule }
     }
 
     // Left: mark, workspaces, app, title. Never wider than its half.

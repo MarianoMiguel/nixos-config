@@ -40,7 +40,10 @@ def validate(raw):
         result['randomLogin']=raw['randomLogin']
     # The theme, and each theme's color: a named one, or "custom" with the
     # #rrggbb it keeps (remembered while a named one is chosen).
-    result.setdefault('theme','folio');result.setdefault('accent',looks.DEFAULT['lumen'])
+    result.setdefault('theme','folio');result.setdefault('accent',looks.DEFAULT['lumen']);result.setdefault('sky',looks.SKIES[0])
+    if 'sky' in raw:
+        if raw['sky'] not in looks.SKIES: raise ValueError('Unknown sky')
+        result['sky']=raw['sky']
     if 'theme' in raw:
         if raw['theme'] not in looks.THEMES: raise ValueError('Unknown theme')
         result['theme']=raw['theme']
@@ -194,7 +197,7 @@ def publish(input_path,output):
 def main():
     p=argparse.ArgumentParser(description=__doc__);sub=p.add_subparsers(dest='command',required=True)
     sub.add_parser('status');sub.add_parser('catalog')
-    s=sub.add_parser('set');s.add_argument('--collection',choices=[c['id'] for c in catalog()['collections']]);s.add_argument('--mode',choices=['light','dark']);s.add_argument('--theme',choices=looks.THEMES);s.add_argument('--ink',help='azure, cobalt, slate, custom or #rrggbb');s.add_argument('--accent',help="one of Lumen's colors, custom or #rrggbb");s.add_argument('--art',type=int);s.add_argument('--force',action='store_true')
+    s=sub.add_parser('set');s.add_argument('--collection',choices=[c['id'] for c in catalog()['collections']]);s.add_argument('--mode',choices=['light','dark']);s.add_argument('--theme',choices=looks.THEMES);s.add_argument('--sky',choices=looks.SKIES);s.add_argument('--ink',help='azure, cobalt, slate, custom or #rrggbb');s.add_argument('--accent',help="one of Lumen's colors, custom or #rrggbb");s.add_argument('--art',type=int);s.add_argument('--force',action='store_true')
     sub.add_parser('next')
     sub.add_parser('restore')
     sub.add_parser('refresh-wallpapers', help='Refresh per-display crops after a display change')
@@ -209,7 +212,7 @@ def main():
         previous=read_selection(); selection=dict(previous)
         if args.command=='refresh-wallpapers': refresh_wallpapers(selection);return
         if args.command=='set':
-            for key in ['collection','mode','art','theme']:
+            for key in ['collection','mode','art','theme','sky']:
                 if getattr(args,key) is not None: selection[key]=getattr(args,key)
             # A #rrggbb becomes the theme's custom color; validate() checks it.
             for key,custom in [('ink','customInk'),('accent','customAccent')]:

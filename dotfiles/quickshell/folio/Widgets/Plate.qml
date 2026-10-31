@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Window
+import Quickshell
 import qs.Common
 import qs.Services
 import "../Common/Looks.js" as Looks
@@ -7,8 +8,8 @@ import "../Common/Looks.js" as Looks
 // The theme's picture. Folio: a plate printed live by shaders/plate.frag. It
 // develops the first time, dissolves dot by dot to a new plate, bleeds new
 // colors in from a point, keeps its dither moving (breathe) and prints
-// moonlit in dark mode. Lumen: a nebula in the hues around its accent
-// (shaders/nebula.frag), still, with stars at night.
+// moonlit in dark mode. Lumen: a sky of light in its accent's hues
+// (shaders/lumen.frag): prism, glow or haze, still.
 ShaderEffect {
     id: root
 
@@ -49,36 +50,37 @@ ShaderEffect {
 
     property string forceTheme: ""          // show another theme's picture (the theme cards)
     readonly property bool nebula: (forceTheme || Theme.name) === "lumen"
-    fragmentShader: Qt.resolvedUrl(nebula ? "../shaders/nebula.frag.qsb" : "../shaders/plate.frag.qsb")
+    fragmentShader: Qt.resolvedUrl(nebula ? "../shaders/lumen.frag.qsb" : "../shaders/plate.frag.qsb")
 
-    // Lumen's sky: a gradient, four glows in hues around the accent (the
-    // accent as this mode shows it), stars at night.
+    // Lumen's sky (shaders/lumen.frag): prism, glow or haze (the look's
+    // "sky", so the boot screen draws the same), lit in the accent's hue and three neighbours that lean
+    // toward violet and pink, as the accent shows in this mode.
+    property string forceSky: ""            // a preview of one style
     readonly property var sky: {
-        const mode = root.forceMode || Theme.mode;
+        const mode = root.forceMode || Theme.mode, night = mode === "dark";
+        const style = ["prism", "glow", "haze"].indexOf(root.forceSky || Quickshell.env("LUMEN_SKY") || Theme.selection.sky || "prism");
         const o = Looks.oklch(Looks.derive("lumen", mode, Theme.pickOf("lumen"))[0]);
-        const c = Math.max(0.06, Math.min(o[1], 0.16)), h = o[2], night = mode === "dark";
-        const tone = dh => night ? Looks.lch(0.42, c, h + dh) : Looks.lch(0.87, Math.min(c, 0.11), h + dh);
-        const a = (hex, alpha) => { const q = Qt.color(hex); return Qt.rgba(q.r, q.g, q.b, alpha); };
-        return { "sky0": night ? "#0a0b12" : "#eef0f6", "sky1": night ? "#141420" : "#f8f7fb",
-                 // By day the glows stay near the accent's hue; a far one turns muddy in pastel.
-                 "glows": night ? [a(tone(0), 0.9), a(tone(46), 0.75), a(tone(-52), 0.7), a(tone(90), 0.45)]
-                                : [a(tone(0), 0.85), a(tone(40), 0.7), a(tone(-48), 0.65), a(tone(24), 0.4)],
-                 "stars": night ? 1 : 0 };
+        const h = o[2], c = Math.max(0.12, Math.min(o[1] * 1.3, 0.24));
+        // Spread toward violet and pink: up the wheel from cool hues, down from warm ones.
+        const s = (h > 200 || h < 20) ? 1 : -1;
+        const haze = style === 2;
+        const L = night ? (haze ? [0.55, 0.5, 0.6, 0.45] : [0.52, 0.5, 0.56, 0.62]) : (haze ? [0.8, 0.78, 0.84, 0.76] : [0.62, 0.6, 0.66, 0.72]);
+        const tone = i => Looks.lch(L[i], c * (haze && !night ? 0.75 : 1), h + s * [0, 40, 80, 120][i]);
+        return { "field": night ? "#0b0b0e" : "#eff0f3", "lights": [tone(0), tone(1), tone(2), tone(3)],
+                 "style": Math.max(0, style), "night": night ? 1 : 0 };
     }
-    property color sky0: sky.sky0
-    property color sky1: sky.sky1
-    property color glow0: sky.glows[0]
-    property color glow1: sky.glows[1]
-    property color glow2: sky.glows[2]
-    property color glow3: sky.glows[3]
-    property real stars: sky.stars
-    Behavior on sky0 { ColorAnimation { duration: Theme.tPage; easing.type: Easing.OutCubic } }
-    Behavior on sky1 { ColorAnimation { duration: Theme.tPage; easing.type: Easing.OutCubic } }
-    Behavior on glow0 { ColorAnimation { duration: Theme.tPage; easing.type: Easing.OutCubic } }
-    Behavior on glow1 { ColorAnimation { duration: Theme.tPage; easing.type: Easing.OutCubic } }
-    Behavior on glow2 { ColorAnimation { duration: Theme.tPage; easing.type: Easing.OutCubic } }
-    Behavior on glow3 { ColorAnimation { duration: Theme.tPage; easing.type: Easing.OutCubic } }
-    Behavior on stars { NumberAnimation { duration: Theme.tPage } }
+    property color field: sky.field
+    property color light0: sky.lights[0]
+    property color light1: sky.lights[1]
+    property color light2: sky.lights[2]
+    property color light3: sky.lights[3]
+    property real style: sky.style
+    property real night: sky.night
+    Behavior on field { ColorAnimation { duration: Theme.tPage; easing.type: Easing.OutCubic } }
+    Behavior on light0 { ColorAnimation { duration: Theme.tPage; easing.type: Easing.OutCubic } }
+    Behavior on light1 { ColorAnimation { duration: Theme.tPage; easing.type: Easing.OutCubic } }
+    Behavior on light2 { ColorAnimation { duration: Theme.tPage; easing.type: Easing.OutCubic } }
+    Behavior on light3 { ColorAnimation { duration: Theme.tPage; easing.type: Easing.OutCubic } }
     blending: false
 
     // Two images swap roles, so a dissolve never reloads a texture mid-way.

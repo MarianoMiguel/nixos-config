@@ -29,7 +29,7 @@ Singleton {
     }
     function preview(patch) { Theme.pending = Object.assign({}, Theme.pending, normal(patch)); }
 
-    // patch: { theme, mode, ink, customInk, accent, customAccent, collection, art }
+    // patch: { theme, mode, ink, customInk, accent, customAccent, sky, collection, art }
     function set(patch, label) {
         patch = normal(patch);
         Theme.pending = Object.assign({}, Theme.pending, patch);
@@ -39,7 +39,7 @@ Singleton {
     }
     function args(patch) {
         const a = ["azure-folio", "set"];
-        for (const k of ["theme", "mode", "collection", "art"]) if (k in patch) a.push("--" + k, String(patch[k]));
+        for (const k of ["theme", "mode", "collection", "art", "sky"]) if (k in patch) a.push("--" + k, String(patch[k]));
         if ("ink" in patch) a.push("--ink", patch.ink === "custom" && patch.customInk ? patch.customInk : patch.ink);
         if ("accent" in patch) a.push("--accent", patch.accent === "custom" && patch.customAccent ? patch.customAccent : patch.accent);
         return a;

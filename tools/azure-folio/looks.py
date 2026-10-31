@@ -28,6 +28,8 @@ ACCENTS = {'blue': '#0a7aff', 'purple': '#a050e8', 'pink': '#ef4f97', 'red': '#f
            'yellow': '#ffc800', 'green': '#30c35a', 'teal': '#2bb3c8', 'graphite': '#8a8a90'}
 NAMED = {'folio': INKS, 'lumen': ACCENTS}
 DEFAULT = {'folio': 'azure', 'lumen': 'blue'}
+# Lumen's wallpapers (shaders/lumen.frag; the boot screen draws the same).
+SKIES = ('prism', 'glow', 'haze')
 # The window, the terminal and Chrome's frame.
 BACKGROUND = {'folio': {'light': '#f7f4e9', 'dark': '#101d33'}, 'lumen': {'light': '#ffffff', 'dark': '#141416'}}
 # Text on a Lumen accent when white would not read.

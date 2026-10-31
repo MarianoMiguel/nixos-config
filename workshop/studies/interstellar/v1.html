@@ -1,0 +1,577 @@
+<!doctype html>
+<html lang="en" data-mode="dark" data-ink="ca" data-theme="folio">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Interstellar Themes</title>
+<link rel="stylesheet" href="../_kit/folio.css">
+<style>
+  /* Interstellar is the system; a theme is everything it looks like. Both
+     themes fill the same semantic slots, so one screen renders in either. */
+  @property --acc { syntax: "<color>"; inherits: true; initial-value: #214c94; }
+  [data-theme="folio"] {
+    --bg: var(--paper); --win: var(--paper); --side: var(--wash); --tx: var(--text); --tx2: var(--text-2); --tx3: var(--text-3);
+    --sep: var(--rule); --sep2: var(--rule-strong); --fill: var(--well); --fill2: var(--well-strong);
+    --glass: var(--sheet); --glass-solid: var(--sheet-strong); --acc: var(--ink); --on-acc: var(--paper);
+    --island: color-mix(in oklab, #0b1424 54%, var(--ink-deep, #214c94)); --island-tx: #eef2f8;
+    --rw: 12px; --rc: 10px; --rp: 20px; --rd: 24px;
+    --lab: 500 10.5px/1.3 var(--mono); --lab-track: 0.12em; --lab-case: uppercase;
+    --title: 600 22px/1.15 var(--ui); --title-track: 0; --frame: var(--edge); --lift: var(--shadow-l);
+  }
+  [data-theme="lumen"] {
+    --island: #000; --island-tx: #f5f5f7;
+    --rw: 12px; --rc: 7px; --rp: 14px; --rd: 20px;
+    --lab: 600 11.5px/1.3 var(--ui); --lab-track: 0; --lab-case: none;
+    --title: 700 22px/1.15 var(--ui); --title-track: -0.015em;
+  }
+  [data-theme="lumen"][data-mode="light"] {
+    --bg: #f5f5f7; --win: #ffffff; --side: #f2f2f5; --tx: #1d1d1f; --tx2: #6e6e73; --tx3: #a1a1a6;
+    --sep: rgba(0, 0, 0, 0.1); --sep2: rgba(0, 0, 0, 0.18); --fill: rgba(0, 0, 0, 0.05); --fill2: rgba(0, 0, 0, 0.09);
+    --glass: rgba(246, 246, 248, 0.72); --glass-solid: rgba(250, 250, 252, 0.94);
+    --frame: inset 0 0 0 0.5px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+    --lift: 0 0 0 0.5px rgba(0, 0, 0, 0.08), 0 12px 32px rgba(0, 0, 0, 0.16), 0 2px 6px rgba(0, 0, 0, 0.08);
+    color-scheme: light;
+  }
+  [data-theme="lumen"][data-mode="dark"] {
+    --bg: #161618; --win: #1e1e20; --side: #252527; --tx: #f5f5f7; --tx2: #a1a1a6; --tx3: #6e6e73;
+    --sep: rgba(255, 255, 255, 0.1); --sep2: rgba(255, 255, 255, 0.18); --fill: rgba(255, 255, 255, 0.07); --fill2: rgba(255, 255, 255, 0.12);
+    --glass: rgba(38, 38, 40, 0.66); --glass-solid: rgba(44, 44, 46, 0.94);
+    --frame: inset 0 0 0 0.5px rgba(255, 255, 255, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    --lift: 0 0 0 0.5px rgba(0, 0, 0, 0.6), 0 14px 36px rgba(0, 0, 0, 0.5);
+    color-scheme: dark;
+  }
+  [data-theme] { transition: --acc var(--t-page) var(--ease); }
+
+  body { background: var(--bg); color: var(--tx); padding: 72px 24px 120px; transition: background-color var(--t-page) var(--ease), color var(--t-page) var(--ease); }
+  main { max-width: 1180px; margin: 0 auto; display: grid; gap: 72px; }
+  .lab { font: var(--lab); letter-spacing: var(--lab-track); text-transform: var(--lab-case); color: var(--tx3); }
+  h1 { font: 600 44px/1 var(--ui); letter-spacing: -0.02em; margin: 6px 0 14px; display: flex; align-items: center; gap: 14px; }
+  h1 svg { width: 44px; height: 44px; color: var(--acc); }
+  h2 { font: 600 22px/1.2 var(--ui); letter-spacing: -0.01em; margin: 6px 0 8px; }
+  p.lede { color: var(--tx2); font-size: 16px; max-width: 760px; margin: 0; }
+  section > p { color: var(--tx2); max-width: 760px; margin: 0 0 22px; }
+
+  /* A 1280 × 800 desktop, scaled to its box. */
+  .fit { position: relative; aspect-ratio: 16 / 10; border-radius: 14px; overflow: hidden; box-shadow: 0 0 0 1px var(--sep), 0 20px 50px rgba(0, 0, 0, 0.18); }
+  .screen { position: absolute; left: 0; top: 0; width: 1280px; height: 800px; transform-origin: 0 0; transform: scale(var(--k, 1));
+            overflow: hidden; background: var(--bg); color: var(--tx); font: 400 13.5px/1.4 var(--ui); }
+  .screen canvas.wall { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .screen[data-theme="folio"] > canvas.nebula, .screen[data-theme="lumen"] > canvas.plate { display: none; }
+  .glass { background: var(--glass); backdrop-filter: blur(30px) saturate(1.6); -webkit-backdrop-filter: blur(30px) saturate(1.6); box-shadow: var(--frame), var(--lift); }
+
+  .bar { position: absolute; left: 0; right: 0; top: 0; height: 34px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 0 14px;
+         box-shadow: inset 0 -1px 0 var(--sep); border-radius: 0; }
+  .bar .l, .bar .r { display: flex; align-items: center; gap: 14px; min-width: 0; }
+  .bar .r { justify-content: flex-end; gap: 12px; color: var(--tx); }
+  .bar .r .i { width: 16px; height: 16px; }
+  .mark { width: 20px; height: 20px; color: var(--tx); }
+  .ws { display: flex; gap: 5px; }
+  .ws b { width: 7px; height: 7px; border-radius: 4px; background: var(--fill2); }
+  .ws b.on { width: 18px; background: var(--acc); }
+  .bar .app { font-weight: 600; }
+  .island { height: 26px; padding: 0 12px 0 10px; border-radius: 13px; background: var(--island); color: var(--island-tx); display: flex; align-items: center; gap: 9px; font: 600 12.5px/1 var(--ui); }
+  .eq { display: flex; gap: 2px; align-items: flex-end; height: 11px; }
+  .eq i { width: 2.5px; border-radius: 1px; background: color-mix(in oklab, var(--acc) 60%, #fff); animation: eq 900ms ease-in-out infinite alternate; }
+  .eq i:nth-child(2) { animation-delay: -300ms; } .eq i:nth-child(3) { animation-delay: -600ms; }
+  @keyframes eq { from { height: 3px; } to { height: 11px; } }
+  .num { font-variant-numeric: tabular-nums; }
+
+  .win { position: absolute; border-radius: var(--rw); background: var(--win); box-shadow: var(--lift), var(--frame); overflow: hidden; }
+  .settings { left: 90px; top: 74px; width: 800px; height: 590px; display: grid; grid-template-columns: 210px minmax(0, 1fr); }
+  .side { background: var(--side); box-shadow: inset -1px 0 0 var(--sep); padding: 44px 10px 10px; display: flex; flex-direction: column; gap: 2px; }
+  .lights { position: absolute; left: 14px; top: 14px; display: flex; gap: 8px; }
+  .lights i { width: 12px; height: 12px; border-radius: 6px; background: var(--fill2); }
+  .search { height: 30px; border-radius: var(--rc); background: var(--fill); display: flex; align-items: center; gap: 7px; padding: 0 9px; color: var(--tx3); margin-bottom: 8px; }
+  .search .i { width: 15px; height: 15px; }
+  .nav { height: 30px; border-radius: var(--rc); display: flex; align-items: center; gap: 9px; padding: 0 9px; color: var(--tx); }
+  .nav .i { width: 16px; height: 16px; color: var(--tx2); }
+  .nav.on { background: var(--acc); color: var(--on-acc); }
+  .nav.on .i { color: var(--on-acc); }
+  .content { padding: 22px 30px; overflow: hidden; display: flex; flex-direction: column; gap: 10px; }
+  .content h3 { font: var(--title); letter-spacing: var(--title-track); margin: 4px 0 6px; }
+  .content .lab { margin-top: 8px; }
+  .themes { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .tcard { border-radius: var(--rp); padding: 8px; background: var(--fill); box-shadow: inset 0 0 0 1px var(--sep); cursor: pointer; text-align: left; border: 0; color: inherit; font: inherit; }
+  .tcard[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--acc); }
+  .tcard .pv { height: 74px; border-radius: calc(var(--rp) - 8px); overflow: hidden; position: relative; }
+  .tcard b { display: block; margin: 8px 4px 0; font-weight: 600; }
+  .tcard span { display: block; margin: 1px 4px 2px; color: var(--tx2); font-size: 12px; }
+  .pv.folio { background: #f7f4e9; }
+  .pv.folio::before { content: ""; position: absolute; inset: 0 0 0 46%; background-image: radial-gradient(#214c94 0.9px, transparent 1.1px); background-size: 3px 3px; }
+  .pv.folio::after { content: "Aa"; position: absolute; left: 12px; bottom: 8px; font: 400 34px/1 var(--hero); color: #214c94; }
+  .pv.lumen { background: linear-gradient(135deg, #e6e8f0, #c9d3ea 55%, #d8c9ea); }
+  .pv.lumen::before { content: ""; position: absolute; left: 10px; right: 10px; top: 10px; height: 12px; border-radius: 4px; background: rgba(255, 255, 255, 0.7); }
+  .pv.lumen::after { content: "Aa"; position: absolute; left: 12px; bottom: 8px; font: 700 30px/1 var(--ui); letter-spacing: -0.03em; color: #1d1d1f; }
+  .segm { display: inline-flex; padding: 2px; gap: 2px; border-radius: var(--rc); background: var(--fill); box-shadow: inset 0 0 0 1px var(--sep); align-self: flex-start; }
+  .segm button { border: 0; background: none; padding: 5px 16px; border-radius: calc(var(--rc) - 2px); cursor: pointer; color: var(--tx2); }
+  .segm button[aria-pressed="true"] { background: var(--glass-solid); color: var(--tx); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), inset 0 0 0 0.5px var(--sep); }
+  .swatches { display: flex; gap: 9px; flex-wrap: wrap; align-items: center; }
+  .sw { width: 24px; height: 24px; border-radius: 12px; border: 0; padding: 0; cursor: pointer; background: var(--c); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12); position: relative; }
+  .sw[aria-pressed="true"]::after { content: ""; position: absolute; inset: -4px; border-radius: 50%; box-shadow: 0 0 0 2px var(--c); }
+  .sw.custom { background: conic-gradient(from 0deg, #f2453a, #ffc800, #30c35a, #2bb3c8, #0a7aff, #a050e8, #ef4f97, #f2453a); }
+  .sw.custom.set { background: var(--c); }
+  .rows { border-radius: var(--rp); background: var(--fill); box-shadow: inset 0 0 0 1px var(--sep); margin-top: 6px; }
+  .rows .r { display: flex; align-items: center; gap: 12px; min-height: 46px; padding: 0 14px; }
+  .rows .r + .r { box-shadow: inset 0 1px 0 var(--sep); }
+  .rows .r .i { color: var(--tx2); }
+  .rows .r .g { flex: 1; min-width: 0; }
+  .rows .r small { display: block; color: var(--tx2); font-size: 12px; }
+  .tog { width: 38px; height: 22px; border-radius: 11px; background: var(--acc); position: relative; flex: none; }
+  .tog::after { content: ""; position: absolute; right: 2px; top: 2px; width: 18px; height: 18px; border-radius: 9px; background: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3); }
+  .tog.off { background: var(--fill2); }
+  .tog.off::after { right: auto; left: 2px; }
+  .sl { width: 150px; height: 4px; border-radius: 2px; background: linear-gradient(90deg, var(--acc) 40%, var(--fill2) 40%); position: relative; }
+  .sl::after { content: ""; position: absolute; left: 40%; top: 50%; width: 16px; height: 16px; margin: -8px 0 0 -8px; border-radius: 8px; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35); }
+  .pill { font-size: 12px; padding: 3px 9px; border-radius: 10px; background: var(--fill2); color: var(--tx2); white-space: nowrap; }
+
+  .term { left: 904px; top: 292px; width: 360px; height: 290px; }
+  .term .tb { height: 34px; display: flex; align-items: center; justify-content: center; color: var(--tx2); font-size: 12px; box-shadow: inset 0 -1px 0 var(--sep); position: relative; }
+  .term pre { margin: 0; padding: 12px 16px; font: 400 12px/1.6 var(--mono); color: var(--tx); white-space: pre-wrap; }
+  .term .p { color: var(--acc); font-weight: 500; }
+  .term .d { color: var(--tx3); }
+
+  .toast { position: absolute; right: 14px; top: 46px; width: 340px; border-radius: var(--rp); padding: 12px 14px; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 2px 12px; align-items: center; }
+  .toast .ic { grid-row: span 2; width: 36px; height: 36px; border-radius: 10px; background: var(--acc); color: var(--on-acc); display: grid; place-items: center; }
+  .toast b { font-weight: 600; }
+  .toast small { color: var(--tx2); font-size: 12px; }
+  .toast .t { color: var(--tx3); font-size: 11.5px; }
+
+  .dock { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); height: 64px; padding: 8px; border-radius: var(--rd); display: flex; gap: 8px; align-items: center; }
+  .tile { width: 48px; height: 48px; border-radius: 12px; display: grid; place-items: center; color: #fff; position: relative; box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.15); }
+  .tile .i { width: 24px; height: 24px; }
+  .tile.run::after { content: ""; position: absolute; bottom: -5px; left: 50%; width: 4px; height: 4px; margin-left: -2px; border-radius: 2px; background: var(--tx2); }
+  .dock .div { width: 1px; height: 36px; background: var(--sep2); margin: 0 2px; }
+
+  /* The disk-unlock screen, at the firmware console's 1280 × 800 scale. The
+     split is the system's: the theme's art on the left, the page on the right. */
+  .unlock { font: 400 15px/1.45 var(--ui); }
+  .u-art { position: absolute; inset: 0 auto 0 0; width: 56%; height: 100%; display: block; }
+  .u-page { position: absolute; inset: 0 0 0 56%; background: var(--win); box-shadow: -1px 0 0 var(--sep), -30px 0 60px rgba(0, 0, 0, 0.16); display: grid; grid-template-rows: auto 1fr auto; padding: 0 64px; }
+  .u-tab { justify-self: center; padding: 12px 22px 11px; border-radius: 0 0 14px 14px; background: var(--acc); color: var(--on-acc); font-weight: 500; display: flex; gap: 10px; align-items: center; }
+  .u-tab .i { width: 16px; height: 16px; }
+  .u-center { display: flex; flex-direction: column; justify-content: center; gap: 12px; }
+  .u-hero { font: 400 150px/0.8 var(--hero); color: var(--acc); margin-left: -4px; }
+  .u-center p { margin: 0; color: var(--tx2); }
+  .u-field { height: 52px; border-radius: 12px; box-shadow: inset 0 0 0 1px var(--sep2); display: flex; align-items: center; gap: 9px; padding: 0 18px; margin-top: 16px; }
+  .u-field i { width: 9px; height: 9px; border-radius: 5px; background: var(--acc); }
+  .u-field .caret { width: 2px; height: 22px; border-radius: 1px; background: var(--acc); animation: blink 1.1s steps(2) infinite; }
+  .u-field .go { display: none; }
+  @keyframes blink { 50% { opacity: 0; } }
+  .u-foot { padding: 18px 0 22px; box-shadow: inset 0 1px 0 var(--sep); font: 400 12.5px/1 var(--mono); color: var(--tx3); }
+  .screen[data-theme="lumen"] .u-tab { margin-top: 26px; padding: 7px 14px; border-radius: 16px; background: var(--fill2); color: var(--tx); font-weight: 600; }
+  .screen[data-theme="lumen"] .u-hero { font: 700 108px/0.9 var(--ui); letter-spacing: -0.045em; color: var(--tx); margin-left: -3px; }
+  .screen[data-theme="lumen"] .u-field { height: 46px; border-radius: 23px; background: var(--fill); box-shadow: inset 0 0 0 0.5px var(--sep2); padding: 0 5px 0 18px; }
+  .screen[data-theme="lumen"] .u-field i { width: 8px; height: 8px; background: var(--tx); }
+  .screen[data-theme="lumen"] .u-field .caret { background: var(--acc); }
+  .screen[data-theme="lumen"] .u-field .go { display: grid; place-items: center; margin-left: auto; width: 36px; height: 36px; border-radius: 18px; background: var(--acc); color: var(--on-acc); }
+  .screen[data-theme="lumen"] .u-foot { font: 400 12.5px/1 var(--ui); box-shadow: none; }
+
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .pair figcaption { margin-top: 10px; display: flex; justify-content: space-between; gap: 12px; }
+  figure { margin: 0; }
+  .minis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+  .minis figure { cursor: pointer; }
+  .minis .fit { box-shadow: 0 0 0 1px var(--sep); transition: box-shadow var(--t-quick) var(--ease); }
+  .minis figure[aria-current="true"] .fit { box-shadow: 0 0 0 2px var(--acc); }
+  .minis .screen { pointer-events: none; }
+  .minis figcaption { margin-top: 8px; }
+
+  .flow { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; counter-reset: step; }
+  .flow > div { border-radius: 14px; padding: 14px 16px; background: var(--fill); box-shadow: inset 0 0 0 1px var(--sep); }
+  .flow > div::before { counter-increment: step; content: counter(step); display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 11px; background: var(--acc); color: var(--on-acc); font: 600 12px/1 var(--ui); margin-bottom: 8px; }
+  .flow b { display: block; margin-bottom: 4px; }
+  .flow span { color: var(--tx2); font-size: 13px; }
+
+  .derive { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+  .dcard { border-radius: 14px; padding: 14px; box-shadow: inset 0 0 0 1px var(--sep); background: var(--bg-c); color: var(--tx-c); }
+  .dcard .chips { display: flex; align-items: center; gap: 8px; margin: 12px 0 10px; }
+  .dcard .chip { width: 40px; height: 40px; border-radius: 10px; background: var(--c); box-shadow: inset 0 0 0 1px rgba(127, 127, 127, 0.25); }
+  .dcard .arrow { opacity: 0.5; }
+  .dcard .btnx { display: inline-flex; height: 32px; align-items: center; padding: 0 14px; border-radius: 9px; background: var(--c); color: var(--on); font-weight: 600; }
+  .dcard .meta { font: 400 12px/1.5 var(--mono); opacity: 0.75; margin-top: 10px; }
+  .dcard .note { font-size: 13px; margin-top: 4px; }
+
+  table { width: 100%; border-collapse: collapse; }
+  td, th { text-align: left; padding: 11px 12px; box-shadow: inset 0 -1px 0 var(--sep); vertical-align: top; }
+  th { font: var(--lab); letter-spacing: var(--lab-track); text-transform: var(--lab-case); color: var(--tx3); }
+  td:first-child { font-weight: 500; }
+  td small { color: var(--tx2); }
+  .when { white-space: nowrap; }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 4px; margin-right: 8px; background: var(--acc); }
+  .dot.part { background: transparent; box-shadow: inset 0 0 0 2px var(--acc); }
+  .dot.no { background: var(--fill2); }
+
+  .study-bar { background: var(--glass-solid); box-shadow: var(--frame), var(--lift); color: var(--tx); }
+  .study-bar .segm { align-self: center; }
+  .study-bar .swatches { padding: 0 6px; }
+  input[type="color"] { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+
+  @media (max-width: 900px) {
+    .pair, .flow, .derive { grid-template-columns: minmax(0, 1fr); }
+    .minis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <span class="lab">Study · Interstellar · v1</span>
+    <h1><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><circle cx="24" cy="24" r="10"/><ellipse cx="24" cy="24" rx="21" ry="7" transform="rotate(-22 24 24)"/></svg>Interstellar</h1>
+    <p class="lede">The system is Interstellar: bar, island, dock, sidebar, Settings, the lock, login and disk-unlock screens. A theme is everything it looks and sounds like: palette, type, shape, material, motion, wallpaper. Folio stays exactly as it is, inks and plates included, as one theme. Lumen is the second: neutral grays, plain sans-serif labels, frosted glass. Each theme takes one color of your choosing; the rest of the palette belongs to the theme.</p>
+  </header>
+
+  <section>
+    <span class="lab">The desktop</span>
+    <h2>One system, two themes</h2>
+    <p>The same desktop in whichever theme, mode and color the bar below picks. The Settings window works: choose a theme, mode or color there too.</p>
+    <div class="fit" id="main-fit"></div>
+    <div class="minis" id="minis" style="margin-top: 14px"></div>
+  </section>
+
+  <section>
+    <span class="lab">Disk unlock</span>
+    <h2>The theme reaches the disk-unlock screen</h2>
+    <p>The passphrase screen runs before the disk is unlocked, so it cannot read your settings from your home folder. Instead, a small system service copies the look onto the boot partition, the same way Chrome already gets its color today. The split stays the system's in every theme: the theme's art on the left, the page on the right, as on the lock screen. Shown here in the current mode and color.</p>
+    <div class="pair">
+      <figure><div class="fit" id="unlock-folio"></div><figcaption><span>Folio</span><span class="lab">Plate and page</span></figcaption></figure>
+      <figure><div class="fit" id="unlock-lumen"></div><figcaption><span>Lumen</span><span class="lab">Nebula and page</span></figcaption></figure>
+    </div>
+    <div class="flow" style="margin-top: 22px">
+      <div><b>You choose</b><span>Settings writes theme, mode and color to your look file, at once.</span></div>
+      <div><b>The system checks</b><span>A root service reads three values only: a known theme, light or dark, one #rrggbb color. Anything else is refused.</span></div>
+      <div><b>It draws the screen</b><span>From the system's own copy of the theme, never from files in your home, and saves it beside the kernel.</span></div>
+      <div><b>Next boot</b><span>The unlock screen, login and lock all match. No rebuild, no password prompt.</span></div>
+    </div>
+  </section>
+
+  <section>
+    <span class="lab">Your color</span>
+    <h2>Any color, kept readable</h2>
+    <p>Pick any color for the accent. Interstellar keeps its hue and moves its lightness until text and controls stay readable: deeper on paper, lighter at night. Backgrounds, text and the terminal's other colors stay the theme's. Free choice there is where desktops become unreadable, and every app theme is generated from that palette.</p>
+    <div class="derive" id="derive"></div>
+  </section>
+
+  <section>
+    <span class="lab">Everything</span>
+    <h2>What follows the theme</h2>
+    <table>
+      <thead><tr><th>Surface</th><th>Follows</th><th>When</th></tr></thead>
+      <tbody>
+        <tr><td>Bar, island, dock, sidebar, Settings, notifications, lock</td><td><span class="dot"></span>Theme, mode, color</td><td class="when">At once</td></tr>
+        <tr><td>GTK and GNOME apps <small>(Files, Text Editor…)</small></td><td><span class="dot"></span>Theme, mode, color</td><td class="when">A few seconds</td></tr>
+        <tr><td>Chrome, Ghostty, VS Code, Obsidian, Vicinae, btop, Neovim</td><td><span class="dot"></span>Theme, mode, color <small>(Chrome's frame takes the background)</small></td><td class="when">A few seconds</td></tr>
+        <tr><td>Qt apps</td><td><span class="dot part"></span>Mode today; the palette needs a Kvantum style</td><td class="when">To build</td></tr>
+        <tr><td>Login screen</td><td><span class="dot"></span>Theme, mode, color</td><td class="when">Next login</td></tr>
+        <tr><td>Disk-unlock and boot screen</td><td><span class="dot"></span>Theme, mode, color</td><td class="when">Next boot</td></tr>
+        <tr><td>Cursor, interface sounds, fonts</td><td><span class="dot"></span>Theme</td><td class="when">At once</td></tr>
+        <tr><td>Apps that draw themselves <small>(Spotify, Slack)</small></td><td><span class="dot part"></span>Light or dark only</td><td class="when">—</td></tr>
+        <tr><td>The 2-second boot menu, the Lenovo logo</td><td><span class="dot no"></span>Drawn by the firmware and the boot loader</td><td class="when">Never</td></tr>
+      </tbody>
+    </table>
+  </section>
+</main>
+
+<div class="study-bar">
+  <div class="segm" id="bar-theme"><button data-v="folio">Folio</button><button data-v="lumen">Lumen</button></div>
+  <div class="segm" id="bar-mode"><button data-v="light">Light</button><button data-v="dark">Dark</button></div>
+  <div class="swatches" id="bar-sw"></div>
+</div>
+<input type="color" id="picker" value="#7a5af8">
+
+<script src="../_kit/folio.js"></script>
+<script>
+(() => {
+  const $ = (s, el = document) => el.querySelector(s);
+  const I = (n) => Folio.icon(n);
+  const root = document.documentElement;
+
+  // ---------------------------------------------------------------- color
+  const lin = (c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+  const gam = (c) => (c <= 0.0031308 ? 12.92 * c : 1.055 * c ** (1 / 2.4) - 0.055);
+  const rgb = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255);
+  const hex = (r) => "#" + r.map((v) => Math.round(Math.min(1, Math.max(0, v)) * 255).toString(16).padStart(2, "0")).join("");
+  function oklch(h) {
+    const [r, g, b] = rgb(h).map(lin);
+    const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+    const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+    const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+    const L = 0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s;
+    const A = 1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s;
+    const B = 0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s;
+    return [L, Math.hypot(A, B), ((Math.atan2(B, A) * 180) / Math.PI + 360) % 360];
+  }
+  function linear(L, C, h) {
+    const A = C * Math.cos((h * Math.PI) / 180), B = C * Math.sin((h * Math.PI) / 180);
+    const l = (L + 0.3963377774 * A + 0.2158037573 * B) ** 3, m = (L - 0.1055613458 * A - 0.0638541728 * B) ** 3, s = (L - 0.0894841775 * A - 1.291485548 * B) ** 3;
+    return [4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s, -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s, -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s];
+  }
+  // OKLCH to sRGB, giving up chroma (never hue or lightness) to stay in gamut.
+  function lch(L, C, h) {
+    let c = C, v = linear(L, c, h);
+    while (c > 0 && v.some((x) => x < -1e-4 || x > 1 + 1e-4)) { c -= 0.004; v = linear(L, Math.max(0, c), h); }
+    return hex(v.map((x) => gam(Math.min(1, Math.max(0, x)))));
+  }
+  const lum = (h) => { const [r, g, b] = rgb(h).map(lin); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
+  const contrast = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+
+  // ---------------------------------------------------------------- themes
+  const BG = { folio: { light: "#f7f4e9", dark: "#101d33" }, lumen: { light: "#ffffff", dark: "#1e1e20" } };
+  const TEXT = { folio: { light: "#1a2740", dark: "#e4e9f0" }, lumen: { light: "#1d1d1f", dark: "#f5f5f7" } };
+  const FOLIO = { azure: ["#214c94", "#adc7ed"], cobalt: ["#244fb8", "#9dbbfa"], slate: ["#35556e", "#adc3d2"] };
+  const LUMEN = { blue: "#0a7aff", purple: "#a050e8", pink: "#ef4f97", red: "#f2453a", orange: "#ff8a00", yellow: "#ffc800", green: "#30c35a", teal: "#2bb3c8", graphite: "#8a8a90" };
+  const S = { theme: "folio", mode: "dark", pick: { folio: "azure", lumen: "blue" }, custom: { folio: null, lumen: null } };
+  const pickHex = (t) => (S.pick[t] === "custom" ? S.custom[t] : t === "folio" ? FOLIO[S.pick[t]][0] : LUMEN[S.pick[t]]);
+
+  // Folio: the ink must carry plates and text on paper (7:1) and at night
+  // (9:1, softened). Lumen: controls stand out from the window (3:1) and
+  // carry white text, or near-black text when white would cost too much.
+  function derive(t, mode, pick) {
+    const bg = BG[t][mode];
+    if (t === "folio" && S.pick.folio !== "custom" && pick === pickHex("folio")) {
+      const ink = FOLIO[S.pick.folio][mode === "light" ? 0 : 1];
+      return { acc: ink, on: bg, bg, ratio: contrast(ink, bg), note: "Folio's " + S.pick.folio };
+    }
+    const [L0, C0, h] = oklch(pick);
+    let best = null;
+    const C = t === "folio" ? (mode === "light" ? Math.min(C0, 0.16) : Math.min(C0 * 0.55, 0.08)) : C0;
+    for (let L = 0.2; L <= 0.97; L += 0.005) {
+      const c = lch(L, C, h);
+      let on, cost = Math.abs(L - L0);
+      if (t === "folio") {
+        if (contrast(c, bg) < (mode === "light" ? 7 : 9)) continue;
+        on = bg;
+      } else {
+        if (contrast(c, bg) < 3) continue;
+        if (contrast("#ffffff", c) >= 4.5) on = "#ffffff";
+        else if (contrast("#1d1d1f", c) >= 4.5) { on = "#1d1d1f"; cost += 0.1; }
+        else continue;
+      }
+      if (!best || cost < best.cost) best = { acc: c, on, cost, L };
+    }
+    if (!best) return { acc: pick, on: t === "folio" ? bg : "#ffffff", bg, ratio: contrast(pick, bg), note: "As picked" };
+    const [L1, C1] = oklch(best.acc);
+    const moved = L1 - L0, softened = C0 - C1 > 0.025;
+    const note = Math.abs(moved) < 0.02 && !softened ? "As picked"
+      : [Math.abs(moved) >= 0.02 ? (moved < 0 ? "Deepened" : "Lightened") : "", softened ? (Math.abs(moved) >= 0.02 ? "softened" : "Softened") : ""].filter(Boolean).join(" and ") + " to stay readable";
+    return { acc: best.acc, on: best.on, bg, ratio: contrast(best.acc, bg), note };
+  }
+
+  // Folio's plates print in the ink; the kit reads it from Folio.INKS.
+  let inkKey = "ca";
+  const folioPair = () => ({ light: derive("folio", "light", pickHex("folio")).acc, dark: derive("folio", "dark", pickHex("folio")).acc });
+  Folio.INKS.ca = folioPair();
+
+  function paint(el) {
+    const t = el.dataset.theme, m = el.dataset.mode || S.mode;
+    const d = derive(t, m, pickHex(t));
+    if (t === "folio") { el.style.setProperty("--ink", d.acc); el.style.setProperty("--ink-deep", folioPair().light); el.style.removeProperty("--acc"); el.style.removeProperty("--on-acc"); }
+    else { el.style.setProperty("--acc", d.acc); el.style.setProperty("--on-acc", d.on); el.style.removeProperty("--ink"); }
+  }
+
+  // ---------------------------------------------------------------- wallpapers
+  // Lumen's wallpaper: a nebula in the accent's neighbouring hues; stars at night.
+  function rand(seed) { return () => { seed |= 0; seed = (seed + 0x6d2b79f5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+  function nebula(canvas, mode, acc, soft = 0) {
+    const w = (canvas.width = Math.round(canvas.clientWidth * 0.75)), h = (canvas.height = Math.round(canvas.clientHeight * 0.75)), x = canvas.getContext("2d");
+    const [, C, hue] = oklch(acc), c = Math.max(0.06, Math.min(C, 0.16));
+    const dark = mode === "dark";
+    const g = x.createLinearGradient(0, 0, 0, h);
+    g.addColorStop(0, dark ? "#0a0b12" : "#eef0f6"); g.addColorStop(1, dark ? "#141420" : "#f8f7fb");
+    x.fillStyle = g; x.fillRect(0, 0, w, h);
+    x.filter = `blur(${Math.round(((70 + soft) * w) / 960)}px)`;
+    const blobs = [[0.22, 0.34, 0.42, 0, 0.9], [0.78, 0.58, 0.38, 46, 0.75], [0.52, 1.02, 0.46, -52, 0.7], [0.92, 0.08, 0.22, 90, 0.45]];
+    for (const [bx, by, r, dh, a] of blobs) {
+      const col = dark ? lch(0.42, c, hue + dh) : lch(0.86, c * 0.6, hue + dh);
+      const rg = x.createRadialGradient(bx * w, by * h, 0, bx * w, by * h, r * w);
+      rg.addColorStop(0, col + Math.round(a * 255).toString(16).padStart(2, "0")); rg.addColorStop(1, col + "00");
+      x.fillStyle = rg; x.fillRect(0, 0, w, h);
+    }
+    x.filter = "none";
+    if (dark) {
+      const r = rand(7);
+      for (let i = 0; i < 180; i++) { x.fillStyle = `rgba(255,255,255,${0.12 + r() * 0.5})`; const s = r() < 0.94 ? 0.55 : 1.1; x.beginPath(); x.arc(r() * w, r() * h, s, 0, 7); x.fill(); }
+    }
+  }
+
+  // ---------------------------------------------------------------- the desktop
+  const MARK = `<svg class="mark" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3.4" aria-hidden="true"><circle cx="24" cy="24" r="10"/><ellipse cx="24" cy="24" rx="21" ry="7" transform="rotate(-22 24 24)"/></svg>`;
+  const DOCK = [["folder", "#3d7bea"], ["globe", "#e9453b"], ["terminal", "#26282e"], ["music", "#1fb954"], ["code", "#2a83d6"], ["note", "#7b5cd6"]];
+  const NAV = [["palette", "Appearance"], ["display", "Displays"], ["speaker", "Sound"], ["wifi", "Network"], ["bluetooth", "Bluetooth"], ["battery", "Power"], ["keyboard", "Keyboard"], ["bell", "Notifications"], ["lock", "Privacy"], ["info", "About"]];
+
+  function swatches(t, mode) {
+    const names = t === "folio" ? Object.keys(FOLIO) : Object.keys(LUMEN);
+    const out = names.map((n) => { const d = derive(t, mode, t === "folio" ? FOLIO[n][0] : LUMEN[n]); const c = t === "folio" ? FOLIO[n][mode === "light" ? 0 : 1] : d.acc;
+      return `<button class="sw" data-pick="${n}" title="${n}" style="--c:${c}" aria-pressed="${S.pick[t] === n}"></button>`; });
+    const cus = S.custom[t] ? derive(t, mode, S.custom[t]).acc : null;
+    out.push(`<button class="sw custom${cus ? " set" : ""}" data-pick="custom" title="Any color" style="--c:${cus || "transparent"}" aria-pressed="${S.pick[t] === "custom"}"></button>`);
+    return out.join("");
+  }
+
+  function desktop(t, mode) {
+    return `
+      <canvas class="wall plate"></canvas><canvas class="wall nebula"></canvas>
+      <div class="bar glass">
+        <div class="l">${MARK}<span class="ws"><b class="on"></b><b></b><b></b></span><span class="app">Settings</span></div>
+        <div class="island"><span class="eq"><i></i><i></i><i></i></span><span class="num">23:14</span></div>
+        <div class="r">${I("wifi")}${I("bluetooth")}${I("speaker")}<span class="num" style="display:flex;gap:5px;align-items:center">${I("battery")}63%</span><span>Fri 30 Oct</span></div>
+      </div>
+      <div class="win term">
+        <div class="tb"><span class="lights"><i></i><i></i><i></i></span>ghostty</div>
+        <pre><span class="p">mariano@bonhart</span> <span class="d">~/Development</span>
+$ mariano-shell which
+interstellar · ${t} · ${mode}
+$ themeport status
+gtk ✓  chrome ✓  ghostty ✓  vscode ✓  obsidian ✓
+boot screen ✓ <span class="d">(next boot)</span>
+$ <span class="p">▍</span></pre>
+      </div>
+      <div class="win settings">
+        <div class="side">
+          <span class="lights"><i></i><i></i><i></i></span>
+          <div class="search">${I("search")}Search</div>
+          ${NAV.map(([i, n], k) => `<div class="nav${k === 0 ? " on" : ""}">${I(i)}${n}</div>`).join("")}
+        </div>
+        <div class="content">
+          <h3>Appearance</h3>
+          <span class="lab">Theme</span>
+          <div class="themes">
+            <button class="tcard" data-theme-pick="folio" aria-pressed="${t === "folio"}"><div class="pv folio"></div><b>Folio</b><span>Ink on paper, printed plates</span></button>
+            <button class="tcard" data-theme-pick="lumen" aria-pressed="${t === "lumen"}"><div class="pv lumen"></div><b>Lumen</b><span>Graphite and glass</span></button>
+          </div>
+          <span class="lab">Mode</span>
+          <div class="segm"><button data-mode-pick="light" aria-pressed="${mode === "light"}">Light</button><button data-mode-pick="dark" aria-pressed="${mode === "dark"}">Dark</button><button aria-pressed="false">Sunset</button></div>
+          <span class="lab">${t === "folio" ? "Ink" : "Color"}</span>
+          <div class="swatches">${swatches(t, mode)}</div>
+          <div class="rows">
+            <div class="r">${I("lock")}<div class="g">Disk-unlock screen<small>Matches this look from the next boot</small></div><span class="pill">Follows the theme</span></div>
+            <div class="r">${I("sparkle")}<div class="g">Reduce transparency</div><span class="tog off"></span></div>
+            <div class="r">${I("display")}<div class="g">Text size</div><span class="sl"></span></div>
+          </div>
+        </div>
+      </div>
+      <div class="toast glass"><span class="ic">${I("drive")}</span><b class="ellipsis">Backup finished</b><span class="t">now</span><small class="ellipsis" style="grid-column: 2 / span 2">2.4 GB copied to the NAS</small></div>
+      <div class="dock glass">${DOCK.map(([i, c], k) => `<span class="tile${k < 3 ? " run" : ""}" style="background:${c}">${I(i)}</span>`).join("")}<span class="div"></span><span class="tile" style="background:#8e8e93">${I("gear")}</span></div>`;
+  }
+
+  // One layout for every theme; the theme supplies the art and the dress.
+  function unlock() {
+    return `<canvas class="u-art plate"></canvas><canvas class="u-art nebula"></canvas>
+      <div class="u-page"><div class="u-tab">${I("laptop")}Bonhart</div>
+        <div class="u-center"><span class="lab">Disk encrypted</span><div class="u-hero">Unlock</div><p>Type Bonhart's passphrase to start.</p>
+          <div class="u-field"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><span class="caret"></span><span class="go">${I("right")}</span></div></div>
+        <div class="u-foot">US keyboard · Esc shows the boot messages</div></div>`;
+  }
+
+  // Each screen: a 1280 × 800 element scaled to its box.
+  const screens = [];
+  function mount(fit, t, mode, kind) {
+    const el = document.createElement("div");
+    el.className = "screen" + (kind === "unlock" ? " unlock" : "");
+    el.dataset.theme = t;
+    if (mode) el.dataset.mode = mode;
+    fit.append(el);
+    new ResizeObserver(() => el.style.setProperty("--k", fit.clientWidth / 1280)).observe(fit);
+    const s = { el, kind, fixedMode: !!mode, plate: null };
+    screens.push(s);
+    render(s, true);
+    return s;
+  }
+  function render(s, first) {
+    if (!s.fixedMode) s.el.dataset.mode = S.mode;
+    const t = s.el.dataset.theme, m = s.el.dataset.mode;
+    if (s.kind === "unlock") { if (first) s.el.innerHTML = unlock(); }
+    else {
+      // Keep the plate canvas across re-renders; only the UI is redrawn.
+      const keep = s.el.querySelector("canvas.plate");
+      s.el.innerHTML = desktop(t, m);
+      if (keep) s.el.querySelector("canvas.plate").replaceWith(keep);
+    }
+    paint(s.el);
+    const plateCanvas = s.el.querySelector("canvas.plate");
+    if (plateCanvas && !s.plate) s.plate = new Folio.Plate(plateCanvas, { plate: "dore-nightfall", develop: false, mode: s.fixedMode ? m : null, zoom: s.kind === "unlock" ? 1.25 : 1 });
+    const neb = s.el.querySelector("canvas.nebula");
+    if (neb && t === "lumen") nebula(neb, m, derive("lumen", m, pickHex("lumen")).acc, 0);
+  }
+
+  const main = mount($("#main-fit"), S.theme, null, "desktop");
+  const minis = [];
+  for (const [t, m] of [["folio", "light"], ["folio", "dark"], ["lumen", "light"], ["lumen", "dark"]]) {
+    const fig = document.createElement("figure");
+    fig.innerHTML = `<div class="fit"></div><figcaption><span class="lab">${t[0].toUpperCase() + t.slice(1)} · ${m}</span></figcaption>`;
+    $("#minis").append(fig);
+    minis.push({ fig, t, m, s: mount($(".fit", fig), t, m, "desktop") });
+    fig.addEventListener("click", (e) => choose({ theme: t, mode: m }, e));
+  }
+  const unlocks = [mount($("#unlock-folio"), "folio", null, "unlock"), mount($("#unlock-lumen"), "lumen", null, "unlock")];
+
+  // ---------------------------------------------------------------- your color
+  function deriveCards() {
+    const pick = (t) => pickHex(t);
+    $("#derive").innerHTML = [["folio", "light"], ["folio", "dark"], ["lumen", "light"], ["lumen", "dark"]].map(([t, m]) => {
+      const d = derive(t, m, pick(t)), p = pick(t);
+      const on = t === "folio" ? d.bg : d.on;
+      return `<div class="dcard" style="--bg-c:${d.bg};--tx-c:${TEXT[t][m]};--c:${d.acc};--on:${on}">
+        <span class="lab" style="color:inherit;opacity:.6">${t[0].toUpperCase() + t.slice(1)} · ${m}</span>
+        <div class="chips"><span class="chip" style="--c:${p}" title="Picked ${p}"></span><span class="arrow">→</span><span class="chip"></span><span class="btnx">${t === "folio" ? "Unlock" : "Open"}</span></div>
+        <div class="note">${d.note}</div>
+        <div class="meta">${p} → ${d.acc}<br>${d.ratio.toFixed(1)}:1 on the ${t === "folio" ? (m === "light" ? "paper" : "night") : "window"} · text on it ${contrast(on, d.acc).toFixed(1)}:1</div>
+      </div>`;
+    }).join("");
+  }
+
+  // ---------------------------------------------------------------- choosing
+  function syncBar() {
+    document.querySelectorAll("#bar-theme button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.v === S.theme));
+    document.querySelectorAll("#bar-mode button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.v === S.mode));
+    $("#bar-sw").innerHTML = swatches(S.theme, S.mode);
+    minis.forEach((x) => x.fig.setAttribute("aria-current", x.t === S.theme && x.m === S.mode));
+  }
+  function refresh() {
+    root.dataset.theme = S.theme;
+    main.el.dataset.theme = S.theme;
+    paint(root);
+    screens.forEach((s) => render(s));
+    deriveCards();
+    syncBar();
+  }
+  // A new ink re-prints every plate (the kit's bleed); a new theme crossfades.
+  function choose(next, e) {
+    const inkBefore = JSON.stringify(folioPair());
+    if (next.pick) S.pick[S.theme] = next.pick;
+    if (next.custom) { S.custom[S.theme] = next.custom; S.pick[S.theme] = "custom"; }
+    const themeChanged = next.theme && next.theme !== S.theme;
+    if (next.theme) S.theme = next.theme;
+    const pair = folioPair();
+    if (JSON.stringify(pair) !== inkBefore) { inkKey = inkKey === "ca" ? "cb" : "ca"; Folio.INKS[inkKey] = pair; }
+    const mode = next.mode || S.mode;
+    S.mode = mode;
+    // Folio.set bleeds the new mode or ink in from the click and calls
+    // refresh inside its transition (the listener below).
+    if (Folio.state.mode !== mode || Folio.state.ink !== inkKey) Folio.set({ mode, ink: inkKey }, e);
+    else if (themeChanged && document.startViewTransition && !Folio.reduced) document.startViewTransition(refresh);
+    else refresh();
+  }
+  Folio.on(() => refresh());
+
+  document.addEventListener("click", (e) => {
+    const b = e.target.closest("button");
+    if (!b || b.closest(".minis")) return;
+    if (b.dataset.themePick) choose({ theme: b.dataset.themePick }, e);
+    else if (b.dataset.modePick) choose({ mode: b.dataset.modePick }, e);
+    else if (b.closest("#bar-theme")) choose({ theme: b.dataset.v }, e);
+    else if (b.closest("#bar-mode")) choose({ mode: b.dataset.v }, e);
+    else if (b.dataset.pick === "custom") { $("#picker").value = S.custom[S.theme] || "#7a5af8"; $("#picker").click(); }
+    else if (b.dataset.pick) choose({ pick: b.dataset.pick }, e);
+  });
+  // Dragging in the picker fires many inputs; take one per frame.
+  let queued = null;
+  $("#picker").addEventListener("input", (e) => {
+    if (queued === null) requestAnimationFrame(() => { const v = queued; queued = null; choose({ custom: v }); });
+    queued = e.target.value;
+  });
+
+  refresh();
+})();
+</script>
+</body>
+</html>

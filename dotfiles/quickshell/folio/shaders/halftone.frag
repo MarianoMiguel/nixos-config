@@ -18,6 +18,7 @@ layout(std140, binding = 0) uniform buf {
     float progress;     // share of dots printed
     float solid;        // share of pixels flooded with ink
     float seed;
+    float flatTint;     // 1: no dots, a flat tint of the dots' average coverage
 };
 
 float hash(vec2 p) { vec3 q = fract(vec3(p.xyx) * 0.1031); q += dot(q, q.yzx + 33.33); return fract((q.x + q.y) * q.z); }
@@ -29,5 +30,7 @@ void main() {
     float dotA = 1.0 - smoothstep(radius - 0.35, radius + 0.35, d);
     dotA *= hash(cell + seed) < progress ? 1.0 : 0.0;
     float flood = hash(floor(px) + seed + 5.3) < solid ? 1.0 : 0.0;
-    fragColor = mix(back, ink, max(dotA, flood)) * qt_Opacity;
+    float cover = min(1.0, 3.14159 * radius * radius / (pitchPx * pitchPx));
+    float a = flatTint > 0.5 ? max(progress * cover, solid) : max(dotA, flood);
+    fragColor = mix(back, ink, a) * qt_Opacity;
 }

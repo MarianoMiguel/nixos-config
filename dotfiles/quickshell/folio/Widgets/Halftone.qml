@@ -4,7 +4,8 @@ import qs.Common
 
 // A halftone screen: the kit's radial-gradient dots (1 px on a 3 px pitch) in
 // ink over a background. Typed cells print with it (progress) and flood
-// solid (solid); dialog scrims use it with the night shade.
+// solid (solid); dialog scrims use it with the night shade. Themes that do
+// not print (Lumen) get a flat tint of the same average coverage.
 ShaderEffect {
     id: root
     property color ink: Theme.ink
@@ -14,6 +15,7 @@ ShaderEffect {
     property real progress: 1
     property real solid: 0
     property real seed: Math.floor(Math.random() * 97)
+    property real flatTint: Theme.prints ? 0 : 1
 
     readonly property real dpr: Screen.devicePixelRatio || 1
     property vector2d res: Qt.vector2d(Math.max(1, width * dpr), Math.max(1, height * dpr))

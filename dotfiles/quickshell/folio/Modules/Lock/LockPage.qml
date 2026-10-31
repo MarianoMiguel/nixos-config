@@ -70,7 +70,8 @@ FocusScope {
 
     Item {
         id: caption
-        visible: root.main
+        // The plate's credit; Lumen's sky is its own.
+        visible: root.main && Theme.prints
         opacity: root.chrome
         x: 20
         anchors.bottom: parent.bottom
@@ -120,21 +121,26 @@ FocusScope {
             Rectangle {
                 id: tab
                 anchors.horizontalCenter: parent.horizontalCenter
-                width: tabRow.implicitWidth + 44
-                height: 39
-                color: Theme.ink
-                bottomLeftRadius: Theme.rM
-                bottomRightRadius: Theme.rM
+                // Folio hangs an ink tab from the page's top edge; Lumen sets a
+                // quiet pill below it.
+                y: Theme.lumen ? 26 : 0
+                width: tabRow.implicitWidth + (Theme.lumen ? 32 : 44)
+                height: Theme.lumen ? 34 : 39
+                color: Theme.lumen ? Theme.wellStrong : Theme.ink
+                topLeftRadius: Theme.lumen ? height / 2 : 0
+                topRightRadius: Theme.lumen ? height / 2 : 0
+                bottomLeftRadius: Theme.lumen ? height / 2 : Theme.rM
+                bottomRightRadius: Theme.lumen ? height / 2 : Theme.rM
                 Row {
                     id: tabRow
-                    x: 22
+                    x: Theme.lumen ? 16 : 22
                     anchors.verticalCenter: parent.verticalCenter
                     anchors.verticalCenterOffset: 0.5
                     spacing: 10
-                    Icon { name: "user"; size: 16; color: Theme.inkText; anchors.verticalCenter: parent.verticalCenter }
+                    Icon { name: "user"; size: 16; color: Theme.lumen ? Theme.text : Theme.inkText; anchors.verticalCenter: parent.verticalCenter }
                     Label {
                         text: root.userName || "Locked"
-                        color: Theme.inkText
+                        color: Theme.lumen ? Theme.text : Theme.inkText
                         font.pixelSize: 15
                         font.weight: Font.Medium
                         width: Math.min(implicitWidth, 320, page.width - 2 * page.pad - 70)
@@ -174,8 +180,8 @@ FocusScope {
                             x: -6
                             y: (clockBox.height - implicitHeight) / 2
                             text: Qt.formatTime(clock.date, "HH:mm")
-                            color: Theme.ink
-                            font.family: Theme.hero
+                            color: Theme.lumen ? Theme.text : Theme.ink
+                            font.family: Theme.hero; font.weight: Theme.heroWeight
                             font.pixelSize: clockBox.size
                             font.features: { "tnum": 1 }
                         }

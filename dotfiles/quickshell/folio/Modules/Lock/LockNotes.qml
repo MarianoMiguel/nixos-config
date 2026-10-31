@@ -148,7 +148,7 @@ Item {
                                 anchors.centerIn: parent
                                 text: (slip.g.app || "?").charAt(0).toUpperCase()
                                 color: Theme.inkText
-                                font.family: Theme.hero
+                                font.family: Theme.hero; font.weight: Theme.heroWeight
                                 font.pixelSize: 17
                             }
                         }

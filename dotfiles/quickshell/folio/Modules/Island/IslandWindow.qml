@@ -295,7 +295,7 @@ PanelWindow {
                         visible: noteImage.status !== Image.Ready
                         text: ((win.held.note.sender || win.held.note.text || "·").trim()[0] || "·").toUpperCase()
                         color: win.deep
-                        font.family: Theme.hero
+                        font.family: Theme.hero; font.weight: Theme.heroWeight
                         font.pixelSize: 15
                     }
                     ClippingRectangle {

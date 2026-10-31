@@ -5,16 +5,18 @@ import qs.Common
 import qs.Services
 import qs.Widgets
 import "../../Common/Sun.js" as Sun
+import "../../Common/Looks.js" as Looks
 
-// Appearance: how the whole desktop looks (the Appearance study). Mode, ink
-// and plate go through azure-folio, which re-themes apps with themeport;
-// everything else is Folio's Settings. "Sunset" mode follows the sun at
-// Settings' weather place (SystemSettings runs it whether this page is open or not).
+// Appearance: how the whole desktop looks (the Appearance and Interstellar
+// studies). Theme, mode, color and plate go through azure-folio, which
+// re-themes apps with themeport and the login and boot screens through their
+// bridges; everything else is the shell's Settings. "Sunset" mode follows the
+// sun at Settings' weather place (SystemSettings runs it whether this page is open or not).
 SettingsPage {
     id: page
     title: "Appearance"
     description: Theming.busy
-        ? "Applying " + Theming.label + " to your apps: GTK, Qt, Chrome and the terminal follow in a moment."
+        ? "Applying " + Theming.label + " to your apps: GTK, Qt, Chrome and the terminal follow in a moment, the disk-unlock screen from the next boot."
         : "How the whole desktop looks, in one place. Every change applies at once."
 
     // The desktop changes at the click; apps follow when azure-folio is done.
@@ -36,7 +38,44 @@ SettingsPage {
         border.color: Theme.rule
         MiniDesktop { anchors.fill: parent; anchors.margins: 1; breathe: Settings.get("plates.breathe") }
         Rectangle { x: 12; anchors.bottom: parent.bottom; anchors.bottomMargin: 12; width: tag.implicitWidth + 20; height: 26; radius: 9; color: Theme.sheetStrong; border.color: Theme.rule
-            Cap { id: tag; anchors.centerIn: parent; text: { const p = Art.plate(Art.current); return p ? p.collectionName + " · " + p.title : ""; } } }
+            Cap { id: tag; anchors.centerIn: parent; text: { if (Theme.lumen) return "Lumen · " + (Theme.pick.charAt(0) === "#" ? "your color" : Theme.pick); const p = Art.plate(Art.current); return p ? p.collectionName + " · " + p.title : ""; } } }
+    }
+
+    // Theme
+    Label { text: "Theme"; font.weight: Font.DemiBold; font.pixelSize: 15; Layout.topMargin: 28; Component.onCompleted: page.mark("theme", this) }
+    Label { text: "Everything Interstellar draws, from the bar to the disk-unlock screen."; color: Theme.text2; font.pixelSize: Theme.fsS; Layout.fillWidth: true; Layout.bottomMargin: 10 }
+    RowLayout {
+        Layout.fillWidth: true; spacing: 10
+        Repeater {
+            model: [{ "id": "folio", "t": "Folio", "s": "Ink on paper, printed plates" }, { "id": "lumen", "t": "Lumen", "s": "Graphite and glass" }]
+            OptionCard {
+                id: tcard
+                required property var modelData
+                title: modelData.t; subtitle: modelData.s
+                previewRatio: 16 / 8
+                selected: Theme.name === modelData.id
+                busy: selected && Theming.busy && "theme" in Theme.pending
+                onChosen: if (!selected) Theming.set({ "theme": modelData.id }, modelData.t)
+                Plate { anchors.fill: parent; forceTheme: tcard.modelData.id; plate: Art.current; textureWidth: 960; developOnLoad: false }
+                // A specimen of the theme's type and color on its own window.
+                Rectangle {
+                    readonly property bool lumen: tcard.modelData.id === "lumen"
+                    readonly property string bg: Looks.BACKGROUND[tcard.modelData.id][Theme.mode]
+                    anchors { left: parent.left; bottom: parent.bottom; margins: 10 }
+                    width: spec.implicitWidth + 24; height: 44; radius: lumen ? 10 : 12
+                    color: bg
+                    Text {
+                        id: spec
+                        anchors.centerIn: parent
+                        text: "Aa"
+                        font.family: parent.lumen ? "Inter Display" : "Jacquard 24"
+                        font.weight: parent.lumen ? Font.DemiBold : Font.Normal
+                        font.pixelSize: parent.lumen ? 26 : 32
+                        color: Looks.derive(tcard.modelData.id, Theme.mode, Theme.pickOf(tcard.modelData.id))[0]
+                    }
+                }
+            }
+        }
     }
 
     // Mode
@@ -45,7 +84,7 @@ SettingsPage {
     RowLayout {
         Layout.fillWidth: true; spacing: 10
         Repeater {
-            model: [{ "id": "light", "t": "Light", "s": "Ink on paper" }, { "id": "dark", "t": "Dark", "s": "Moonlit plates on night" }, { "id": "sunset", "t": "Sunset", "s": "Light by day, dark at night" }]
+            model: [{ "id": "light", "t": "Light", "s": Theme.lumen ? "White and glass" : "Ink on paper" }, { "id": "dark", "t": "Dark", "s": Theme.lumen ? "Graphite under the stars" : "Moonlit plates on night" }, { "id": "sunset", "t": "Sunset", "s": "Light by day, dark at night" }]
             OptionCard {
                 required property var modelData
                 title: modelData.t; subtitle: modelData.s
@@ -63,35 +102,100 @@ SettingsPage {
         }
     }
 
-    // Ink
-    Label { text: "Ink"; font.weight: Font.DemiBold; font.pixelSize: 15; Layout.topMargin: 28 }
-    Label { text: "One ink for everything: art, controls, Chrome, the terminal."; color: Theme.text2; font.pixelSize: Theme.fsS; Layout.fillWidth: true; Layout.bottomMargin: 10 }
+    // Color: Folio's ink or Lumen's accent. Any color works; Looks keeps it readable.
+    Label { text: Theme.lumen ? "Color" : "Ink"; font.weight: Font.DemiBold; font.pixelSize: 15; Layout.topMargin: 28; Component.onCompleted: page.mark("color", this) }
+    Label {
+        text: (Theme.lumen ? "One color for controls, the island and the sky; apps and the unlock screen take it too."
+                           : "One ink for everything: art, controls, Chrome, the terminal.") + " Any color works: it is kept readable."
+        color: Theme.text2; font.pixelSize: Theme.fsS; Layout.fillWidth: true; Layout.bottomMargin: 10; wrapMode: Text.WordWrap; maximumLineCount: 2
+    }
+    readonly property string colorKey: Theme.lumen ? "accent" : "ink"
+    readonly property string customColor: (Theme.lumen ? Theme.selection.customAccent : Theme.selection.customInk) || ""
+    readonly property bool customChosen: (Theme.lumen ? Theme.selection.accent : Theme.selection.ink) === "custom"
+    function choose(name, label) { const p = {}; p[colorKey] = name; Theming.set(p, label); }
     RowLayout {
+        visible: !Theme.lumen
         Layout.fillWidth: true; spacing: 10
         Repeater {
-            model: ["azure", "cobalt", "slate"]
+            model: ["azure", "cobalt", "slate", "custom"]
             OptionCard {
+                id: icard
                 required property string modelData
-                title: modelData.charAt(0).toUpperCase() + modelData.slice(1)
+                readonly property var pair: modelData === "custom" ? [Looks.derive("folio", "light", page.customColor || "#5a7cf0")[0], Looks.derive("folio", "dark", page.customColor || "#5a7cf0")[0]] : Theme.inks[modelData]
+                title: modelData === "custom" ? "Any ink" : modelData.charAt(0).toUpperCase() + modelData.slice(1)
                 previewRatio: 16 / 7
                 selected: Theme.inkName === modelData
                 busy: selected && Theming.busy && "ink" in Theme.pending
-                onChosen: if (Theme.inkName !== modelData) Theming.set({ "ink": modelData }, title)
+                onChosen: if (Theme.inkName !== modelData) page.choose(modelData === "custom" ? (page.customColor || "#5a7cf0") : modelData, title)
                 Row {
                     anchors.fill: parent
-                    Rectangle { width: parent.width / 2; height: parent.height; color: Theme.inks[modelData][0]
-                        Cap { anchors { left: parent.left; bottom: parent.bottom; margins: 8 } text: Theme.inks[modelData][0]; color: "#f7f4e9" } }
+                    Rectangle { width: parent.width / 2; height: parent.height; color: icard.pair[0]
+                        Cap { anchors { left: parent.left; bottom: parent.bottom; margins: 8 } text: icard.pair[0]; color: "#f7f4e9" } }
                     Rectangle { width: parent.width / 2; height: parent.height; color: "#101d33"
-                        Cap { anchors { left: parent.left; bottom: parent.bottom; margins: 8 } text: Theme.inks[modelData][1]; color: Theme.inks[modelData][1] } }
+                        Cap { anchors { left: parent.left; bottom: parent.bottom; margins: 8 } text: icard.pair[1]; color: icard.pair[1] } }
                 }
             }
         }
     }
+    Flow {
+        visible: Theme.lumen
+        Layout.fillWidth: true; spacing: 10
+        Repeater {
+            model: Object.keys(Looks.ACCENTS).concat(["custom"])
+            Item {
+                id: sw
+                required property string modelData
+                readonly property bool custom: modelData === "custom"
+                readonly property bool chosen: custom ? page.customChosen : (Theme.selection.accent || "blue") === modelData && !page.customChosen
+                readonly property color shown: custom ? (page.customColor ? Looks.derive("lumen", Theme.mode, page.customColor)[0] : "transparent") : Looks.derive("lumen", Theme.mode, modelData)[0]
+                width: 40; height: 40
+                activeFocusOnTab: true
+                Keys.onPressed: event => KeyNav.press(event, () => area.clicked(null))
+                FocusRing { radius: 20 }
+                Rectangle {
+                    anchors.centerIn: parent; width: 40; height: 40; radius: 20; color: "transparent"
+                    border.width: 2; border.color: sw.chosen ? (sw.custom && !page.customColor ? Theme.text : sw.shown) : "transparent"
+                }
+                // The custom swatch is a color wheel until a color is picked.
+                Rectangle {
+                    anchors.centerIn: parent; width: 30; height: 30; radius: 15
+                    color: sw.shown; border.width: 1; border.color: Theme.rule
+                    visible: !sw.custom || page.customColor !== ""
+                }
+                Rectangle {
+                    anchors.centerIn: parent; width: 30; height: 30; radius: 15; visible: sw.custom && page.customColor === ""
+                    gradient: Gradient { orientation: Gradient.Horizontal
+                        GradientStop { position: 0; color: "#f2453a" } GradientStop { position: 0.25; color: "#ffc800" } GradientStop { position: 0.5; color: "#30c35a" }
+                        GradientStop { position: 0.75; color: "#0a7aff" } GradientStop { position: 1; color: "#a050e8" } }
+                }
+                Icon { anchors.centerIn: parent; visible: sw.chosen; name: "check"; size: 14; stroke: 2.6; color: sw.custom && !page.customColor ? Theme.text : Looks.derive("lumen", Theme.mode, sw.custom ? page.customColor : sw.modelData)[1] }
+                MouseArea {
+                    id: area
+                    anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                    onClicked: if (!sw.chosen) page.choose(sw.custom ? (page.customColor || "#5a7cf0") : sw.modelData, sw.custom ? "your color" : sw.modelData)
+                }
+            }
+        }
+    }
+    // Any color: shown while dragging, applied when let go.
+    ColorPick {
+        visible: page.customChosen
+        Layout.fillWidth: true; Layout.topMargin: 12
+        theme: Theme.name
+        value: page.customColor
+        onMoved: hex => { const p = {}; p[page.colorKey] = hex; Theming.preview(p); }
+        onChosen: hex => page.choose(hex, "your color")
+    }
 
     // Wallpaper
     Label { text: "Wallpaper"; font.weight: Font.DemiBold; font.pixelSize: 15; Layout.topMargin: 32; Component.onCompleted: page.mark("wallpaper", this) }
-    Label { text: "A collection is a theme bundle: its plates and its lock art. Plates print in the current ink."; color: Theme.text2; font.pixelSize: Theme.fsS; Layout.fillWidth: true; Layout.bottomMargin: 10 }
+    Label {
+        text: Theme.lumen ? "Lumen draws its sky from your color: soft light by day, stars at night, on every screen and behind the lock."
+                          : "A collection is a theme bundle: its plates and its lock art. Plates print in the current ink."
+        color: Theme.text2; font.pixelSize: Theme.fsS; Layout.fillWidth: true; Layout.bottomMargin: 10; wrapMode: Text.WordWrap; maximumLineCount: 2
+    }
     GridLayout {
+        visible: !Theme.lumen
         Layout.fillWidth: true; columns: 4; columnSpacing: 10; rowSpacing: 10
         Repeater {
             model: Art.collections
@@ -111,6 +215,7 @@ SettingsPage {
         }
     }
     RowLayout {
+        visible: !Theme.lumen
         Layout.fillWidth: true; Layout.topMargin: 10; spacing: 10
         Repeater {
             model: (Art.collections.find(c => c.id === Theme.selection.collection) || { "art": [] }).art
@@ -126,6 +231,7 @@ SettingsPage {
         }
     }
     Rectangle {
+        visible: !Theme.lumen
         Layout.fillWidth: true; Layout.topMargin: 12; radius: Theme.rM; color: Theme.well; border.color: Theme.rule
         implicitHeight: wpRows.implicitHeight
         ColumnLayout {
@@ -147,7 +253,7 @@ SettingsPage {
     RowLayout {
         Layout.fillWidth: true; spacing: 10
         Repeater {
-            model: [{ "id": "full", "t": "Full", "s": "Develop, bleed, leaf, stamp", "ms": 520 }, { "id": "gentle", "t": "Gentle", "s": "Half the time, half the travel", "ms": 260 }, { "id": "still", "t": "Still", "s": "Changes cut; plates appear whole", "ms": 1 }]
+            model: [{ "id": "full", "t": "Full", "s": Theme.lumen ? "Springs, fades and glides" : "Develop, bleed, leaf, stamp", "ms": 520 }, { "id": "gentle", "t": "Gentle", "s": "Half the time, half the travel", "ms": 260 }, { "id": "still", "t": "Still", "s": "Changes cut; plates appear whole", "ms": 1 }]
             OptionCard {
                 id: mcard
                 required property var modelData
@@ -180,14 +286,14 @@ SettingsPage {
 
     // Lock & screensaver
     Label { text: "Lock & screensaver"; font.weight: Font.DemiBold; font.pixelSize: 15; Layout.topMargin: 32; Component.onCompleted: page.mark("lock", this) }
-    Label { text: "The screensaver is the plate, moving harder, with the clock drifting over it. Touch anything and it lifts away."; color: Theme.text2; font.pixelSize: Theme.fsS; Layout.fillWidth: true; Layout.bottomMargin: 10 }
+    Label { text: Theme.lumen ? "The screensaver is the sky, with the clock drifting over it. Touch anything and it lifts away." : "The screensaver is the plate, moving harder, with the clock drifting over it. Touch anything and it lifts away."; color: Theme.text2; font.pixelSize: Theme.fsS; Layout.fillWidth: true; Layout.bottomMargin: 10 }
     Rectangle {
         Layout.fillWidth: true; Layout.preferredHeight: width / 2.6; radius: 14; clip: true; color: Theme.paper; border.color: Theme.rule
         Plate { anchors.fill: parent; anchors.margins: 1; plate: Art.current; breathe: 1; textureWidth: 1600; developOnLoad: false }
         Rectangle {
             id: drift
             width: driftText.implicitWidth + 28; height: driftText.implicitHeight + 10; radius: 14; color: Theme.sheetStrong
-            Text { id: driftText; anchors.centerIn: parent; text: Qt.formatTime(clock.date, "HH:mm"); font.family: Theme.hero; font.pixelSize: 54; color: Theme.ink }
+            Text { id: driftText; anchors.centerIn: parent; text: Qt.formatTime(clock.date, "HH:mm"); font.family: Theme.hero; font.weight: Theme.heroWeight; font.pixelSize: 54; color: Theme.ink }
             SequentialAnimation on x { loops: Animation.Infinite; NumberAnimation { from: 30; to: 420; duration: 26000; easing.type: Easing.InOutSine } NumberAnimation { from: 420; to: 30; duration: 26000; easing.type: Easing.InOutSine } }
             SequentialAnimation on y { loops: Animation.Infinite; NumberAnimation { from: 20; to: 110; duration: 17000; easing.type: Easing.InOutSine } NumberAnimation { from: 110; to: 20; duration: 17000; easing.type: Easing.InOutSine } }
         }

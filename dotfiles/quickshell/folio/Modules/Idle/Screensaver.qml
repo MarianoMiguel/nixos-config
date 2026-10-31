@@ -83,7 +83,7 @@ PanelWindow {
                     y: (clockBox.height - implicitHeight) / 2
                     text: Qt.formatTime(clock.date, "HH:mm")
                     color: Theme.ink
-                    font.family: Theme.hero
+                    font.family: Theme.hero; font.weight: Theme.heroWeight
                     font.pixelSize: clockBox.size
                     font.features: { "tnum": 1 }
                 }

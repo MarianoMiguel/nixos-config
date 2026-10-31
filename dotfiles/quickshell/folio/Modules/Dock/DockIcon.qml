@@ -110,7 +110,7 @@ Item {
         anchors.verticalCenterOffset: parent.height * 0.03
         visible: root.missing && !root.glyph
         text: (root.name || "?").charAt(0).toUpperCase()
-        font.family: Theme.hero
+        font.family: Theme.hero; font.weight: Theme.heroWeight
         font.pixelSize: parent.height * 0.6
         color: Theme.ink
     }

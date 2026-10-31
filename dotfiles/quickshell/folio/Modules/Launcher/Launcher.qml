@@ -884,7 +884,7 @@ Scope {
                             now: root.now
                             awake: win.visible
                             onRun: index => root.runItem(root.current, index)
-                            Rectangle { anchors.fill: parent; z: -1; color: Theme.rgba(Theme.ink, 0.035) }
+                            Rectangle { anchors.fill: parent; z: -1; color: Theme.rgba(Theme.tint, 0.035) }
                         }
                     }
 

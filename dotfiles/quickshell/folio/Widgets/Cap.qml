@@ -1,14 +1,15 @@
 import QtQuick
 import qs.Common
 
-// The book-plate caption: mono capitals for anything that is metadata.
+// The caption for anything that is metadata: Folio's book-plate mono
+// capitals, Lumen's small sentence case (Theme.cap*).
 Text {
     color: Theme.text3
-    font.family: Theme.mono
+    font.family: Theme.capFamily
     font.pixelSize: Theme.fsCap
-    font.weight: Font.Medium
-    font.letterSpacing: 1.2
-    font.capitalization: Font.AllUppercase
+    font.weight: Theme.capWeight
+    font.letterSpacing: Theme.capSpacing
+    font.capitalization: Theme.capCase
     elide: Text.ElideRight
     maximumLineCount: 1
     textFormat: Text.PlainText

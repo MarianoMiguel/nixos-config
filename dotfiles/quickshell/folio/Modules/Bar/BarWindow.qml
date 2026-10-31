@@ -64,21 +64,20 @@ PanelWindow {
         height: parent.height
         spacing: 4
 
-        // The monogram: opens the launcher.
+        // Interstellar's mark: opens the launcher. Folio prints it on an ink
+        // tile; Lumen sets it bare in the text color.
         Rectangle {
             id: mark
             Layout.preferredWidth: 24; Layout.preferredHeight: 24
             radius: Theme.rXs
-            color: Theme.ink
+            color: Theme.lumen ? "transparent" : Theme.ink
             scale: markArea.pressed ? 0.95 : 1
             Behavior on scale { SpringPress {} }
-            Text {
+            Mark {
                 anchors.centerIn: parent
-                anchors.verticalCenterOffset: 1
-                text: "F"
-                color: Theme.inkText
-                font.family: Theme.hero
-                font.pixelSize: 19
+                width: Theme.lumen ? 22 : 18; height: width
+                weight: Theme.lumen ? 0.08 : 0.09
+                color: Theme.lumen ? Theme.text : Theme.inkText
             }
             MouseArea {
                 id: markArea

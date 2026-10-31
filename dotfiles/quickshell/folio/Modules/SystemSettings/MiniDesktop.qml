@@ -23,7 +23,7 @@ Item {
     Rectangle {
         x: root.u * 2; y: root.u * 5; width: parent.width * 0.55; height: parent.height - root.u * 15
         radius: root.u * 0.9; color: Theme.sheetStrong; border.color: Theme.rule; clip: true
-        Rectangle { width: parent.width; height: root.u * 2.6; color: Theme.mix(Theme.paper, Theme.ink, 0.18) }
+        Rectangle { width: parent.width; height: root.u * 2.6; color: Theme.mix(Theme.paper, Theme.tint, 0.18) }
         Repeater { model: [0.45, 0.7, 0.55]; Rectangle { required property var modelData; required property int index; x: root.u * 3; y: root.u * (5 + index * 2.2); width: parent.width * modelData; height: root.u * 0.9; radius: height / 2; color: Theme.wellStrong } }
     }
     Rectangle {
@@ -32,7 +32,7 @@ Item {
         width: root.u * 24; radius: root.u * 1.6; color: Theme.sheet; border.color: Theme.rule
         Column {
             anchors.fill: parent; anchors.margins: root.u * 1.4; spacing: root.u * 1.1
-            Text { text: "22:41"; font.family: Theme.hero; font.pixelSize: root.u * 5.4; color: Theme.ink }
+            Text { text: "22:41"; font.family: Theme.hero; font.weight: Theme.heroWeight; font.pixelSize: root.u * 5.4; color: Theme.ink }
             Grid { columns: 2; spacing: root.u * 0.8
                 Repeater { model: 4; Rectangle { required property int index; width: root.u * 10; height: root.u * 3.8; radius: root.u * 0.9; color: index < 2 ? Theme.ink : Theme.well } }
             }

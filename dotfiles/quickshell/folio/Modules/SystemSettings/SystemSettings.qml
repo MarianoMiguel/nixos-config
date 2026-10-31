@@ -117,17 +117,17 @@ Scope {
                 Rectangle {
                     Layout.fillHeight: true
                     Layout.preferredWidth: 256
-                    color: Theme.mix(Theme.paper, Theme.ink, 0.05)
+                    color: Theme.mix(Theme.paper, Theme.tint, 0.05)
                     Rectangle { anchors.right: parent.right; width: 1; height: parent.height; color: Theme.rule }
                     ColumnLayout {
                         anchors.fill: parent; anchors.margins: 12; spacing: 8
                         RowLayout {
                             Layout.fillWidth: true; Layout.bottomMargin: 2; spacing: 10
                             Rectangle { Layout.preferredWidth: 40; Layout.preferredHeight: 40; radius: 20; color: Theme.ink
-                                Text { anchors.centerIn: parent; text: (Quickshell.env("USER") || "M").charAt(0).toUpperCase(); font.family: Theme.hero; font.pixelSize: 24; color: Theme.inkText } }
+                                Text { anchors.centerIn: parent; text: (Quickshell.env("USER") || "M").charAt(0).toUpperCase(); font.family: Theme.hero; font.weight: Theme.heroWeight; font.pixelSize: 24; color: Theme.inkText } }
                             ColumnLayout { spacing: 0; Layout.fillWidth: true; Layout.minimumWidth: 0
                                 Label { text: "Settings"; font.weight: Font.DemiBold; Layout.fillWidth: true }
-                                Label { text: Theme.selection.collectionName ? Theme.selection.collectionName + " · " + Theme.inkName : "Folio"; color: Theme.text2; font.pixelSize: Theme.fsS; Layout.fillWidth: true } }
+                                Label { text: "Interstellar · " + (Theme.lumen ? "Lumen · " + (Theme.pick.charAt(0) === "#" ? "your color" : Theme.pick) : "Folio · " + (Theme.inkName === "custom" ? "your ink" : Theme.inkName)); color: Theme.text2; font.pixelSize: Theme.fsS; Layout.fillWidth: true } }
                         }
                         Field {
                             id: search
@@ -206,7 +206,7 @@ Scope {
                                 Label { visible: win.shown.length === 0; text: "Nothing matches “" + win.query + "”."; color: Theme.text2; font.pixelSize: Theme.fsS; Layout.leftMargin: 10; Layout.topMargin: 8; Layout.fillWidth: true }
                             }
                         }
-                        Cap { text: "Folio · " + Art.plates.length + " plates"; Layout.fillWidth: true; Layout.leftMargin: 8 }
+                        Cap { text: Theme.lumen ? "Interstellar · Lumen" : "Interstellar · Folio · " + Art.plates.length + " plates"; Layout.fillWidth: true; Layout.leftMargin: 8 }
                     }
                 }
 

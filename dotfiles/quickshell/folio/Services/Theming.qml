@@ -4,11 +4,13 @@ import Quickshell
 import Quickshell.Io
 import qs.Common
 
-// Changing mode, ink or plate. azure-folio re-themes the apps (GTK, Qt,
-// Chrome, the terminal) and takes a few seconds; Folio shows the choice at
-// once through Theme.pending and says it is still applying. Choices made
-// while it runs are merged into one more run. If it fails, the choice is
-// taken back and a toast says so. In the harness nothing runs.
+// Changing the look: theme, mode, color (Folio's ink, Lumen's accent),
+// collection or plate. azure-folio re-themes the apps (GTK, Qt, Chrome, the
+// terminal), the login and the boot screen, and takes a few seconds; the
+// shell shows the choice at once through Theme.pending and says it is still
+// applying. Choices made while it runs are merged into one more run. If it
+// fails, the choice is taken back and a toast says so. In the harness
+// nothing runs. preview() only shows a color (a picker being dragged).
 // (Not named Palette: Qt Quick has a Palette type, which wins the name.)
 Singleton {
     id: root
@@ -18,8 +20,18 @@ Singleton {
     property var queued: null            // a patch waiting for the run in progress
     property var running: ({})
 
-    // patch: { mode, ink, collection, art }
+    // A #rrggbb ink or accent is the theme's custom color.
+    function normal(patch) {
+        const p = Object.assign({}, patch);
+        if (/^#[0-9a-fA-F]{6}$/.test(p.ink || "")) { p.customInk = p.ink.toLowerCase(); p.ink = "custom"; }
+        if (/^#[0-9a-fA-F]{6}$/.test(p.accent || "")) { p.customAccent = p.accent.toLowerCase(); p.accent = "custom"; }
+        return p;
+    }
+    function preview(patch) { Theme.pending = Object.assign({}, Theme.pending, normal(patch)); }
+
+    // patch: { theme, mode, ink, customInk, accent, customAccent, collection, art }
     function set(patch, label) {
+        patch = normal(patch);
         Theme.pending = Object.assign({}, Theme.pending, patch);
         root.label = label || "";
         if (busy) { queued = Object.assign({}, queued || {}, patch); return; }
@@ -27,7 +39,9 @@ Singleton {
     }
     function args(patch) {
         const a = ["azure-folio", "set"];
-        for (const k of ["mode", "ink", "collection", "art"]) if (k in patch) a.push("--" + k, String(patch[k]));
+        for (const k of ["theme", "mode", "collection", "art"]) if (k in patch) a.push("--" + k, String(patch[k]));
+        if ("ink" in patch) a.push("--ink", patch.ink === "custom" && patch.customInk ? patch.customInk : patch.ink);
+        if ("accent" in patch) a.push("--accent", patch.accent === "custom" && patch.customAccent ? patch.customAccent : patch.accent);
         return a;
     }
     function run(patch) {

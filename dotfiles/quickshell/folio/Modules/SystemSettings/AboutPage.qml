@@ -48,7 +48,7 @@ SettingsPage {
                 Text {
                     text: page.i.hostname || "Unnamed"
                     color: page.i.hostname ? Theme.ink : Theme.text3
-                    font.family: Theme.hero; font.pixelSize: 46
+                    font.family: Theme.hero; font.weight: Theme.heroWeight; font.pixelSize: 46
                     elide: Text.ElideRight; maximumLineCount: 1
                     Layout.fillWidth: true; Layout.minimumWidth: 0
                 }

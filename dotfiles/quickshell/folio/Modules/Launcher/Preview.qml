@@ -194,7 +194,7 @@ Item {
             Text {
                 text: parent.visible ? root.item.calc.text : ""
                 color: Theme.ink
-                font.family: Theme.hero
+                font.family: Theme.hero; font.weight: Theme.heroWeight
                 font.pixelSize: 72
                 fontSizeMode: Text.HorizontalFit
                 minimumPixelSize: 26

@@ -4,7 +4,8 @@ import qs.Common
 
 // Prints its content in dot by dot (progress 0 -> 1) or lifts it off (1 -> 0),
 // the plates' develop for interface items (shaders/develop.frag). Plain
-// rendering when fully printed. printIn(ms) and lift(ms) run the threshold
+// rendering when fully printed. Themes that do not print (Lumen) fade it
+// instead, on the same progress. printIn(ms) and lift(ms) run the threshold
 // linearly, as the kit does; finished() fires at the end.
 Item {
     id: root
@@ -32,7 +33,8 @@ Item {
         id: inner
         anchors.fill: parent
         visible: root.invert ? root.progress < 1 : root.progress > 0
-        layer.enabled: root.invert ? root.progress > 0 : root.progress < 1
+        opacity: Theme.prints ? 1 : (root.invert ? 1 - root.progress : root.progress)
+        layer.enabled: Theme.prints && (root.invert ? root.progress > 0 : root.progress < 1)
         layer.effect: ShaderEffect {
             property vector2d res: Qt.vector2d(Math.max(1, inner.width * root.dpr), Math.max(1, inner.height * root.dpr))
             property real progress: root.progress

@@ -110,7 +110,7 @@ Item {
         width: 12; height: 12; radius: 6
         x: root.xOf(root.now) - 6; y: root.yOf(root.series.length ? root.series[root.series.length - 1].v : 0) - 6
         color: Theme.ink
-        border.width: 2; border.color: Theme.mix(Theme.paper, Theme.ink, 0.09)
+        border.width: 2; border.color: Theme.mix(Theme.paper, Theme.tint, 0.09)
     }
 
     // Hours along the bottom: every six on the clock.

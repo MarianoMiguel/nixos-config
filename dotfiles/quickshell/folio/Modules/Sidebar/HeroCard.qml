@@ -31,7 +31,7 @@ Item {
         height: 72
         verticalAlignment: Text.AlignVCenter
         color: Theme.ink
-        font.family: Theme.hero
+        font.family: Theme.hero; font.weight: Theme.heroWeight
         font.pixelSize: 96
         font.hintingPreference: Font.PreferFullHinting
         renderType: Text.NativeRendering

@@ -56,7 +56,11 @@ Scope {
     property string motionWritten: ""
     property bool motionRead: false
     function writeMotion() { if (motionRead && motionKdl !== motionWritten) { motionWritten = motionKdl; motionFile.setText(motionKdl); } }
-    onMotionKdlChanged: writeMotion()
+    // Written once the look settles: the colours glide for a moment on every
+    // change, and each step would otherwise rewrite the file and make niri
+    // reload its config (hundreds of times per theme change).
+    onMotionKdlChanged: motionWait.restart()
+    Timer { id: motionWait; interval: Math.max(900, Theme.tPage + 400); onTriggered: root.writeMotion() }
     FileView {
         id: motionFile
         path: root.motionPath

@@ -191,7 +191,7 @@ pkgs.testers.runNixOSTest {
       luks = nodes.machine.specialisation.luks.configuration.system.build.toplevel;
     in
     ''
-      import json, time
+      import time
 
       def ocr(label):
           # OCR as a readability check only; waits follow the serial log.
@@ -277,6 +277,8 @@ pkgs.testers.runNixOSTest {
           ''
         else
           ''
+            import json
+
             # The default entry names NixOS's initrd, then the look; an older
             # entry is left as NixOS wrote it.
             spec = machine.succeed(f"cat /boot/loader/entries/{entry}")

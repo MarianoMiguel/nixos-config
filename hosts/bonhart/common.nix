@@ -48,8 +48,9 @@ in
   # pond-preview, Pond's shell as a live design reference (workshop/).
   mariano.pond.enable = true;
 
-  # Folio's boot and disk-unlock screen (Plymouth); see docs/folio-boot.md for
-  # the KVM unlock path and how to skip it for one boot (plymouth.enable=0).
+  # Interstellar's boot and disk-unlock screen (Plymouth), in the desktop's
+  # look; see docs/folio-boot.md for the KVM unlock path, the look on the boot
+  # partition and how to skip it for one boot (plymouth.enable=0).
   mariano.folio.boot.enable = true;
 
   services.localWebHosting = {

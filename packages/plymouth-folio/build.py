@@ -627,7 +627,9 @@ def build(*, looks, render, assets, template, out, name, theme, mode, pick, art_
     (out / f'{theme_name}.script').write_text(template.replace('#@GENERATED@', script_header(look, p, sizes)))
 
     where = install_dir or out
-    hexa = lambda c: '0x' + bytes(c).hex()  # noqa: E731
+    # Plymouth reads these as 0xRRGGBBAA: six digits would be a nearly
+    # transparent, wrongly tinted text in the boot messages behind Esc.
+    hexa = lambda c: '0x' + bytes(c).hex() + 'ff'  # noqa: E731
     desc = f'{theme}, {mode}, {pick}' + (f', {art_id}' if art else '')
     (out / f'{theme_name}.plymouth').write_text(f"""[Plymouth Theme]
 Name=Interstellar

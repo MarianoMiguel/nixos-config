@@ -341,6 +341,10 @@ class Publish(unittest.TestCase):
         files = {n.rsplit('/', 1)[-1]: d for n, m, d, _ in entries(blob) if stat.S_ISREG(m)}
         self.assertEqual(files['LOOK'], b'lumen light #ff6a00\n')
         self.assertIn(b'ImageDir=/run/interstellar/themes/interstellar-look\n', files['interstellar-look.plymouth'])
+        # Boot messages behind Esc: Lumen's light text and window, opaque
+        # (Plymouth reads 0xRRGGBBAA).
+        self.assertIn(b'ConsoleLogTextColor=0x1d1d1fff\n', files['interstellar-look.plymouth'])
+        self.assertIn(b'ConsoleLogBackgroundColor=0xffffffff\n', files['interstellar-look.plymouth'])
         self.assertIn(b'theme = "lumen";', files['interstellar-look.script'])
         self.assertIn('art-1920x1200.png', files)
         live = self.runtime / boot_look.THEME

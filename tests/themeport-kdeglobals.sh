@@ -44,7 +44,8 @@ for file in "$dark" "$light"; do
     || fail "selection text does not contrast in $file"
   [[ $(key "$file" General ColorScheme) == "Themeport" ]] || fail "scheme name missing in $file"
   [[ $(key "$file" General font) == Inter,* ]] || fail "UI font is not Inter in $file"
-  [[ $(key "$file" General fixed) == "JetBrainsMonoNL NFM",* ]] || fail "monospace font is wrong in $file"
+  # The desktop's mono (DMS monoFontFamily, themeport KDE_MONO_FAMILY).
+  [[ $(key "$file" General fixed) == "IBM Plex Mono",* ]] || fail "monospace font is wrong in $file"
   [[ -n $(key "$file" Icons Theme) ]] || fail "icon theme missing in $file"
   [[ $(key "$file" KDE widgetStyle) == "Breeze" ]] || fail "widget style is not Breeze in $file"
 done

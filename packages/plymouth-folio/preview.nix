@@ -368,8 +368,12 @@ pkgs.testers.runNixOSTest {
           ''
       }
 
-      # The shutdown page.
-      machine.execute("systemctl poweroff --no-block")
+      # The shutdown page. The VM may be off before the driver reads the
+      # command's status.
+      try:
+          machine.execute("systemctl poweroff --no-block")
+      except BrokenPipeError:
+          pass
       for i in range(8):
           time.sleep(0.15)
           try:

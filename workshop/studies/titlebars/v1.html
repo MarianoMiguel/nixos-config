@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en" data-mode="dark" data-ink="azure">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Window Lights</title>
+<link rel="stylesheet" href="../_kit/folio.css">
+<style>
+  body { padding: 48px 24px 80px; }
+  main { max-width: 1100px; margin: 0 auto; display: grid; gap: 40px; }
+  h1 { font: 600 34px/1.1 var(--ui); margin: 6px 0 10px; }
+  h2 { font: 600 19px/1.2 var(--ui); margin: 0 0 6px; }
+  p { color: var(--text-2); max-width: 760px; margin: 0 0 14px; }
+  img { width: 100%; border-radius: 12px; box-shadow: 0 0 0 1px var(--rule); display: block; }
+  .bars { display: grid; gap: 10px; }
+  .bars figure { margin: 0; }
+  figcaption { margin-top: 6px; }
+  table { width: 100%; border-collapse: collapse; }
+  td, th { text-align: left; padding: 10px 12px; box-shadow: inset 0 -1px 0 var(--rule); vertical-align: top; }
+  th { font: 500 10.5px/1.3 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--text-3); }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <span class="cap">Study · window lights · v1 · real apps in the harness</span>
+    <h1>Title bars with two lights</h1>
+    <p>Captured from real apps (Files, Text Editor, Ghostty, Chrome) with a prototype of themeport's GTK CSS: the window's controls at the start of the title bar, close and maximize (niri has no minimize), glyphs on hover, quiet when the window is not focused. Each theme dresses them: Lumen in red and green, Folio in its own muted red and green.</p>
+  </header>
+
+  <section>
+    <h2>Lumen, dark</h2>
+    <p>Ghostty is focused (top left: red and green). Files and Text Editor are not (grey). Chrome moved its buttons to the left too, but draws its own ✕ and □.</p>
+    <img src="../../captures/titlebars-prototype/lumen-dark.png" alt="Lumen dark: four apps">
+  </section>
+
+  <section>
+    <h2>Folio, light</h2>
+    <p>Files is focused: Folio's red and green on paper. (The green reads pale here because the test compositor disables maximize on floating windows; niri allows it.)</p>
+    <img src="../../captures/titlebars-prototype/folio-light.png" alt="Folio light: four apps">
+  </section>
+
+  <section class="bars">
+    <h2>Side by side</h2>
+    <figure><img src="../../captures/titlebars-prototype/ghostty-bar.png" alt="Ghostty title bar"><figcaption class="cap">Ghostty · GTK · lights</figcaption></figure>
+    <figure><img src="../../captures/titlebars-prototype/files-bar-folio.png" alt="Files title bar in Folio"><figcaption class="cap">Files · GTK · lights (Folio)</figcaption></figure>
+    <figure><img src="../../captures/titlebars-prototype/chrome-bar.png" alt="Chrome tab strip"><figcaption class="cap">Chrome · draws its own buttons</figcaption></figure>
+  </section>
+
+  <section>
+    <h2>Who gets the lights</h2>
+    <table>
+      <thead><tr><th>Apps</th><th>Result</th><th>What it takes</th></tr></thead>
+      <tbody>
+        <tr><td>GTK and GNOME apps (Files, Text Editor, Calculator, Loupe…)</td><td>Lights, identical in every app</td><td>themeport's GTK CSS and one setting (button order)</td></tr>
+        <tr><td>Ghostty</td><td>Lights</td><td>Its own title bar back on (today niri's no-CSD preference leaves it bare)</td></tr>
+        <tr><td>Chrome</td><td>Buttons on the left, but its own ✕ □</td><td>Untested way to lights: drop the color policy and use Chrome's GTK theme</td></tr>
+        <tr><td>Qt apps (Dolphin, Kate, qBittorrent, OBS)</td><td>No title bar today</td><td>Our own Qt decoration plugin, and niri's no-CSD preference off</td></tr>
+        <tr><td>VS Code, Obsidian, Slack, Spotify</td><td>Their own controls</td><td>Per-app settings, where they exist</td></tr>
+      </tbody>
+    </table>
+  </section>
+</main>
+</body>
+</html>

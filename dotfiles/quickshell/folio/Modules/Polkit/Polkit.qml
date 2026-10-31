@@ -10,9 +10,10 @@ import qs.Widgets
 
 // The polkit agent: one PolkitAgent for the shell, and its dialog, a sheet
 // printed in on a halftone scrim (workshop/studies/controls/v1.html) with
-// the lock's cross grid as the password field. The harness never registers
-// an agent (polkit lives on the system bus); fixtures show the dialog with
-// made-up requests, accepting "folio".
+// the lock's cross grid as the password field. Admin requests take root's
+// password, as sudo does. The harness never registers an agent (polkit lives
+// on the system bus); fixtures show the dialog with made-up requests,
+// accepting "folio".
 Scope {
     id: root
 
@@ -35,12 +36,21 @@ Scope {
 
     readonly property string actionMessage: fx ? fx.message : flow ? flow.message : ""
     readonly property string actionId: fx ? fx.action : flow ? flow.actionId : ""
-    readonly property string identity: fx ? fx.identity : flow && flow.selectedIdentity ? flow.selectedIdentity.string : ""
+    // Whose password: root's for admin actions (users.nix makes root the only
+    // administrator identity, as sudo's rootpw does), the user's own for
+    // actions that ask for it. polkit chooses; the dialog never switches it.
+    readonly property bool admin: {
+        if (fx) return fx.admin;
+        const who = flow ? flow.selectedIdentity : null;
+        return !!who && !who.isGroup && who.id === 0;
+    }
+    readonly property string identity: admin ? "Administrator (root)" : fx ? fx.identity : flow && flow.selectedIdentity ? flow.selectedIdentity.string : ""
+    readonly property string passwordHint: admin ? "Type the root password" : "Type your password"
     readonly property string supplement: flow ? flow.supplementaryMessage : ""
-    // PAM's own errors (a missed fingerprint, a locked account) when we have none.
+    // PAM's own errors (a locked account) when we have none.
     readonly property string note: message || (flow && flow.supplementaryIsError ? supplement : "")
-    readonly property bool fingerprint: fx ? fx.fingerprint
-        : flow !== null && !flow.isResponseRequired && (/finger|swipe|sensor/i.test(supplement) || Fingerprint.polkitReady)
+    // Never a fingerprint: polkit-1 has no pam_fprintd (modules/nixos/fingerprint.nix).
+    readonly property bool fingerprint: false
 
     Loader {
         id: agentLoader
@@ -55,26 +65,9 @@ Scope {
     }
     onOpenChanged: if (open) reset()
 
-    // Several identities (root and the wheel group's users): prefer ours.
-    // Changing it restarts the conversation, which polkit reports as a
-    // failure; that one is not the user's.
-    property bool switching: false
-    Connections {
-        target: root.agent
-        function onAuthenticationRequestStarted() {
-            const f = root.agent.flow;
-            const me = Quickshell.env("USER");
-            if (!f || !f.identities || f.identities.length < 2) return;
-            const mine = f.identities.find(i => !i.isGroup && i.string === me);
-            if (!mine || mine === f.selectedIdentity) return;
-            root.switching = true;
-            f.selectedIdentity = mine;
-            root.switching = false;
-        }
-    }
     Connections {
         target: root.flow
-        function onAuthenticationFailed() { if (!root.switching) root.refuse("Not quite. The ink lifts; try again."); }
+        function onAuthenticationFailed() { root.refuse("Not quite. The ink lifts; try again."); }
         function onAuthenticationSucceeded() { root.accept(); }
         function onIsResponseRequiredChanged() { if (root.flow.isResponseRequired && root.pending) root.answer(); }
     }
@@ -138,9 +131,10 @@ Scope {
     PolkitDialog { owner: root }
 
     readonly property var fixtures: ({
-        "normal": { "message": "Authentication is required to run `nixos-rebuild switch` as the super user.", "action": "org.freedesktop.policykit.exec", "identity": "mariano", "fingerprint": true },
-        "stress": { "message": "Authentication is required to change the system-wide configuration of the network connection “Departamento 4B — Red de invitados de la oficina central, piso 12, ala norte (5 GHz)”, which is shared with all users of this computer and requires administrator privileges.", "action": "org.freedesktop.NetworkManager.settings.modify.system.with-a-very-long-action-identifier", "identity": "mariano.miguel.de.los.santos.echeverria.uriarte", "fingerprint": true },
-        "empty": { "message": "", "action": "", "identity": "", "fingerprint": false }
+        "normal": { "message": "Authentication is required to run `nixos-rebuild switch` as the super user.", "action": "org.freedesktop.policykit.exec", "identity": "root", "admin": true },
+        // An action that asks for the user's own password, with a long name.
+        "stress": { "message": "Authentication is required to change the system-wide configuration of the network connection “Departamento 4B — Red de invitados de la oficina central, piso 12, ala norte (5 GHz)”, which is shared with all users of this computer and requires administrator privileges.", "action": "org.freedesktop.NetworkManager.settings.modify.system.with-a-very-long-action-identifier", "identity": "mariano.miguel.de.los.santos.echeverria.uriarte", "admin": false },
+        "empty": { "message": "", "action": "", "identity": "", "admin": false }
     })
 
     IpcHandler {

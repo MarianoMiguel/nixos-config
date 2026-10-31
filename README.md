@@ -113,8 +113,8 @@ nix-prefetch-url --name displaylink-620.zip 'https://www.synaptics.com/sites/def
 ```
 
 After installation, remove the USB drive and reboot. The firmware will ask for
-the LUKS password; the desktop uses Mariano's password; `sudo` uses the separate
-administrator password.
+the LUKS password; the desktop uses Mariano's password; `sudo` and admin prompts
+(polkit) use the separate administrator password.
 
 ## Consistent Desktop And System Actions
 
@@ -235,8 +235,8 @@ DMS's optional video screensaver without creating a second idle daemon.
 
 ### Bonhart fingerprint enrollment
 
-Bonhart enables `fprintd` for greetd login, DMS unlock, `polkit` authorization
-and `sudo`. Open `Super+Space`, then `Security · Set up fingerprints` to list,
+Bonhart enables `fprintd` for greetd login, DMS unlock and `sudo`. Admin
+prompts (`polkit`) take only the administrator password. Open `Super+Space`, then `Security · Set up fingerprints` to list,
 enroll or delete prints. Mariano's account owns login and unlock fingerprints.
 Because `sudo` intentionally authenticates against the separate root account,
 its submenu uses NixOS's root-owned security wrapper and should enroll a

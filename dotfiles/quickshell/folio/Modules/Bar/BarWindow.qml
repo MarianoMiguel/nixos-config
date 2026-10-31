@@ -26,7 +26,10 @@ PanelWindow {
     implicitHeight: 34
     exclusiveZone: 34
     color: "transparent"
-    BackgroundEffect.blurRegion: Region { item: paper; radius: frost.extra }
+    // Clear: no sheet and no frost, only the bar's text over the wallpaper,
+    // with a soft halo in the paper's colour so it reads over any picture.
+    readonly property bool clear: Settings.get("bar.style") === "clear"
+    BackgroundEffect.blurRegion: Region { item: win.clear ? null : paper; radius: frost.extra }
     BlurNudge { id: frost; key: win.width }
 
     // Live data, or the fixture's.
@@ -53,15 +56,18 @@ PanelWindow {
     Rectangle {
         id: paper
         anchors.fill: parent
-        color: Theme.sheet
+        color: win.clear ? "transparent" : Theme.sheet
+        Behavior on color { ColorAnimation { duration: Theme.tPanel; easing.type: Easing.OutCubic } }
         // Folio rules the bar off like a page's running head; Lumen's glass ends clean.
-        Rectangle { visible: Theme.prints; anchors { left: parent.left; right: parent.right; bottom: parent.bottom } height: 1; color: Theme.rule }
+        Rectangle { visible: Theme.prints && !win.clear; anchors { left: parent.left; right: parent.right; bottom: parent.bottom } height: 1; color: Theme.rule }
     }
 
     // Left: mark, workspaces, app, title. Never wider than its half.
     RowLayout {
         x: 8
         width: Math.max(0, (win.width - 16 - win.islandRoom) / 2)
+        layer.enabled: win.clear
+        layer.effect: MultiEffect { shadowEnabled: true; shadowColor: Theme.paper; shadowBlur: 0.22; shadowScale: 1.04; blurMax: 12; shadowHorizontalOffset: 0; shadowVerticalOffset: 0 }
         height: parent.height
         spacing: 4
 
@@ -152,6 +158,8 @@ PanelWindow {
 
     // Right: privacy, date, tray, status.
     RowLayout {
+        layer.enabled: win.clear
+        layer.effect: MultiEffect { shadowEnabled: true; shadowColor: Theme.paper; shadowBlur: 0.22; shadowScale: 1.04; blurMax: 12; shadowHorizontalOffset: 0; shadowVerticalOffset: 0 }
         anchors.right: parent.right
         anchors.rightMargin: 8
         height: parent.height

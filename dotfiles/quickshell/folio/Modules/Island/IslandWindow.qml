@@ -78,8 +78,15 @@ PanelWindow {
         Keys.onEscapePressed: win.hub.closePlayer()
     }
 
+    // Idle, the island is only the time, as text in the bar; any other face
+    // grows a pill out of it.
+    readonly property bool bare: face === "idle"
+    readonly property bool clearBar: Settings.get("bar.style") === "clear"
+
     RectangularShadow {
         anchors.fill: pill
+        opacity: win.bare ? 0 : 1
+        Behavior on opacity { NumberAnimation { duration: Theme.tQuick } }
         radius: pill.radius
         blur: 24
         offset: Qt.vector2d(0, 6)
@@ -101,9 +108,10 @@ PanelWindow {
         Behavior on width { SpringPanel {} }
         Behavior on height { SpringPanel {} }
         Behavior on radius { SpringPanel {} }
-        color: win.deep
+        color: win.bare ? Theme.rgba(win.deep, 0) : win.deep
+        Behavior on color { ColorAnimation { duration: Theme.tQuick } }
         border.width: 1
-        border.color: Theme.rgba(Theme.islandText, 0.06)
+        border.color: Theme.rgba(Theme.islandText, win.bare ? 0 : 0.06)
         clip: true
 
         // The pill itself: open the player from music, read a note, close
@@ -128,6 +136,9 @@ PanelWindow {
             width: 96; height: 26
             T {
                 anchors.centerIn: parent
+                color: Theme.text
+                layer.enabled: win.clearBar
+                layer.effect: MultiEffect { shadowEnabled: true; shadowColor: Theme.paper; shadowBlur: 0.22; shadowScale: 1.04; blurMax: 12; shadowHorizontalOffset: 0; shadowVerticalOffset: 0 }
                 text: Qt.formatTime(clock.date, "HH:mm")
                 SystemClock { id: clock; precision: SystemClock.Minutes }
             }

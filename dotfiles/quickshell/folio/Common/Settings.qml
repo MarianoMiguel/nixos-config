@@ -14,6 +14,7 @@ Singleton {
         "motion": "full",                       // full | gentle | still
         "dock.icons": "original",               // original | plated | printed
         "dock.magnify": true,
+        "bar.style": "glass",                   // glass (frosted sheet) | clear (text over the wallpaper)
         "dock.reserve": true,                   // windows stop above the dock
         "dock.pinned": ["org.gnome.Nautilus", "google-chrome", "com.mitchellh.ghostty", "spotify", "code"],
         "sidebar.side": "right",

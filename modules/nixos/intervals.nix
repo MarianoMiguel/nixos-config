@@ -29,7 +29,11 @@ in
       NoNewPrivileges = true;
       PrivateTmp = true;
       ProtectSystem = "strict";
-      ProtectHome = "read-only";
+      # Home is an empty tmpfs (no ~/.ssh, agent tokens or other projects)
+      # with only the checkout, read-only, bound back in: it was already
+      # read-only to the service, which serves from it and writes nothing.
+      ProtectHome = "tmpfs";
+      BindReadOnlyPaths = [ appRoot ];
     };
   };
 

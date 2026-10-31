@@ -32,8 +32,14 @@ in
       NoNewPrivileges = true;
       PrivateTmp = true;
       ProtectSystem = "strict";
-      ProtectHome = "read-only";
-      ReadWritePaths = [ "${appRoot}/data" ];
+      # Home is an empty tmpfs (no ~/.ssh, agent tokens or other projects).
+      # The checkout comes back read-only: src/ and node_modules/ (code),
+      # public/ (the web page) and config/devices.json (configured TVs);
+      # data/ holds tv-remotes.json (devices and pairing credentials), which
+      # the server rewrites through a temporary file in the same directory.
+      ProtectHome = "tmpfs";
+      BindReadOnlyPaths = [ appRoot ];
+      BindPaths = [ "${appRoot}/data" ];
     };
   };
 

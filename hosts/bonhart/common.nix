@@ -57,6 +57,13 @@ in
     hostName = "bonhart.local";
     title = "Bonhart Local";
     tls.enable = true;
+    # Reachable over Tailscale and from Bonhart itself, never from the Wi-Fi
+    # or Ethernet LAN. nginx still listens on every address; the firewall
+    # decides. ts0 is already a trusted interface (networking.nix); naming it
+    # here keeps the gateway reachable over Tailscale even if that trust is
+    # narrowed later.
+    openFirewall = false;
+    firewallInterfaces = [ config.services.tailscale.interfaceName ];
     # Tailscale-only services stay Tailscale-only. The gateway adds no
     # authentication to a dedicated-port application, so proxying one onto
     # the Wi-Fi address would hand it to every device on the LAN.

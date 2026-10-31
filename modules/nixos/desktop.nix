@@ -187,6 +187,9 @@ in
   environment.sessionVariables = {
     XCURSOR_THEME = "Adwaita";
     XCURSOR_SIZE = "24";
+    # Interstellar's Qt title bar (packages/qt-interstellar-decorations) for
+    # every Qt app, also those D-Bus or a service starts rather than niri.
+    QT_WAYLAND_DECORATION = "interstellar";
   };
 
   qt = {

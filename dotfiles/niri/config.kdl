@@ -201,7 +201,9 @@ spawn-at-startup "qs" "-c" "desktop-click"
 hotkey-overlay {
     skip-at-startup
 }
-prefer-no-csd
+// Windows draw their own title bars (client-side decorations): Interstellar
+// gives GTK apps, Ghostty and Qt apps the same lights at the start of the
+// bar (themeport's GTK CSS, the Qt decoration plugin).
 screenshot-path "~/Pictures/Screenshots/Screenshot from %Y-%m-%d %H-%M-%S.png"
 animations {
     // Brief motion makes spatial changes readable without delaying input.

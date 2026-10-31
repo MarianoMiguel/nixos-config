@@ -8,7 +8,8 @@ import Quickshell.Services.UPower
 // battery and PowerAlerts.
 //
 // Session actions: nothing asks "are you sure?": each final action counts
-// down in a toast that can be cancelled. Sleeping always locks first.
+// down in a toast that can be cancelled. Sleeping always locks first. All of
+// them go through Sys.run (Niri.quit too), so the harness only records them.
 //
 // Policy: the power mode (power-profiles-daemon), what closing the lid does
 // (logind, decided by NixOS in modules/nixos/power.nix), and what a low
@@ -24,8 +25,8 @@ Singleton {
     function lock() { Session.lock(); }
     function hibernate() { Session.lockThen(["systemctl", "hibernate"]); }
     function logout() { Toasts.countdown("Logging out", () => Niri.quit(), 5, "user"); }
-    function reboot() { Toasts.countdown("Restarting", () => Quickshell.execDetached(["systemctl", "reboot"]), 5, "reload"); }
-    function poweroff() { Toasts.countdown("Shutting down", () => Quickshell.execDetached(["systemctl", "poweroff"]), 5, "power"); }
+    function reboot() { Toasts.countdown("Restarting", () => Sys.run(["systemctl", "reboot"]), 5, "reload"); }
+    function poweroff() { Toasts.countdown("Shutting down", () => Sys.run(["systemctl", "poweroff"]), 5, "power"); }
 
     // ------------------------------------------------------------ policy
 

@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Folio's interface sounds, synthesized from scratch.
+"""Interstellar's interface sounds, synthesized from scratch, one family per theme.
 
-  folio-sounds OUT [--report] [--only a,b]   write OUT/<name>.wav for each sound
+  folio-sounds OUT [--report] [--only a,b]   write OUT/<name>.wav (Folio) and
+                                             OUT/lumen/<name>.wav (Lumen)
   folio-sounds --measure DIR                 measure the .wav files in DIR
 
 Nothing is sampled, downloaded or copied: every sound is built here from sine
@@ -14,6 +15,12 @@ One tonal centre, D (D major pentatonic: D E F# A B), and three materials: a
 felt mallet on a wooden bar (taps), a soft felt-struck bell (alerts) and
 paper (a slide, a press, a crumple). Intervals are open fourths and fifths, a
 minor third at most; nothing glides in pitch but the low body of a press.
+
+Lumen's family is glass and light: one tonal centre a step brighter, E (E
+major pentatonic), and three materials of its own: a glass tap (a pure tone
+with a free bar's inharmonic overtones, gone almost at once), a soft chime
+(alerts) and air (smooth, grainless noise for slides and the shutter). The
+same names, lengths and gestures as Folio's, so either set reads the same.
 
 Each file is 16-bit 48 kHz mono and ends on a short fade at a designed length
 (most under 250 ms). All are normalized to one loudness, the loudest 100 ms
@@ -326,6 +333,126 @@ def low_battery(rnd):
     return mix(out, bell(NOTE["A4"], 1.0, decay=0.15, attack=0.01, beat=0.004), at=0.14)
 
 
+# ---------------------------------------------------------------- Lumen's family
+
+NOTE_L = {"B4": 493.88, "E5": 659.25, "G#5": 830.61, "B5": 987.77, "E6": 1318.51}
+
+
+def glass(rnd, freq, amp=1.0, decay=0.05, click=0.4):
+    """A glass tap: the tone, a free bar's overtones (2.76x, 5.40x) dying
+    fast, and a tiny bright click on contact."""
+    out = partial(freq, amp, decay, attack=0.0012)
+    mix(out, partial(freq * 2.756, amp * 0.2, decay * 0.35, attack=0.001))
+    mix(out, partial(freq * 5.404, amp * 0.05, decay * 0.15, attack=0.0008))
+    if click:
+        mix(out, burst(rnd, 0.002, 4000, 9000, amp * 0.05 * click, decay=0.0006))
+    return out
+
+
+def chime(freq, amp=1.0, decay=0.16, attack=0.008, beat=0.0015):
+    """A soft chime: a pure tone with a slow shimmer and a breath of octave."""
+    out = partial(freq, amp * 0.85, decay, attack)
+    mix(out, partial(freq * (1 + beat), amp * 0.2, decay * 0.95, attack))
+    return mix(out, partial(freq * 2.0, amp * 0.08, decay * 0.45, attack))
+
+
+def air(rnd, dur, start, end, amp, q=1.1, attack=0.03, decay=0.07):
+    """Smooth air: band-passed noise whose centre glides from start to end,
+    with a clean envelope and none of paper's grain."""
+    n = n_(dur)
+    x = bandpass([rnd.white() for _ in range(n)], start, q, end=end)
+    a, k = n_(attack), math.exp(-1.0 / (decay * SR))
+    g = 1.0
+    for i in range(n):
+        if i < a:
+            x[i] *= amp * (0.5 - 0.5 * math.cos(math.pi * i / a))
+        else:
+            x[i] *= amp * g
+            g *= k
+    return x
+
+
+def l_volume(rnd):
+    return glass(rnd, NOTE_L["E5"], decay=0.012, click=0.3)
+
+
+def l_pop(rnd):
+    out = glass(rnd, NOTE_L["B5"], decay=0.03)
+    return mix(out, glass(rnd, NOTE_L["E5"], 0.35, decay=0.02, click=0))
+
+
+def l_notification(rnd):
+    out = chime(NOTE_L["B5"], 0.8, decay=0.11)
+    return mix(out, chime(NOTE_L["E6"], 1.0, decay=0.14), at=0.1)
+
+
+def l_message(rnd):
+    out = glass(rnd, NOTE_L["G#5"], 0.75, decay=0.04, click=0.2)
+    return mix(out, glass(rnd, NOTE_L["B5"], 1.0, decay=0.06, click=0.2), at=0.065)
+
+
+def l_error(rnd):
+    out = glass(rnd, NOTE_L["B4"], 1.0, decay=0.03, click=0.2)
+    return mix(out, glass(rnd, NOTE_L["B4"], 0.72, decay=0.034, click=0.2), at=0.09)
+
+
+def l_screenshot(rnd):
+    # A soft shutter: a click, a breath of air, a glint of E.
+    out = latch(rnd, 0.7, 2500, 8000)
+    mix(out, air(rnd, 0.06, 3500, 2000, 0.25, attack=0.004, decay=0.015), at=0.004)
+    return mix(out, glass(rnd, NOTE_L["E6"], 0.14, decay=0.03, click=0), at=0.05)
+
+
+def l_trash(rnd):
+    # Swept away: air gliding down, smooth.
+    return air(rnd, 0.24, 2600, 600, 0.9, attack=0.03, decay=0.06)
+
+
+def l_empty_trash(rnd):
+    # A longer sweep, three glass taps falling, and a low one: gone for good.
+    out = air(rnd, 0.3, 3000, 500, 0.7, attack=0.03, decay=0.09)
+    for i, note in enumerate(["B5", "G#5", "E5"]):
+        mix(out, glass(rnd, NOTE_L[note], 0.35, decay=0.03, click=0), at=0.05 + i * 0.06)
+    return mix(out, glass(rnd, NOTE_L["B4"], 0.6, decay=0.05, click=0.2), at=0.3)
+
+
+def l_lock(rnd):
+    out = latch(rnd, 0.6)
+    return mix(out, glass(rnd, NOTE_L["B4"], 0.95, decay=0.05), at=0.03)
+
+
+def l_unlock(rnd):
+    out = latch(rnd, 1.2, 2600, 7500)
+    mix(out, glass(rnd, NOTE_L["E5"], 0.3, decay=0.03, click=0), at=0.02)
+    return mix(out, glass(rnd, NOTE_L["B5"], 0.9, decay=0.05), at=0.02)
+
+
+def l_plug(rnd):
+    out = chime(NOTE_L["E5"], 0.8, decay=0.12, attack=0.014)
+    return mix(out, chime(NOTE_L["B5"], 0.75, decay=0.12, attack=0.014), at=0.05)
+
+
+def l_unplug(rnd):
+    out = chime(NOTE_L["B5"], 0.75, decay=0.08, attack=0.008)
+    return mix(out, chime(NOTE_L["E5"], 0.85, decay=0.09, attack=0.008), at=0.06)
+
+
+def l_device_in(rnd):
+    out = latch(rnd, 0.8, 1500, 5000)
+    mix(out, glass(rnd, NOTE_L["B4"], 0.8, decay=0.04), at=0.008)
+    return mix(out, glass(rnd, NOTE_L["E5"], 1.0, decay=0.05), at=0.075)
+
+
+def l_device_out(rnd):
+    out = glass(rnd, NOTE_L["E5"], 1.0, decay=0.04)
+    return mix(out, glass(rnd, NOTE_L["B4"], 0.8, decay=0.05), at=0.067)
+
+
+def l_low_battery(rnd):
+    out = chime(NOTE_L["E5"], 0.9, decay=0.12, attack=0.01, beat=0.004)
+    return mix(out, chime(NOTE_L["B4"], 1.0, decay=0.15, attack=0.01, beat=0.004), at=0.14)
+
+
 # name: (recipe, length in seconds)
 SOUNDS = {
     "volume": (volume, 0.07),
@@ -344,6 +471,9 @@ SOUNDS = {
     "device-out": (device_out, 0.22),
     "low-battery": (low_battery, 0.62),
 }
+LUMEN = {name: (globals()["l_" + name.replace("-", "_")], length) for name, (_, length) in SOUNDS.items()}
+# Each theme's family and the folder (under OUT) it goes into.
+FAMILIES = {"folio": (SOUNDS, ""), "lumen": (LUMEN, "lumen")}
 
 
 # ---------------------------------------------------------------- finishing
@@ -414,8 +544,8 @@ def limit(x, ceiling):
     return [v if abs(v) <= knee else math.copysign(knee + span * math.tanh((abs(v) - knee) / span), v) for v in x]
 
 
-def render(name):
-    recipe, length = SOUNDS[name]
+def render(name, family=SOUNDS):
+    recipe, length = family[name]
     x = finish(recipe(Rand(zlib.crc32(name.encode()))), length)
     gain = 10 ** ((TARGET + TRIM.get(name, 0.0) - heard(x)) / 20)
     return limit([v * gain for v in x], 10 ** (CEILING / 20))
@@ -511,10 +641,11 @@ def report(folder):
 
 
 def main():
-    p = argparse.ArgumentParser(description="Folio's interface sounds, synthesized from scratch.")
+    p = argparse.ArgumentParser(description="Interstellar's interface sounds, synthesized from scratch.")
     p.add_argument("out", nargs="?", help="folder to write <name>.wav into")
     p.add_argument("--only", help="comma-separated sounds to write (all when omitted)")
     p.add_argument("--report", action="store_true", help="measure what was written")
+    p.add_argument("--theme", choices=["all", *FAMILIES], default="all", help="which theme's family (all by default)")
     p.add_argument("--measure", metavar="DIR", help="only measure the files in DIR")
     args = p.parse_args()
     if args.measure:
@@ -526,11 +657,15 @@ def main():
     unknown = [n for n in names if n not in SOUNDS]
     if unknown:
         p.error("unknown sounds: " + ", ".join(unknown))
-    os.makedirs(args.out, exist_ok=True)
-    for name in names:
-        write(os.path.join(args.out, name + ".wav"), render(name))
-    if args.report:
-        report(args.out)
+    for theme, (family, sub) in FAMILIES.items():
+        if args.theme not in ("all", theme):
+            continue
+        folder = os.path.join(args.out, sub)
+        os.makedirs(folder, exist_ok=True)
+        for name in names:
+            write(os.path.join(folder, name + ".wav"), render(name, family))
+        if args.report:
+            report(folder)
 
 
 if __name__ == "__main__":

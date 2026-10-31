@@ -94,8 +94,8 @@ Singleton {
         l[key] = now;
         last = l;
         Sys.run(["pw-play", "--media-role", "Notification", "--volume", Math.pow(volume, 3).toFixed(3),
-                 "-P", JSON.stringify({ "application.name": "Folio", "media.name": name }),
-                 opts.file || (dir + "/" + name + ".wav")]);
+                 "-P", JSON.stringify({ "application.name": "Interstellar", "media.name": name }),
+                 opts.file || (dir + (Theme.lumen ? "/lumen/" : "/") + name + ".wav")]);
         return true;
     }
     function audition(name) { return play(name, { "audition": true }); }

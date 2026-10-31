@@ -188,13 +188,23 @@ Scope {
                 root.now = Date.now();
             }
         }
+        onExited: if (root.recAgain) { root.recAgain = false; running = true; }
     }
-    Timer { interval: 2000; running: true; repeat: true; triggeredOnStart: true; onTriggered: recPoll.running = true }
+    // The recorder says when it starts and stops (scripts/capture.sh calls
+    // recordingChanged), so the unit is read only then, once at start (a
+    // recording that outlived a shell restart), and every 30 s while one
+    // runs, in case a stop went unheard. No polling the rest of the time.
+    property bool recAgain: false
+    function recCheck() { if (recPoll.running) recAgain = true; else recPoll.running = true; }
+    Timer { interval: 2000; running: true; triggeredOnStart: true; onTriggered: root.recCheck() }
+    Timer { interval: 30000; running: root.recLive && !root.fx; repeat: true; onTriggered: root.recCheck() }
     Timer { interval: 1000; running: root.recLive && !root.fx; repeat: true; onTriggered: root.now = Date.now() }
 
     // ------------------------------------------------------------ IPC
     IpcHandler {
         target: "island"
+        // The screen recorder started or stopped (scripts/capture.sh).
+        function recordingChanged(): void { root.recCheck(); }
         // normal | stress | empty; anything else (live) returns to real data.
         function fixture(name: string): void {
             root.endFlash();

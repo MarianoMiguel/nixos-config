@@ -131,6 +131,12 @@ output=${!#}
 printf '%s\n' video
 EOF
 
+# The shell's IPC, as mariano-shell ipc takes it.
+cat > "$fake_bin/mariano-shell" <<'EOF'
+#!/usr/bin/env bash
+printf 'shell %s\n' "$*" >> "$TEST_LOG"
+EOF
+
 chmod +x "$fake_bin"/*
 
 run_capture() {
@@ -143,6 +149,7 @@ run_capture() {
     CAPTURE_PICTURES_DIR="$pictures_dir" \
     CAPTURE_VIDEOS_DIR="$videos_dir" \
     CAPTURE_TIMESTAMP='2026-08-23 12-00-00' \
+    CAPTURE_SHELL="$fake_bin/mariano-shell" \
     TEST_LOG="$log_file" \
     TEST_ACTIVE_FILE="$active_file" \
     TEST_CLIPBOARD="$clipboard_file" \
@@ -180,8 +187,12 @@ jq -e '
   and (.output_file | endswith("Screen Recording 2026-08-23 12-00-00.mp4"))
 ' "$runtime_dir/recording.json" >/dev/null
 grep -Fq 'systemctl start mariano-capture-video.service' "$log_file"
+grep -Fq 'shell ipc island recordingChanged' "$log_file"
+: > "$log_file"
 run_capture record-started
 grep -Fq 'System audio is included' "$log_file"
+# The island hears of the recording from the recorder itself, not by polling.
+grep -Fq 'shell ipc island recordingChanged' "$log_file"
 [[ $(cat "$runtime_dir/notification-id") == 42 ]]
 
 run_capture record-service
@@ -194,8 +205,10 @@ grep -Fq -- '--audio-codec=aac' "$log_file"
 
 run_capture video-toggle
 grep -Fq 'systemctl stop mariano-capture-video.service' "$log_file"
+: > "$log_file"
 run_capture record-finished
 grep -Fq 'Recording saved' "$log_file"
+grep -Fq 'shell ipc island recordingChanged' "$log_file"
 grep -Fq -- '--replace-id=42' "$log_file"
 [[ ! -e $runtime_dir/notification-id ]]
 

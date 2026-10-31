@@ -196,6 +196,7 @@ record_started() {
     printf '%s\n' "$notification_id" > "$notification_file"
     chmod 0600 "$notification_file"
   fi
+  shell_notify
 }
 
 record_finished() {
@@ -203,6 +204,9 @@ record_finished() {
   local notification_id=
   local failure_message="No playable video was produced."
   local -a replace_argument=()
+
+  # First, even if the rest fails: the island stops showing a recording.
+  shell_notify
 
   if [[ -f $plan_file ]] && jq -e '.output_file | type == "string"' "$plan_file" >/dev/null 2>&1; then
     output=$(jq -r '.output_file' "$plan_file")
@@ -231,6 +235,14 @@ record_finished() {
 
 service_active() {
   systemctl --user is-active --quiet "$unit"
+}
+
+# Tell the shell the recording started or stopped, so the island shows it at
+# once instead of polling. Best effort: nothing answers when DMS is the shell.
+shell_notify() {
+  local shell=${CAPTURE_SHELL:-/run/current-system/sw/bin/mariano-shell}
+  [[ -x $shell ]] || return 0
+  timeout 2 "$shell" ipc island recordingChanged >/dev/null 2>&1 || true
 }
 
 start_video() {
@@ -282,6 +294,9 @@ toggle_video() {
   else
     start_video
   fi
+  # Again from outside the recorder's sandbox, in case its own calls could not
+  # reach the shell.
+  shell_notify
 }
 
 case "${1:-}" in

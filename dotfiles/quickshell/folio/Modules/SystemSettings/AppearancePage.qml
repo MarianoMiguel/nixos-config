@@ -419,6 +419,8 @@ SettingsPage {
         implicitHeight: deskRows.implicitHeight
         ColumnLayout {
             id: deskRows; width: parent.width; spacing: 0
+            SettingRow { icon: "display"; label: "Top bar"; hint: "Glass frosts what is behind it; Clear leaves only the text over the wallpaper."
+                Choice { options: [{ "value": "glass", "label": "Glass" }, { "value": "clear", "label": "Clear" }]; value: Settings.get("bar.style") || "glass"; onChosen: v => Settings.set("bar.style", v) } }
             SettingRow { icon: "grid"; label: "Magnify the dock"
                 Toggle { checked: Settings.get("dock.magnify"); onToggled: v => Settings.set("dock.magnify", v) } }
             SettingRow { icon: "display"; label: "Keep windows clear of the dock"; hint: "Windows stop above it, as on a Mac. Off, they reach the bottom edge and the dock floats over them."

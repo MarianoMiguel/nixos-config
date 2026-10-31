@@ -124,10 +124,12 @@ Singleton {
 
     // Hotplug: DRM change events (a display that is off has no screen, so
     // Quickshell's screen list alone can miss it), screens, and niri reloads.
-    Process {
+    PersistentMonitor {
+        name: "Outputs: udevadm monitor"
         running: !root.harness && Niri.available
         command: ["udevadm", "monitor", "--udev", "--subsystem-match=drm"]
         stdout: SplitParser { onRead: line => { if (/change|add|remove/.test(line)) root.refreshLater(); } }
+        onRestarted: root.refreshLater()
     }
     Connections { target: Quickshell; function onScreensChanged() { root.refreshLater(); } }
     Connections {

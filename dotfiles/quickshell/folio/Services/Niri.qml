@@ -5,7 +5,9 @@ import Quickshell.Io
 
 // niri through its JSON event stream: workspaces, windows, focus, keyboard
 // layouts and the overview. Without niri (the harness runs sway) all of it
-// stays empty and actions do nothing.
+// stays empty and actions do nothing. Actions go through Sys.run: with
+// FOLIO_HARNESS_NIRI=1 the harness reads the live niri but never acts on it
+// (a `quit` there would end the owner's session).
 Singleton {
     id: root
 
@@ -34,7 +36,7 @@ Singleton {
     }
     function windowsOn(workspaceId) { return Object.values(windows).filter(w => w.workspace_id === workspaceId); }
 
-    function action(args) { if (available) Quickshell.execDetached(["niri", "msg", "action"].concat(args)); }
+    function action(args) { if (available) Sys.run(["niri", "msg", "action"].concat(args)); }
     function focusWorkspace(ws) { action(["focus-workspace", String(ws.idx)]); }
     function focusWindow(id) { action(["focus-window", "--id", String(id)]); }
     function closeWindow(id) { action(["close-window", "--id", String(id)]); }

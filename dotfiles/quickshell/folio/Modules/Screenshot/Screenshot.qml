@@ -97,17 +97,23 @@ Scope {
 
     // New screenshots: inotifywait when installed, else the newest file every
     // 2 s. Either way only files that appear after the shell starts. Files
-    // left aside by a Delete the shell never committed go to the Trash first.
-    Process {
+    // left aside by a Delete the shell never committed go to the Trash first,
+    // on the first run only: when the watcher restarts, a Delete may still
+    // be waiting on its undo.
+    PersistentMonitor {
+        id: watcher
+        name: "Screenshot: folder watcher"
         running: true
         command: ["sh", "-c", `
             d=$1
-            for f in "$d"/.folio-deleted/*; do
-                [ -f "$f" ] || continue
-                n=$d/\${f##*/}
-                mv -n -- "$f" "$n" && gio trash -- "$n" 2>/dev/null
-            done
-            rmdir -- "$d/.folio-deleted" 2>/dev/null
+            if [ "$2" = first ]; then
+                for f in "$d"/.folio-deleted/*; do
+                    [ -f "$f" ] || continue
+                    n=$d/\${f##*/}
+                    mv -n -- "$f" "$n" && gio trash -- "$n" 2>/dev/null
+                done
+                rmdir -- "$d/.folio-deleted" 2>/dev/null
+            fi
             if command -v inotifywait >/dev/null 2>&1 && [ -d "$d" ]; then
                 exec inotifywait -m -q -e close_write -e moved_to --format '%w%f' --exclude '/\\.' "$d"
             fi
@@ -119,7 +125,7 @@ Scope {
                 if awk -v a="$t" -v b="$last" 'BEGIN { exit !(a > b) }'; then
                     last=$t; sleep 0.4; printf '%s\\n' "\${n#* }"
                 fi
-            done`, "sh", root.dir]
+            done`, "sh", root.dir, watcher.restarts === 0 ? "first" : "again"]
         stdout: SplitParser {
             onRead: line => {
                 if (!/\.png$/i.test(line) || Date.now() - (root.restoring[line] || 0) < 5000) return;

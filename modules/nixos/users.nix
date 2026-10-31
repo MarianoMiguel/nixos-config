@@ -18,7 +18,7 @@
     packages = with pkgs; [
       kdePackages.kate
     ];
-    # The MacBook, so it can reach this machine over the tailnet (deploys, Overfly).
+    # The MacBook, so it can reach this machine over the tailnet (deploys).
     openssh.authorizedKeys.keys = [
       "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINf1PihwqTD8d7wAIOrrvYS/HJPlELAb8FAsGVvPVWS8 mariano@macbook"
     ];
@@ -33,4 +33,7 @@
   security.sudo.extraConfig = ''
     Defaults rootpw
   '';
+  # Admin prompts (polkit) ask for the same password: root is the only
+  # administrator identity, so being in wheel is not enough to approve one.
+  security.polkit.adminIdentities = [ "unix-user:root" ];
 }

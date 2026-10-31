@@ -65,8 +65,8 @@ Reference: [Blink host configuration](https://docs.blink.sh/basics/hosts).
 
 ### Comet Pro's independent address
 
-`bonhart-3.taile97d70.ts.net` belongs to the Linux host. Its existing web endpoint
-serves Overfly; it is not the Comet. The Comet must join the tailnet separately
+`bonhart-3.taile97d70.ts.net` belongs to the Linux host (it serves no web
+endpoint since Overfly was removed); it is not the Comet. The Comet must join the tailnet separately
 so its console remains reachable when Linux is offline.
 
 The Comet is enrolled in the tailnet as `glkvm.taile97d70.ts.net`, IP

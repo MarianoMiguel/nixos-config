@@ -198,8 +198,6 @@
         ];
       };
 
-      nixosModules."local-web-hosting" = import ./modules/nixos/local-web-hosting.nix;
-
       # Every tests/*.sh script runs under `nix flake check`. They are
       # hermetic: fake binaries under tests/bin, fixtures under tests/fixtures.
       checks.${system} =

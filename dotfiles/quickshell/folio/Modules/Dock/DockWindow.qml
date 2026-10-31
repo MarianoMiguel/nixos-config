@@ -55,13 +55,23 @@ PanelWindow {
     }
 
     // Icon size: 50 px until the dock would not fit, magnification included.
+    // Past the apps, two fixed slots: Settings and the Trash.
     readonly property int count: { let n = 0; for (let i = 0; i < apps.count; i++) if (apps.itemAt(i) && !apps.itemAt(i).leaving) n++; return n; }
+    readonly property int fixed: 2
     readonly property real base: {
         const room = width - 48 - (dock.magnify ? 100 : 0) - pad * 2 - (count ? sepSlot : 0);
-        return Math.max(24, Math.min(50, Math.floor(room / (count + 1) - gap)));
+        return Math.max(24, Math.min(50, Math.floor(room / (count + fixed) - gap)));
     }
 
     readonly property string launcherIcon: Quickshell.iconPath("org.gnome.Settings", true) || Quickshell.iconPath("preferences-system", true) || Quickshell.iconPath("systemsettings", true) || ""
+
+    // The Trash: the icon theme's empty or full can (Folio's glyph without
+    // one), as Drives reads it; Drives watches it while a dock shows it.
+    readonly property bool trashFull: Drives.trash.known && Drives.trash.items > 0
+    readonly property string trashEmptyIcon: Quickshell.iconPath("user-trash", true) || ""
+    readonly property string trashFullIcon: Quickshell.iconPath("user-trash-full", true) || ""
+    Component.onCompleted: Drives.watchTrash()
+    Component.onDestruction: Drives.unwatchTrash()
 
     // ------------------------------------------------------------ magnification
 
@@ -81,14 +91,14 @@ PanelWindow {
     function step(dt) {
         const k = Theme.motion < 0.1 ? 1 : 1 - Math.pow(0.8, Math.min(4, dt * 60));
         const list = slots();
-        let rest = pad * 2 + sep.restWidth + (base + gap);
+        let rest = pad * 2 + sep.restWidth + (base + gap) * fixed;
         for (const it of list) rest += (base + gap) * Math.max(0, it.appear);
         let x = (width - rest) / 2 + pad;
         const centres = [];
         for (const it of list) { const w = (base + gap) * Math.max(0, it.appear); centres.push(x + w / 2); x += w; }
         x += sep.restWidth;
-        centres.push(x + (base + gap) / 2);
-        list.push(launcher);
+        centres.push(x + (base + gap) / 2, x + (base + gap) * 1.5);
+        list.push(launcher, trash);
         let still = true, top = 1;
         const px = held ? heldAt : pointer;
         for (let i = 0; i < list.length; i++) {
@@ -208,6 +218,25 @@ PanelWindow {
                 }
                 onHoveredChanged: win.hoverChanged(this)
             }
+
+            // The Trash, at the end: a click opens it in Files, the right
+            // button its menu (Open, Empty Trash).
+            DockItem {
+                id: trash
+                keyFocus: win.keyItem !== null && win.keyItem === trash
+                corner: win.corner
+                key: "folio:trash"
+                name: "Trash"
+                icon: win.trashFull ? (win.trashFullIcon || win.trashEmptyIcon) : win.trashEmptyIcon
+                glyph: "trash"
+                base: win.base
+                gap: win.gap
+                mode: win.dock.iconMode
+                shape: win.dock.shapes[icon] || ""
+                probe: win.learn
+                onActivated: (button, at) => win.activateTrash(button, at, false)
+                onHoveredChanged: win.hoverChanged(this)
+            }
         }
     }
 
@@ -283,6 +312,34 @@ PanelWindow {
         if (keyed) menu.step(1);
     }
 
+    // The Trash: a click opens it in Files; its menu opens it or empties it
+    // (Drives' countdown toast, which Cancel stops; never a question).
+    function activateTrash(button, at, keyed) {
+        if (button === Qt.RightButton) { openTrashMenu(at, keyed); return; }
+        trash.stamp();
+        Drives.openTrash();
+    }
+    readonly property string trashLine: {
+        const t = Drives.trash;
+        if (!t.known) return "Counting";
+        if (Drives.emptying) return "Emptying";
+        if (t.items === 0) return "Empty";
+        // As Settings › Storage says it: "12,847 items · 48 GB".
+        return Number(t.items).toLocaleString(Qt.locale("en_US"), "f", 0) + (t.items === 1 ? " item · " : " items · ") + Drives.bytes(t.size);
+    }
+    function openTrashMenu(at, keyed) {
+        const list = [
+            { "label": "Open", "run": () => { trash.stamp(); Drives.openTrash(); } },
+            { "rule": true },
+            { "label": "Empty Trash", "danger": true, "disabled": !trashFull || Drives.emptying, "run": () => Drives.askEmptyTrash() }
+        ];
+        if (keyed) for (const x of list) if (x.run) { const run = x.run; x.run = () => { win.leaveKeys(); run(); }; }
+        heldAt = pointer;
+        const top = trash.mapToItem(null, 0, trash.height - trash.size - trash.hop).y - 4;
+        menu.popup(Qt.point(at.x, top + (screen ? screen.height : height) - height), "Trash · " + trashLine, list);
+        if (keyed) menu.step(1);
+    }
+
     // ------------------------------------------------------------ keyboard
 
     // Mod+Ctrl+D (dock.keyboard over IPC) hands this screen's dock the
@@ -295,7 +352,7 @@ PanelWindow {
     property bool keyMode: false
     property int cursor: 0
     property Item keyItem: null
-    function keyItems() { return slots().filter(it => !it.leaving).concat([launcher]); }
+    function keyItems() { return slots().filter(it => !it.leaving).concat([launcher, trash]); }
     function moveKey(i) {
         const list = keyItems();
         cursor = Math.max(0, Math.min(list.length - 1, i));
@@ -331,11 +388,13 @@ PanelWindow {
             const k = event.key;
             if (k === Qt.Key_Escape) win.leaveKeys();
             else if (KeyNav.opensMenu(event) || (k === Qt.Key_Up && KeyNav.plain(event))) {
-                if (it && it !== launcher) win.openMenu(it, win.keyAt(it), true);
+                if (it === trash) win.openTrashMenu(win.keyAt(it), true);
+                else if (it && it !== launcher) win.openMenu(it, win.keyAt(it), true);
             } else if (KeyNav.activates(event)) {
                 if (!it || event.isAutoRepeat) { event.accepted = true; return; }
                 win.leaveKeys();
                 if (it === launcher) { it.stamp(); if (!win.dock.fx) Shell.openSettings(""); }
+                else if (it === trash) win.activateTrash(Qt.LeftButton, win.keyAt(it), false);
                 else win.activate(it, Qt.LeftButton, win.keyAt(it));
             } else if (!KeyNav.plain(event)) return;
             else if (k === Qt.Key_Left) win.moveKey(win.cursor - 1);
@@ -384,17 +443,26 @@ PanelWindow {
         function onPressed(index, how) {
             if (win.screen !== Shell.screenFor(Quickshell.screens)) return;
             if (how === "close") { menu.close(); return; }
-            const list = win.slots().concat([launcher]);
-            const it = list[index];
+            const list = win.slots().concat([launcher, trash]);
+            const it = index === -2 ? trash : list[index];
             if (!it) return;
             const at = it.mapToItem(null, it.width / 2, it.height - it.size / 2);
-            win.activate(it, how === "menu" ? Qt.RightButton : how === "middle" ? Qt.MiddleButton : Qt.LeftButton, at);
+            // As a click would: each slot answers its own (apps, Settings, the Trash).
+            it.activated(how === "menu" ? Qt.RightButton : how === "middle" ? Qt.MiddleButton : Qt.LeftButton, at);
         }
     }
-    DockMenu {
+    // The dock's menus appear and go at once (instant): used constantly,
+    // they skip the print every other menu has.
+    ContextMenu {
         id: menu
         screen: win.screen
+        side: "above"
+        instant: true
+        maxWidth: 300
+        layerName: "folio:dock-menu"
         onDismissed: { win.heldAt = -1; win.settled = false; }
+        onOpenChanged: if (open) win.dock.openMenu = menu
+        onChosen: (i, label) => win.dock.lastChosen = label
     }
 
     // ------------------------------------------------------------ icon shapes

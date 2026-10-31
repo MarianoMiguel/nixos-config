@@ -51,6 +51,7 @@ Singleton {
     property var fxRaw: ({})
     property var liveRaw: ({ "udisks": true, "disks": [], "drives": [], "usage": {}, "trash": {}, "cleanup": {} })
     property int watchers: 0
+    property int trashWatchers: 0
 
     signal added(var d)                 // plugged in (not the drives present at start)
     signal ejected(var d)               // safe to remove
@@ -83,9 +84,16 @@ Singleton {
 
     function watch() { watchers++; refresh(); refreshTrash(); refreshCleanup(); }
     function unwatch() { watchers = Math.max(0, watchers - 1); }
+    // Only the Trash, for what shows it all the time (the dock's Trash).
+    function watchTrash() { trashWatchers++; refreshTrash(); }
+    function unwatchTrash() { trashWatchers = Math.max(0, trashWatchers - 1); }
     function refresh() { if (!fake) { kick.restart(); refreshUsage(); } }
     function refreshUsage() { if (!fake) usage.running = true; }
-    function refreshTrash() { if (!fake) trashProbe.running = true; }
+    function refreshTrash() {
+        if (fake) return;
+        if (trashProbe.running) trashProbe.again = true;
+        else trashProbe.running = true;
+    }
     function refreshCleanup() { if (!fake) cleanupProbe.running = true; }
 
     // ------------------------------------------------------------- actions
@@ -131,7 +139,8 @@ Singleton {
         if (v.mount) exec(["xdg-open", v.mount]);
         else act("open", id, [["mount", v.mountDevice || v.device], ["open", v.mountDevice || v.device]]);
     }
-    function openTrash() { exec(["gio", "open", "trash:///"]); }
+    // In Files, from a scope of its own (Apps.scoped), like an app launch.
+    function openTrash() { exec(Apps.scoped("trash", ["gio", "open", "trash:///"])); }
     // Emptying cannot be undone: a countdown toast, Cancel stops it.
     function askEmptyTrash() {
         if (emptying || !trash.known || trash.items === 0) return;
@@ -454,6 +463,8 @@ Singleton {
     }
     Process {
         id: trashProbe
+        property bool again: false
+        onRunningChanged: if (!running && again) { again = false; running = true; }
         command: ["sh", "-c", [
             'd=${XDG_DATA_HOME:-$HOME/.local/share}/Trash/files',
             '[ -d "$d" ] || { echo "0 0"; exit 0; }',
@@ -487,6 +498,43 @@ Singleton {
             }
         }
     }
+    // While something shows the Trash: inotifywait reports items trashed,
+    // restored or deleted (gio moves them into Trash/files, Files restores
+    // them out, emptying deletes them), and a burst settles into one probe.
+    // Nothing runs between events. When the folder itself goes, the watch
+    // starts over (inotifywait would wait on nothing for good). Before
+    // anything was ever trashed it waits for the next missing folder on the
+    // way to Trash/files to appear. Without inotifywait it reads the folder's
+    // time once a minute and speaks only when that changed.
+    readonly property string trashWatchScript: [
+        't=${XDG_DATA_HOME:-$HOME/.local/share}/Trash; f=$t/files',
+        'if ! command -v inotifywait >/dev/null 2>&1; then',
+        '  last=$(stat -c %Y "$f" 2>/dev/null)',
+        '  while sleep 60; do n=$(stat -c %Y "$f" 2>/dev/null); [ "$n" = "$last" ] || { last=$n; echo changed; }; done',
+        'fi',
+        'if [ ! -d "$f" ]; then',
+        '  d=$f; while [ ! -d "$d" ]; do d=${d%/*}; done',
+        '  n=${f#"$d"/}; n=${n%%/*}',
+        '  inotifywait -qq -e create -e moved_to --include "/$n\\$" "$d"; echo changed; exit 0',
+        'fi',
+        'exec inotifywait -m -q -e create -e moved_to -e moved_from -e delete -e delete_self -e move_self --format %e "$f"'].join("\n")
+    property bool trashRearm: false
+    PersistentMonitor {
+        id: trashWatch
+        name: "Drives: Trash watcher"
+        running: (root.trashWatchers > 0 || root.watchers > 0) && !root.fake && !root.trashRearm
+        command: ["sh", "-c", root.trashWatchScript]
+        stdout: SplitParser {
+            onRead: line => {
+                trashSettle.restart();
+                if (/_SELF/.test(line)) { root.trashRearm = true; Qt.callLater(() => root.trashRearm = false); }
+            }
+        }
+        onRestarted: root.refreshTrash()
+        onRunningChanged: if (running) root.refreshTrash()
+    }
+    Timer { id: trashSettle; interval: 400; onTriggered: root.refreshTrash() }
+
     // While a page watches: usage every 20 s.
     Timer { interval: 20000; repeat: true; running: root.watchers > 0 && !root.fake; onTriggered: root.refreshUsage() }
     Process {

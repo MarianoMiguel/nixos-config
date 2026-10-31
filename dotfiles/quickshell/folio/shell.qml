@@ -27,7 +27,7 @@ ShellRoot {
     // Modules/<Name>/<Name>.qml, in load order.
     readonly property var modules: [
         "Wallpaper", "Bar", "Island", "Dock", "Sidebar", "Toasts", "Screenshot", "Removable",
-        "Launcher", "Lock", "Idle", "Polkit", "SystemSettings", "Displays", "PowerAlerts"
+        "Launcher", "Lock", "Idle", "Polkit", "SystemSettings", "Displays", "PowerAlerts", "Desktop"
     ]
 
     // Literal paths, so Quickshell's scanner reads every module folder (it
@@ -47,7 +47,8 @@ ShellRoot {
         "Polkit": Qt.resolvedUrl("Modules/Polkit/Polkit.qml"),
         "SystemSettings": Qt.resolvedUrl("Modules/SystemSettings/SystemSettings.qml"),
         "Displays": Qt.resolvedUrl("Modules/Displays/Displays.qml"),
-        "PowerAlerts": Qt.resolvedUrl("Modules/PowerAlerts/PowerAlerts.qml")
+        "PowerAlerts": Qt.resolvedUrl("Modules/PowerAlerts/PowerAlerts.qml"),
+        "Desktop": Qt.resolvedUrl("Modules/Desktop/Desktop.qml")
     })
 
     Instantiator {

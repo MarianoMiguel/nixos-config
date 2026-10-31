@@ -6,8 +6,11 @@ import qs.Services
 
 // The dock: a sheet floating at the bottom centre of every screen. Pinned
 // apps (Settings "dock.pinned"), then running apps that are not pinned (niri
-// windows grouped by app_id), a rule, then Settings. It never moves for other
-// panels. This file owns the app list; DockWindow draws it on each screen.
+// windows grouped by app_id), a rule, then Settings and the Trash (empty or
+// full, from Services/Drives; its menu opens or empties it). Right-click
+// menus are Widgets/ContextMenu, set to appear at once. It never moves for
+// other panels. This file owns the app list; DockWindow draws it on each
+// screen.
 Scope {
     id: root
 
@@ -51,11 +54,19 @@ Scope {
         // Preview an icon mode for this session (original | plated | printed);
         // anything else returns to the saved setting.
         function icons(mode: string): void { root.iconsPreview = ["original", "plated", "printed"].indexOf(mode) >= 0 ? mode : ""; }
-        // Press the nth item (0-based; the last is Settings) on the focused
-        // screen: click | middle | menu. Use with a fixture to keep it dry.
+        // Press the nth item (0-based; after the apps come Settings, then the
+        // Trash) on the focused screen: click | middle | menu. Use with a
+        // fixture to keep it dry.
         function press(index: int, how: string): void { root.pressed(index, how || "click"); }
+        // The Trash on the focused screen: click (open it in Files) | menu.
+        // Its state comes from Drives (`drives fixture normal|stress|empty`).
+        function trash(how: string): void { root.pressed(-2, how || "click"); }
+        function trashMenu(): void { root.pressed(-2, "menu"); }
         // Close an open menu.
         function close(): void { root.pressed(-1, "close"); }
+        // Tests: the open menu's rows, and choose one (0-based, rules count) as a click would.
+        function menu(): string { return root.menuState(); }
+        function choose(index: int): string { return root.menuChoose(index); }
         // Tests: act as if a fullscreen window covered the dock.
         function away(on: bool): void { root.fakeAway = on; }
         // The keyboard (Mod+Ctrl+D): the dock on the focused screen takes it
@@ -68,6 +79,24 @@ Scope {
     }
     signal pressed(int index, string how)
     signal keysRequested()
+    // The menu last opened on any screen, for the tests' menu and choose.
+    property var openMenu: null
+    property string lastChosen: ""
+    function menuState() {
+        const m = openMenu;
+        return JSON.stringify({
+            "open": !!m && m.open, "title": m ? m.title : "", "current": m ? m.current : -1, "chosen": lastChosen,
+            "sheet": m ? [m.sheetX, m.sheetY, Math.round(m.sheetW), Math.round(m.sheetH)] : [],
+            "items": m ? m.shown.map(it => it.rule ? "—" : it.label + (it.danger ? " (danger)" : "") + (m.usable(it) ? "" : " (off)")) : []
+        }, null, 1);
+    }
+    function menuChoose(i) {
+        const m = openMenu;
+        if (!m || !m.open) return "not open";
+        if (!m.usable(m.shown[i])) return "not choosable";
+        m.choose(i);
+        return lastChosen;
+    }
     property string keyState: ""
     property bool fakeAway: false
 

@@ -220,6 +220,18 @@ class PicturesTests(unittest.TestCase):
         self.assertFalse(any(p.name.startswith('mine-') for p in self.renders.iterdir()))
         self.assertIsNone(pictures.collection())
 
+    def test_a_picture_still_arriving_waits(self):
+        fresh=self.picture('fresh.png');future=self.picture('wrong_clock.png',shade=60)
+        later=os.stat(future).st_mtime+86400;os.utime(future,(later,later))
+        with patch.object(pictures,'SETTLE_SECONDS',60):
+            doc=self.scan()
+        # Just written: the next scan takes it. A clock in the future is not "just written".
+        self.assertEqual((doc['arriving'],[a['name'] for a in doc['collection']['art']]),(1,['wrong_clock.png']))
+        old=os.stat(fresh).st_mtime-120;os.utime(fresh,(old,old))
+        with patch.object(pictures,'SETTLE_SECONDS',60):
+            doc=self.scan()
+        self.assertEqual((doc['arriving'],len(doc['collection']['art'])),(0,2))
+
     def test_a_choice_of_missing_pictures_falls_back(self):
         self.picture('only.png');self.scan()
         self.state.parent.mkdir(parents=True)

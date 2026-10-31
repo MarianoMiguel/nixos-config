@@ -395,6 +395,9 @@ def _scan(ink, folder, store, renders):
     found, skipped = [], []
     arriving = 0
     now = time.time()
+    # Written in the last moments: perhaps still being written. (A time in
+    # the future, a camera's wrong clock, is not that.)
+    def recent(info): return 0 <= now - info.st_mtime < SETTLE_SECONDS
     present = folder.is_dir()
     dirfd = os.open(folder, os.O_RDONLY | os.O_DIRECTORY | os.O_CLOEXEC) if present else None
     try:
@@ -412,8 +415,10 @@ def _scan(ink, folder, store, renders):
                 if s is None: continue
                 sidecars_used.add(candidate)
                 try:
-                    if now - s.stat(follow_symlinks=False).st_mtime < SETTLE_SECONDS: return candidate, None
+                    if recent(s.stat(follow_symlinks=False)): return candidate, None
                     return candidate, parse_sidecar(read_file(dirfd, candidate, SIDECAR_BYTES))
+                except FileNotFoundError:
+                    return None, {}
                 except Unreadable as exc:
                     skipped.append({'name': shown(candidate), 'reason': str(exc) if str(exc).startswith('not used') else 'not used: ' + str(exc)})
                     return candidate, {}
@@ -429,13 +434,14 @@ def _scan(ink, folder, store, renders):
                 skipped.append({'name': name, 'reason': 'not a JPEG, PNG or WebP picture'}); continue
             if len(found) >= MAX_PICTURES:
                 skipped.append({'name': name, 'reason': f'more than {MAX_PICTURES} pictures'}); continue
-            info = e.stat(follow_symlinks=False)
+            try: info = e.stat(follow_symlinks=False)
+            except FileNotFoundError: continue          # gone since the folder was listed
             sig = [info.st_size, info.st_mtime_ns, info.st_ino]
             known = by_name.get(name)
             kept = bool(known) and complete(known['id'], store)
             _, extra = sidecar(e)
             plate = {'name': name, 'file': e.name, 'slot': known['id'] if known else None, 'print': False}
-            if extra is None or now - info.st_mtime < SETTLE_SECONDS:
+            if extra is None or recent(info):
                 # Still arriving: it keeps its old plate (and old signature,
                 # so the next scan reads it again) or waits for that scan.
                 arriving += 1

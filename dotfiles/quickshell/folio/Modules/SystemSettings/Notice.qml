@@ -21,7 +21,8 @@ Rectangle {
         Icon { name: root.icon; size: 16; color: Theme.text3 }
         Text {
             id: body
-            text: root.text; color: Theme.text2; font.family: Theme.ui; font.pixelSize: Theme.fsS
+            // Plain: notices quote names from outside (files, devices, networks).
+            text: root.text; textFormat: Text.PlainText; color: Theme.text2; font.family: Theme.ui; font.pixelSize: Theme.fsS
             wrapMode: Text.WordWrap; maximumLineCount: 3; elide: Text.ElideRight
             Layout.fillWidth: true
         }

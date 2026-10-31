@@ -317,7 +317,8 @@ SettingsPage {
                 // From the page's column, not the grid's own width (which follows its cards).
                 Layout.fillWidth: false
                 Layout.preferredWidth: (page.columnWidth - (plateGrid.columns - 1) * plateGrid.columnSpacing) / plateGrid.columns
-                title: modelData.title; subtitle: modelData.credit
+                // Art's credit: "Folio · …", "Your picture".
+                title: modelData.title; subtitle: (Art.plate(modelData.id) || modelData).credit
                 selected: (Theme.selection.art || 0) === index
                 busy: selected && Theming.busy && "art" in Theme.pending
                 onChosen: if (!selected) Theming.set({ "art": index }, "“" + modelData.title + "”")

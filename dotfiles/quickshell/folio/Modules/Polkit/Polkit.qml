@@ -145,7 +145,13 @@ Scope {
 
     IpcHandler {
         target: "polkit"
-        function fixture(name: string): void { root.fx = root.fixtures[name] || null; root.reset(); }
+        // Harness only: in a real session a fixture would draw a convincing
+        // password prompt, or relabel a real request with made-up words.
+        function fixture(name: string): void {
+            if (!root.harness) { console.warn("Polkit: fixture works only in the harness"); return; }
+            root.fx = root.fixtures[name] || null;
+            root.reset();
+        }
         function cancel(): void { root.cancel(); }
     }
 }

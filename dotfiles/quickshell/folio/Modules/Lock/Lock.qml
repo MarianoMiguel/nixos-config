@@ -262,11 +262,21 @@ Scope {
         return out;
     }
 
+    // Test hooks work only in the harness: in a real session they would put
+    // made-up words on the lock (a fake error, a typed password), show the
+    // notifications it hides, or show what was typed.
+    function testOnly(what) {
+        if (harness) return true;
+        console.warn("Lock: " + what + " works only in the harness");
+        return false;
+    }
+
     IpcHandler {
         target: "lock"
         function lock(): void { Session.lock(); }
         function isLocked(): bool { return sessionLock.secure; }
         function fixture(name: string): void {
+            if (!root.testOnly("fixture")) return;
             const f = root.fixtures[name] || null;
             root.fx = f;
             Fingerprint.forced = f ? f.fingerprint : null;
@@ -277,13 +287,16 @@ Scope {
             if (f.typed) root.buffer = f.typed;
             if (f.message) { root.message = f.message; root.messageError = true; }
         }
-        // Notification previews for this lock: always | never ("" follows lock.previews).
-        function previews(mode: string): void { root.previewsForced = mode === "always" || mode === "never" ? mode : ""; }
-        // Open an app's slip by its place in the list (-1 closes).
+        // Harness only: notification previews for this lock: always | never
+        // ("" follows lock.previews).
+        function previews(mode: string): void { if (root.testOnly("previews")) root.previewsForced = mode === "always" || mode === "never" ? mode : ""; }
+        // Open an app's slip by its place in the list (-1 closes); its text
+        // shows only with previews on.
         function open(index: int): void { const g = root.notes[index]; root.notesOpen = g ? g.app : ""; }
         // Harness only: a fingerprint match.
-        function touch(): void { if (root.harness && Session.locked) root.accept(); }
-        function peek(on: bool): void { root.peek = on; }
+        function touch(): void { if (root.testOnly("touch") && Session.locked) root.accept(); }
+        // Harness only: show the typed password, as holding the eye does.
+        function peek(on: bool): void { if (root.testOnly("peek")) root.peek = on; }
         // The power choices, as holding the power tab offers them.
         function power(): void { if (Session.locked) root.powerChoices(); }
     }

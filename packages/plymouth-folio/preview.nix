@@ -1,16 +1,19 @@
-# Preview Folio's boot screen without rebooting anything: a UEFI VM whose
-# root is on LUKS boots through the systemd initrd with mariano.folio.boot
-# on, and the test types into the Plymouth prompt (a wrong passphrase, Esc
-# and back, Caps Lock, the right one) and saves screenshots. Then it powers
-# off to show the shutdown page. docs/folio-boot.md has the commands.
+# Preview Interstellar's boot screen without rebooting anything: a UEFI VM
+# whose root is on LUKS boots through systemd-boot and the systemd initrd
+# with mariano.folio.boot on, as Bonhart does (kernel 6.18, zstd initrd with
+# the AMD microcode archive in front), and the test types into the Plymouth
+# prompt (a wrong passphrase, Esc and back, Caps Lock, the right one) and
+# saves screenshots. Then it powers off to show the shutdown page.
+# docs/folio-boot.md has the commands.
 #
 #   nix build --impure -f packages/plymouth-folio/preview.nix -L
-#   nix build --impure -f packages/plymouth-folio/preview.nix --argstr mode light -o result-light
+#   nix build --impure -f packages/plymouth-folio/preview.nix --argstr theme lumen --argstr mode light -o result-lumen
 #
 # The VM's stdvga advertises the given mode in its EDID so OVMF (and
 # simpledrm in the initrd) comes up at Bonhart's firmware size.
 {
   mode ? "dark",
+  theme ? "folio",
   xres ? 1920,
   yres ? 1200,
   # Plymouth's debug trace on the serial console (in the build log).
@@ -24,7 +27,7 @@ let
   passphrase = "Folio-unlock#26";
 in
 pkgs.testers.runNixOSTest {
-  name = "folio-boot-${mode}-${toString xres}x${toString yres}";
+  name = "interstellar-boot-${theme}-${mode}-${toString xres}x${toString yres}";
   enableOCR = true;
 
   nodes.machine =
@@ -44,6 +47,10 @@ pkgs.testers.runNixOSTest {
           "-device VGA,edid=on,xres=${toString xres},yres=${toString yres}"
         ];
       };
+      # As Bonhart: kernel series, systemd-boot, zstd initrd with the AMD
+      # microcode archive prepended.
+      boot.kernelPackages = pkgs.linuxPackages_6_18;
+      hardware.cpu.amd.updateMicrocode = true;
       boot.loader.systemd-boot.enable = true;
       boot.loader.timeout = 1;
       boot.initrd.systemd.enable = true;
@@ -56,7 +63,7 @@ pkgs.testers.runNixOSTest {
         virtualisation.rootDevice = "/dev/mapper/nixos-crypt";
         mariano.folio.boot = {
           enable = true;
-          inherit mode;
+          inherit theme mode;
         };
         # The test VM has a serial console; Plymouth would show text there
         # (and everywhere) unless told to ignore it. Bonhart has none.

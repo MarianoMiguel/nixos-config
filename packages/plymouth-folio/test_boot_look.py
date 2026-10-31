@@ -7,6 +7,7 @@ print arguments as JSON; BOOT_LOOK_CHECK is the initrd check script)."""
 import hashlib
 import json
 import os
+import shutil
 import stat
 import subprocess
 import tempfile
@@ -357,6 +358,13 @@ class Publish(unittest.TestCase):
         self.publish()
         after = self.boot.stat()
         self.assertEqual((before.st_ino, before.st_mtime_ns), (after.st_ino, after.st_mtime_ns))
+
+        # A boot that did not load the look leaves no copy in /run: it comes
+        # back, with the same archive.
+        shutil.rmtree(live)
+        self.publish()
+        self.assertTrue((live / 'interstellar-look.script').exists())
+        self.assertEqual(self.boot.read_bytes(), blob)
 
         # A refused file leaves the boot partition as it was.
         for bad in (b'{', doc('lumen', 'light', '#ff6a00\n'), doc('pond', 'dark', 'blue')):

@@ -221,8 +221,11 @@ def publish(args):
         except (FileNotFoundError, ValueError):
             stamp = {}
         current = sha256_file(args.boot_file)
+        # The copy in /run goes missing when the boot did not load the look
+        # (an older generation): the shutdown page needs it back.
+        runtime_ok = not args.runtime_dir or (look is None) == (not (Path(args.runtime_dir) / THEME).exists())
         if (stamp.get('format') == FORMAT and stamp.get('tool') == tool and stamp.get('look') == look
-                and current is not None and stamp.get('sha256') == current):
+                and current is not None and stamp.get('sha256') == current and runtime_ok):
             print(f'Interstellar boot look: {" ".join(look) if look else "built-in"}, already on the boot partition')
             return
         with tempfile.TemporaryDirectory() as tmp:

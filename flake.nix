@@ -218,6 +218,9 @@
           src = inputs.niri-pip;
         };
         pond-fonts = self.nixosConfigurations.bonhart.pkgs.callPackage ./packages/pond-fonts.nix { };
+        qt-interstellar-decorations =
+          self.nixosConfigurations.bonhart.pkgs.callPackage ./packages/qt-interstellar-decorations
+            { };
         pond-vicinae = self.nixosConfigurations.bonhart.pkgs.callPackage ./packages/pond-vicinae.nix {
           inherit pkgsPond;
           src = inputs.pond-vicinae;

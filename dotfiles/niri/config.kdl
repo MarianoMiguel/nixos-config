@@ -188,6 +188,8 @@ environment {
   XDG_CONFIG_DIRS "/etc/xdg"
   QT_QPA_PLATFORMTHEME "kde"
   QT_QPA_PLATFORMTHEME_QT6 "kde"
+  // Qt apps draw Interstellar's title bar (packages/qt-interstellar-decorations).
+  QT_WAYLAND_DECORATION "interstellar"
 }
 // The shell: DMS or Folio, whichever mariano-shell last chose.
 spawn-at-startup "mariano-shell" "start"

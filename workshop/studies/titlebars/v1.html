@@ -40,6 +40,21 @@
     <img src="../../captures/titlebars-prototype/folio-light.png" alt="Folio light: four apps">
   </section>
 
+  <section>
+    <h2>Qt apps</h2>
+    <p>Dolphin is focused, Kate is not: Interstellar's own Qt title bar (a QtWayland decoration plugin), in the test compositor. The lights are the GTK apps' (themeport's palette, 12 px, 9 px apart, 46 px bar); the bar takes the Qt apps' window color from kdeglobals, so it runs into their toolbars. A theme switch recolors open bars without restarting the app.</p>
+    <img src="../../captures/titlebars-prototype/qt-lumen-dark.png" alt="Lumen dark: Kate and Dolphin">
+  </section>
+
+  <section class="bars">
+    <h2>Qt, every theme</h2>
+    <figure><img src="../../captures/titlebars-prototype/qt-lumen-light.png" alt="Lumen light: Kate and Dolphin"><figcaption class="cap">Lumen · light</figcaption></figure>
+    <figure><img src="../../captures/titlebars-prototype/qt-folio-light.png" alt="Folio light: Kate and Dolphin"><figcaption class="cap">Folio · light</figcaption></figure>
+    <figure><img src="../../captures/titlebars-prototype/qt-folio-dark.png" alt="Folio dark: Kate and Dolphin"><figcaption class="cap">Folio · dark</figcaption></figure>
+    <figure><img src="../../captures/titlebars-prototype/qt-lights-hover.png" alt="Lights under the pointer in each theme"><figcaption class="cap">Under the pointer · Lumen dark, Lumen light, Folio light, Folio dark</figcaption></figure>
+    <figure><img src="../../captures/titlebars-prototype/qt-folio-light-dialog.png" alt="A fixed-size Qt dialog with only the close light"><figcaption class="cap">Fixed-size dialog · close only · System Settings behind it, not focused</figcaption></figure>
+  </section>
+
   <section class="bars">
     <h2>Side by side</h2>
     <figure><img src="../../captures/titlebars-prototype/ghostty-bar.png" alt="Ghostty title bar"><figcaption class="cap">Ghostty · GTK · lights</figcaption></figure>
@@ -55,7 +70,7 @@
         <tr><td>GTK and GNOME apps (Files, Text Editor, Calculator, Loupe…)</td><td>Lights, identical in every app</td><td>themeport's GTK CSS and one setting (button order)</td></tr>
         <tr><td>Ghostty</td><td>Lights</td><td>Its own title bar back on (today niri's no-CSD preference leaves it bare)</td></tr>
         <tr><td>Chrome</td><td>Buttons on the left, but its own ✕ □</td><td>Untested way to lights: drop the color policy and use Chrome's GTK theme</td></tr>
-        <tr><td>Qt apps (Dolphin, Kate, qBittorrent, OBS)</td><td>No title bar today</td><td>Our own Qt decoration plugin, and niri's no-CSD preference off</td></tr>
+        <tr><td>Qt apps (Dolphin, Kate, qBittorrent, OBS)</td><td>Lights, the same as GTK's</td><td>Our own Qt decoration plugin (<code>packages/qt-interstellar-decorations</code>), and niri's no-CSD preference off</td></tr>
         <tr><td>VS Code, Obsidian, Slack, Spotify</td><td>Their own controls</td><td>Per-app settings, where they exist</td></tr>
       </tbody>
     </table>

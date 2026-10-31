@@ -204,5 +204,12 @@ in
     bluez-tools
     pciutils
     usbutils
+    # Qt apps (Dolphin, Kate, qBittorrent, OBS...) draw Interstellar's title
+    # bar with this QtWayland decoration plugin: two lights at the start like
+    # the GTK apps', the theme's colours from themeport. Qt finds it through
+    # the qt module's QT_PLUGIN_PATH (/run/current-system/sw/lib/qt-6/plugins);
+    # niri's environment selects it (QT_WAYLAND_DECORATION). It shows only
+    # when the compositor asks for client-side decorations (no prefer-no-csd).
+    (callPackage ../../packages/qt-interstellar-decorations { })
   ];
 }

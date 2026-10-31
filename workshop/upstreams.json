@@ -78,6 +78,16 @@
       "track": "releases",
       "watermark": "v26.04",
       "reviewed": "2026-10-27"
+    },
+    {
+      "id": "qadwaitadecorations",
+      "repo": "FedoraQt/QAdwaitaDecorations",
+      "branch": "main",
+      "role": "Qt title bars: packages/qt-interstellar-decorations is ported from its 0.1.7 (LGPL-2.1+), as Qt's bundled adwaita plugin is",
+      "tier": "port",
+      "track": "releases",
+      "watermark": "0.1.7",
+      "reviewed": "2026-10-31"
     }
   ]
 }

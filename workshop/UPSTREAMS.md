@@ -14,6 +14,7 @@ in. Watermarks (the last reviewed commit or release) live in `upstreams.json`;
 | [Omarchy](https://github.com/omacom/omarchy) | Feature reference | **Port**: ideas only; its window-aware code imports `Quickshell.Hyprland` |
 | DankMaterialShell | The shell today; looks restyle it | **Consume**; screens it limits are studied for our own shell |
 | Quickshell, niri | Runtime and compositor | **Consume** via `flake.lock` / nixpkgs |
+| [QAdwaitaDecorations](https://github.com/FedoraQt/QAdwaitaDecorations) | Qt apps' client-side title bars | **Port**: `packages/qt-interstellar-decorations` (LGPL-2.1+, its license and credits kept), rebuilt against our Qt |
 | NixOS | The base | Generations, pinned inputs, offline installer, LUKS |
 
 `DESIGN.md` describes the desktop as it is; the taste board and studies

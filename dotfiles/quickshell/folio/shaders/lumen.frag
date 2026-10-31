@@ -5,6 +5,9 @@
 //   0 prism  ribbons of light seen through fluted glass
 //   1 glow   one soft luminous shape
 //   2 haze   a full-bleed gradient
+//   3 orbit  a ring of light with a long soft trail
+// Every sky carries a fine, still film grain, so light reads as light
+// on a surface rather than as smooth plastic.
 // Light adds on the field and is tone-mapped, so cores whiten like real
 // light; night fields are near black, day fields a pale grey.
 
@@ -107,12 +110,35 @@ vec3 haze(vec2 uv, float aspect) {
     return night > 0.5 ? col * 0.78 : mix(col, vec3(1.0), 0.12);
 }
 
+// Orbit: a tilted ring, its edge thin and bright on one side, with a broad
+// soft trail sweeping out from the other, in the accent's light.
+vec3 orbit(vec2 uv, float aspect) {
+    vec2 p = vec2(uv.x * aspect, uv.y) - vec2(aspect * 0.53, 0.52);
+    float ang = radians(-24.0);
+    mat2 rot = mat2(cos(ang), -sin(ang), sin(ang), cos(ang));
+    vec2 q = rot * p / vec2(0.27, 0.185);
+    float r = length(q);
+    float th = atan(q.y, q.x);
+    // The edge: brightest low and to the right, gone at the top left.
+    float side = pow(0.5 + 0.5 * cos(th - radians(70.0)), 2.6);
+    float edge = exp(-pow((r - 1.0) / (0.012 + 0.05 * (1.0 - side)), 2.0)) * side;
+    // The trail: wide haze outside the ring, sweeping up and to the left.
+    float sweep = pow(0.5 + 0.5 * cos(th - radians(235.0)), 1.6);
+    float trail = exp(-pow((r - 1.18) / 0.32, 2.0)) * sweep * 0.55 + exp(-pow((r - 1.0) / 0.12, 2.0)) * 0.12;
+    vec3 tone = mix(light0.rgb, vec3(1.0), 0.55);
+    vec3 light = tone * edge * 2.2 + mix(light1.rgb, vec3(1.0), 0.3) * trail;
+    vec3 base = night > 0.5 ? field.rgb : vec3(0.80, 0.80, 0.82);
+    return base + (vec3(1.0) - base) * (vec3(1.0) - exp(-light * 1.6));
+}
+
 void main() {
     vec2 uv = qt_TexCoord0;
     float aspect = res.x / max(res.y, 1.0);
-    vec3 col = style < 0.5 ? prism(uv, aspect) : style < 1.5 ? glow(uv, aspect) : haze(uv, aspect);
-    // Half a step of noise hides banding in the long gradients.
-    col += (hash(uv * res) - 0.5) / 255.0;
+    vec3 col = style < 0.5 ? prism(uv, aspect) : style < 1.5 ? glow(uv, aspect) : style < 2.5 ? haze(uv, aspect) : orbit(uv, aspect);
+    // Film grain: fine, still, strongest in the mid-tones, stronger at night.
+    float luma = dot(col, vec3(0.299, 0.587, 0.114));
+    float grain = (hash(floor(uv * res / max(dotSize, 1.0)) + 17.0) - 0.5) * (night > 0.5 ? 0.075 : 0.04);
+    col += grain * (0.45 + 0.55 * (1.0 - abs(luma * 2.0 - 1.0)));
     col = mix(field.rgb, col, develop);
     fragColor = vec4(col, 1.0) * qt_Opacity;
 }

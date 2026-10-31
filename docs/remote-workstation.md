@@ -65,8 +65,8 @@ Reference: [Blink host configuration](https://docs.blink.sh/basics/hosts).
 
 ### Comet Pro's independent address
 
-`bonhart-3.taile97d70.ts.net` belongs to the Linux host. Its existing web endpoint
-serves Overfly; it is not the Comet. The Comet must join the tailnet separately
+`bonhart-3.taile97d70.ts.net` belongs to the Linux host (it serves no web
+endpoint since Overfly was removed); it is not the Comet. The Comet must join the tailnet separately
 so its console remains reachable when Linux is offline.
 
 The Comet is enrolled in the tailnet as `glkvm.taile97d70.ts.net`, IP
@@ -493,8 +493,9 @@ Known audit findings:
 - Root and swap are LUKS encrypted. After a cold boot or relevant recovery path,
   the Comet must display the boot/disk-unlock prompt and send keyboard input.
   Tailscale on Linux only becomes available after the disk is unlocked.
-  Folio's graphical unlock page (`mariano.folio.boot`, Plymouth) is off; read
-  `docs/folio-boot.md` and test it in person before leaving with it on.
+  Interstellar's graphical unlock page (`mariano.folio.boot`, Plymouth) is on
+  and follows the desktop's look from a file on the boot partition; read
+  `docs/folio-boot.md` and test it in person, through the Comet, before leaving.
 - Backups are scheduled but skipped: the system journal specifically reports the
   missing `/var/lib/restic/password`. The root-only destination configuration has
   not been verified. Confirm an encrypted off-machine target, finish its credentials,

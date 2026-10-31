@@ -26,13 +26,9 @@ in
     ../../modules/nixos/displaylink.nix
     ../../modules/nixos/fingerprint.nix
     ../../modules/nixos/folio-boot.nix
-    ../../modules/nixos/local-web-hosting.nix
-    ../../modules/nixos/intervals.nix
-    ../../modules/nixos/overfly.nix
     ../../modules/nixos/power.nix
     ../../modules/nixos/remote-workstation.nix
     ../../modules/nixos/battery.nix
-    ../../modules/nixos/tv-remotes.nix
   ]
   ++ lib.optional (builtins.pathExists ./local.nix) ./local.nix;
 
@@ -40,27 +36,17 @@ in
 
   # The Elgato Prompter teleprompter is a DisplayLink device (USB 17e9:ff1a),
   # so it only comes up as a display with the EULA-gated DisplayLink stack
-  # (evdi + the proprietary DisplayLinkManager). Enable it here as a tracked
-  # setting: a flake checkout outside /etc/nixos cannot see the gitignored
-  # storage.nix, so the choice must live in a committed file.
+  # (evdi + the proprietary DisplayLinkManager). Enable it here, in a
+  # committed file that bonhart-install shares, not in storage.nix.
   mariano.displaylink.enable = true;
 
   # pond-preview, Pond's shell as a live design reference (workshop/).
   mariano.pond.enable = true;
 
-  # Folio's boot and disk-unlock screen (Plymouth); see docs/folio-boot.md for
-  # the KVM unlock path and how to skip it for one boot (plymouth.enable=0).
+  # Interstellar's boot and disk-unlock screen (Plymouth), in the desktop's
+  # look; see docs/folio-boot.md for the KVM unlock path, the look on the boot
+  # partition and how to skip it for one boot (plymouth.enable=0).
   mariano.folio.boot.enable = true;
-
-  services.localWebHosting = {
-    enable = true;
-    hostName = "bonhart.local";
-    title = "Bonhart Local";
-    tls.enable = true;
-    # Tailscale-only services stay Tailscale-only. The gateway adds no
-    # authentication to a dedicated-port application, so proxying one onto
-    # the Wi-Fi address would hand it to every device on the LAN.
-  };
 
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;

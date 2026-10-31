@@ -90,13 +90,52 @@
         config.allowUnfree = true;
       };
       pkgsPond = import nixpkgs-pond { inherit system; };
+      # This configuration's own files, for the copies made from it (the
+      # installer's embedded /etc/nixos, the test sandboxes). A `path:`
+      # evaluation sees the whole folder, so leave out what never belongs in
+      # them: git metadata, agent worktrees (.claude/), build results and the
+      # machine-local files .gitignore keeps out (payload archives, direnv).
+      repoSource = nixpkgs.lib.cleanSourceWith {
+        src = ./.;
+        filter =
+          path: type:
+          let
+            name = baseNameOf path;
+          in
+          !(
+            builtins.elem name [
+              ".git"
+              ".claude"
+              ".direnv"
+              ".envrc"
+              ".omo"
+              "__pycache__"
+              "result"
+            ]
+            || (type == "directory" && name == "payload")
+            || nixpkgs.lib.hasPrefix "result-" name
+            || builtins.any (suffix: nixpkgs.lib.hasSuffix suffix name) [
+              ".iso"
+              ".tar.zst"
+              ".tar.zst.age"
+              ".manifest.txt"
+            ]
+          );
+      };
       specialArgs = inputs // {
-        inherit pkgsUnstable pkgsPond;
+        inherit pkgsUnstable pkgsPond repoSource;
       };
       sharedModules = [
         home-manager.nixosModules.home-manager
         dms.nixosModules.dank-material-shell
         dank-greeter.nixosModules.default
+        {
+          # The commit each generation was built from, for `nixos-version
+          # --configuration-revision` and Update All's list of what changed
+          # since the deployed generation. A build from a folder (`path:`) has
+          # no commit and records none.
+          system.configurationRevision = self.rev or self.dirtyRev or null;
+        }
       ];
       mkSystem =
         modules:
@@ -159,8 +198,6 @@
         ];
       };
 
-      nixosModules."local-web-hosting" = import ./modules/nixos/local-web-hosting.nix;
-
       # Every tests/*.sh script runs under `nix flake check`. They are
       # hermetic: fake binaries under tests/bin, fixtures under tests/fixtures.
       checks.${system} =
@@ -179,6 +216,7 @@
                 bash
                 coreutils
                 findutils
+                git
                 gnugrep
                 gnused
                 gnutar
@@ -191,7 +229,7 @@
               ];
             }
             ''
-              cp -r ${self} src
+              cp -r ${repoSource} src
               chmod -R u+w src
               cd src
               patchShebangs tests scripts
@@ -206,7 +244,12 @@
               bash tests/${name}.sh
               touch "$out"
             ''
-        );
+        )
+        // {
+          # The boot look: what may cross into the boot files, the archive and
+          # the initrd's check of it (packages/plymouth-folio/test_boot_look.py).
+          interstellar-boot = (pkgs.callPackage ./packages/plymouth-folio { }).tests;
+        };
 
       packages.${system} = {
         cmux-browser = self.nixosConfigurations.bonhart.pkgs.callPackage ./packages/cmux-browser.nix { };

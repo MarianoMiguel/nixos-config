@@ -71,6 +71,10 @@ in
   home-manager.users.mariano.dconf.settings = {
     "org/gnome/desktop/peripherals/mouse"."natural-scroll" = false;
     "org/gnome/desktop/peripherals/touchpad"."natural-scroll" = false;
+    # Interstellar's window lights sit at the start of the title bar: close,
+    # then maximize (niri has no minimize). GTK apps read this through the
+    # settings portal, Chrome straight from dconf; themeport draws the lights.
+    "org/gnome/desktop/wm/preferences"."button-layout" = "close,maximize:";
   };
 
   xdg.portal.config.niri = {

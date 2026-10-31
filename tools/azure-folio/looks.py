@@ -166,6 +166,12 @@ def colors(theme, mode, pick):
              'yellow': '#8f6400' if light else '#ffd60a', 'orange': '#b25000' if light else '#ffa24c',
              'cyan': '#0b7285' if light else '#64d2ff', 'magenta': '#9d36c7' if light else '#da8fff',
              'blue': '#0b5fcc' if light else '#5aa9ff'}
+    # The window's lights (close, maximize) and their quiet unfocused grey.
+    if theme == 'folio':
+        p.update({'light_close': '#b4473f' if light else '#f09088', 'light_zoom': '#3f7d5c' if light else '#8cc5a3',
+                  'light_idle': '#d9d0bf' if light else '#263e5e'})
+    else:
+        p.update({'light_close': '#ff5f57', 'light_zoom': '#28c840', 'light_idle': '#d1d1d6' if light else '#48484a'})
     return {'mode': mode, **p, 'accent': accent}
 
 

@@ -15,10 +15,12 @@ handoff, connectors and pre-departure recovery tests, see
 - `#bonhart-install`: Bonhart with encrypted root plus 64 GiB hibernation swap.
 - `#installer`: graphical guided installer ISO carrying both complete systems.
 
-The `#balerion` output keeps its existing storage configuration. Bonhart now uses
-the guided installer's encrypted LVM layout by default. After a guided install,
-the installer also saves the selected encrypted layout as that machine's local
-`storage.nix`, which is intentionally not committed.
+The `#balerion` output keeps its existing storage configuration. Bonhart uses
+the guided installer's encrypted LVM layout. After a guided install, the
+installer also saves the selected encrypted layout as that machine's
+`hosts/<machine>/storage.nix`. That file is git-ignored, except Bonhart's, which
+is committed (it names no disks or secrets) because Update All builds only
+committed files.
 
 ## Build The Installer
 
@@ -28,8 +30,10 @@ the installer also saves the selected encrypted layout as that machine's local
 ```
 
 The script evaluates the complete flake, builds the encrypted install outputs
-the image will embed, then builds from the literal current workspace
-(including new files not committed yet). It prints the finished ISO path under
+the image will embed, then builds from a snapshot of the current workspace
+(including new files not committed yet, but without `.git`, agent worktrees
+under `.claude/`, build results or payload archives). A stale `flake.lock`
+fails the build; run `nix flake lock` first. It prints the finished ISO path under
 `result-installer/iso/`. Set `SKIP_VALIDATION=1` only for an intentional ISO-only
 rebuild.
 
@@ -113,8 +117,8 @@ nix-prefetch-url --name displaylink-620.zip 'https://www.synaptics.com/sites/def
 ```
 
 After installation, remove the USB drive and reboot. The firmware will ask for
-the LUKS password; the desktop uses Mariano's password; `sudo` uses the separate
-administrator password.
+the LUKS password; the desktop uses Mariano's password; `sudo` and admin prompts
+(polkit) use the separate administrator password.
 
 ## Consistent Desktop And System Actions
 
@@ -162,11 +166,19 @@ nested menu. Important entries include:
 - a guarded `Update All NixOS Packages` action in the `Super+Space` menu. It
   runs the same operation as `sudo mariano-system-update-all`, refreshing every
   movable flake input—including Codex Desktop—before building and switching.
-  It resolves `/etc/nixos` to the administrator's checkout, rejects unsafe
-  ownership or permissions, updates the lock file as the checkout owner, and
-  restores the old lock file on failure. Explicitly commit-pinned inputs remain
-  pinned; `sudo mariano-system-update` remains available for a narrow update of
-  only `nixpkgs`, Home Manager and Disko.
+  It builds only committed code. It resolves `/etc/nixos` to the
+  administrator's checkout, rejects unsafe ownership or permissions, and
+  refuses a checkout with uncommitted changes or with `.nix` files git does not
+  track (untracked or ignored), since a build from git would leave them out.
+  As the checkout owner it updates the inputs, commits the new `flake.lock`
+  (`flake.lock: update all inputs`, local until you push), lists the commits
+  since the deployed generation, and builds that exact commit
+  (`git+file://…?rev=…`); root only activates the result. Each generation
+  records its commit (`nixos-version --configuration-revision`), and
+  `/var/lib/mariano-system-update/deployed-commit` keeps the last one deployed.
+  If the build or the switch fails, the lock commit is undone. Explicitly
+  commit-pinned inputs remain pinned; `sudo mariano-system-update` remains
+  available for a narrow update of only `nixpkgs`, Home Manager and Disko.
 
 The guided installer already installs Steam and Proton VPN as part of the
 workstation closure.
@@ -235,8 +247,8 @@ DMS's optional video screensaver without creating a second idle daemon.
 
 ### Bonhart fingerprint enrollment
 
-Bonhart enables `fprintd` for greetd login, DMS unlock, `polkit` authorization
-and `sudo`. Open `Super+Space`, then `Security · Set up fingerprints` to list,
+Bonhart enables `fprintd` for greetd login, DMS unlock and `sudo`. Admin
+prompts (`polkit`) take only the administrator password. Open `Super+Space`, then `Security · Set up fingerprints` to list,
 enroll or delete prints. Mariano's account owns login and unlock fingerprints.
 Because `sudo` intentionally authenticates against the separate root account,
 its submenu uses NixOS's root-owned security wrapper and should enroll a

@@ -8,96 +8,50 @@
 let
   fingerprintEnabled = config.services.fprintd.enable;
 
+  # Update the inputs, commit the new flake.lock in the administrator's
+  # checkout (/etc/nixos), build that commit from git and switch to it. Only
+  # committed code is built: a dirty checkout or a .nix file git does not
+  # track is refused. The body is scripts/system-update.sh, which
+  # tests/system-update.sh exercises against a scratch checkout.
   mkSystemUpdate =
     {
       name,
       updateDescription,
-      updateInputs ? null,
+      commitSummary,
+      updateInputs ? [ ],
     }:
     pkgs.writeShellApplication {
       inherit name;
       runtimeInputs = with pkgs; [
         coreutils
         findutils
+        gawk
+        git
         glibc
+        gnugrep
+        gnused
         nix
         nixos-rebuild
         util-linux
       ];
       text = ''
-      set -eu
+        host=${lib.escapeShellArg config.networking.hostName}
+        update_description=${lib.escapeShellArg updateDescription}
+        commit_summary=${lib.escapeShellArg commitSummary}
+        update_inputs=(${lib.escapeShellArgs updateInputs})
+        config_link=/etc/nixos
+        state_dir=/var/lib/mariano-system-update
+        current_system=/run/current-system
+        system_profile=/nix/var/nix/profiles/system
 
-      # /etc/nixos is a symlink to the administrator's working tree, so
-      # resolve it and let that tree be owned by either root or the user who
-      # ran sudo. Root must never build from a tree anyone else can write:
-      # every path is checked for foreign ownership and group/other write
-      # bits, and the only symlinks tolerated are nix build results.
-      config_dir=$(readlink -f /etc/nixos)
-      state_dir=/var/lib/mariano-system-update
-      lock_file="$config_dir/flake.lock"
-      backup="$state_dir/flake.lock.previous"
-
-      if [ ! -d "$config_dir" ] || [ ! -f "$lock_file" ]; then
-        echo "/etc/nixos must resolve to a configuration directory with a flake.lock." >&2
-        exit 1
-      fi
-      owner=$(stat -c %U "$config_dir")
-      if [ "$owner" != root ] && [ "$owner" != "''${SUDO_USER:-}" ]; then
-        echo "Refusing to update: $config_dir is owned by $owner, not root or the invoking user." >&2
-        exit 1
-      fi
-      unsafe=$(find "$config_dir" -xdev -name .git -prune -o \( \
-        \( -type l ! -lname '/nix/store/*' \) \
-        -o \( ! -user root ! -user "$owner" \) \
-        -o \( ! -type l -perm /022 \) \
-        \) -print -quit)
-      if [ -n "$unsafe" ]; then
-        echo "Refusing to update: $config_dir contains an unsafe path: $unsafe" >&2
-        exit 1
-      fi
-
-      # The lock file stays the owner's: update it as them so the working
-      # tree never gains a root-owned file that later blocks git.
-      run_as_owner() {
-        if [ "$owner" = root ]; then
-          "$@"
-        else
-          owner_home=$(getent passwd "$owner" | cut -d: -f6)
-          runuser -u "$owner" -- env HOME="$owner_home" "$@"
-        fi
-      }
-
-      install -d -m 0700 "$state_dir"
-      install -m 0600 "$lock_file" "$backup"
-      restore_lock() {
-        install -m 0644 -o "$owner" -g "$(stat -c %G "$lock_file")" "$backup" "$lock_file"
-      }
-      trap restore_lock INT TERM HUP
-
-      echo ${lib.escapeShellArg updateDescription}
-      if ! run_as_owner nix flake update --flake "path:$config_dir"${
-        lib.optionalString (updateInputs != null) " ${lib.concatStringsSep " " updateInputs}"
-      }; then
-        restore_lock
-        echo "Input update failed; the previous lock file was restored." >&2
-        exit 1
-      fi
-
-      echo "Building and activating ${config.networking.hostName}..."
-      if ! nixos-rebuild switch --flake "path:$config_dir#${config.networking.hostName}"; then
-        restore_lock
-        echo "Activation failed; the previous lock file was restored and the previous boot generation remains available." >&2
-        exit 1
-      fi
-
-      trap - INT TERM HUP
-      echo "System update complete. The previous lock file is in $backup."
-      '';
+      ''
+      + builtins.readFile ../../scripts/system-update.sh;
     };
 
   systemUpdate = mkSystemUpdate {
     name = "mariano-system-update";
     updateDescription = "Updating reviewed stable inputs (nixpkgs, Home Manager and Disko)...";
+    commitSummary = "flake.lock: update nixpkgs, Home Manager and Disko";
     updateInputs = [
       "nixpkgs"
       "home-manager"
@@ -108,6 +62,7 @@ let
   systemUpdateAll = mkSystemUpdate {
     name = "mariano-system-update-all";
     updateDescription = "Updating all movable flake inputs, including Codex Desktop...";
+    commitSummary = "flake.lock: update all inputs";
   };
 
   displayToggle = pkgs.writeShellApplication {
@@ -514,7 +469,10 @@ let
             ${fingerprintManager}/bin/mariano-fingerprint-manager
           ;;
         update)
-          exec /run/current-system/sw/bin/ghostty --class=system.actions --title="Update All NixOS Packages" -e \
+          # Keep the window open afterwards: a refusal (uncommitted changes,
+          # untracked .nix files) or the commit list is the point of reading it.
+          exec /run/current-system/sw/bin/ghostty --class=system.actions --title="Update All NixOS Packages" \
+            --wait-after-command=true -e \
             /run/wrappers/bin/sudo ${systemUpdateAll}/bin/mariano-system-update-all
           ;;
         *)

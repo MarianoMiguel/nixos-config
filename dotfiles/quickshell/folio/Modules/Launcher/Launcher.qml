@@ -54,7 +54,6 @@ Scope {
         lastRun = label;
         if (!harness || safe) fn();
     }
-    function sh(cmd) { act(cmd.join(" "), () => Quickshell.execDetached(cmd)); }
     function close() { Shell.launcherOpen = false; }
 
     function launch(entry, action) {
@@ -68,7 +67,8 @@ Scope {
         close();
     }
     function web(q) {
-        sh(["xdg-open", "https://duckduckgo.com/?q=" + encodeURIComponent(q)]);
+        const url = "https://duckduckgo.com/?q=" + encodeURIComponent(q);
+        act("xdg-open " + url, () => Apps.open(url));
         close();
     }
     function forget(it) {
@@ -87,16 +87,17 @@ Scope {
     }
     // Files open in their default app; Show in Files selects the file in the
     // file manager (FileManager1), or opens its folder when there is none.
+    // Both start apps in their own scope (Apps.open, Apps.scoped).
     function fileUri(path) { return "file://" + path.split("/").map(encodeURIComponent).join("/").replace(/'/g, "%27"); }
     function openFile(it) {
-        act("xdg-open " + it.path, () => Quickshell.execDetached(["xdg-open", it.path]));
+        act("xdg-open " + it.path, () => Apps.open(it.path));
         close();
     }
     function showFile(it) {
         const dir = it.path.slice(0, Math.max(1, it.path.lastIndexOf("/")));
-        act("show in files " + it.path, () => Quickshell.execDetached(["sh", "-c",
+        act("show in files " + it.path, () => Sys.run(Apps.scoped("xdg-open", ["sh", "-c",
             "gdbus call --session --dest org.freedesktop.FileManager1 --object-path /org/freedesktop/FileManager1 " +
-            "--method org.freedesktop.FileManager1.ShowItems \"['$1']\" '' >/dev/null 2>&1 || xdg-open \"$2\"", "sh", fileUri(it.path), dir]));
+            "--method org.freedesktop.FileManager1.ShowItems \"['$1']\" '' >/dev/null 2>&1 || xdg-open \"$2\"", "sh", fileUri(it.path), dir])));
         close();
     }
     // Copied emoji go to the top of the picker until the shell restarts.

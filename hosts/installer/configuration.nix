@@ -3,6 +3,9 @@
   modulesPath,
   pkgs,
   self,
+  # The configuration without git metadata, agent worktrees, build results
+  # or payload archives (flake.nix); it becomes the installed /etc/nixos.
+  repoSource,
   # Which machines this image can install. The flake instantiates a dual-host
   # image plus one single-host image per machine; a single-host image halves
   # the embedded closure and the time it takes to build and write.
@@ -14,21 +17,6 @@
 }:
 
 let
-  repoSource = lib.cleanSourceWith {
-    src = ../..;
-    filter =
-      path: _type:
-      let
-        name = baseNameOf path;
-      in
-      !builtins.elem name [
-        ".direnv"
-        ".git"
-        "result"
-        "result-installer"
-      ];
-  };
-
   targetSystems = lib.getAttrs installerHosts {
     balerion = self.nixosConfigurations."balerion-install";
     bonhart = self.nixosConfigurations."bonhart-install";

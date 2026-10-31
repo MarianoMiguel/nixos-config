@@ -8,7 +8,12 @@ result-*
 payload/
 __pycache__/
 .omo/
+# Agent worktrees.
+/.claude/worktrees/
+# A guided install writes each machine's storage.nix. Bonhart's is tracked:
+# Update All builds committed files only, and it holds no secrets.
 hosts/*/storage.nix
+!hosts/bonhart/storage.nix
 *.iso
 # Folio shell shaders are compiled by scripts/folio-harness and the Nix package.
 dotfiles/quickshell/folio/shaders/*.qsb

@@ -2,6 +2,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import qs.Common
 
 // This computer and the software it runs, for Settings › About: read once
 // per visit with one probe (hostnamectl, DMI and udev's memory table,
@@ -101,7 +102,7 @@ Singleton {
         for (const g of (i.gpus || [])) add("Graphics", g.name + (g.vram > 0 ? " (" + gib(g.vram) + ")" : ""));
         add("Storage", diskLine ? diskLine + " on " + (i.disk.mount || "/") : "");
         if (i.firmware && i.firmware.version) add("Firmware", [i.firmware.vendor, i.firmware.version, i.firmware.date > 0 ? Qt.formatDate(new Date(i.firmware.date), "yyyy-MM-dd") : ""].filter(x => x).join(" "));
-        add("OS", nixos);
+        add("OS", "Interstellar (" + (Theme.lumen ? "Lumen" : "Folio") + ") on " + (nixos || "NixOS"));
         if (i.generation && i.generation.number > 0) add("Generation", i.generation.number + (i.generation.time > 0 ? " (" + Qt.formatDateTime(new Date(i.generation.time), "yyyy-MM-dd HH:mm") + ")" : ""));
         add("Kernel", i.kernel ? "Linux " + i.kernel : "");
         add("niri", i.niri);

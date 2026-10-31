@@ -1,7 +1,7 @@
 # Folio shell
 
-The desktop shell for the Folio design language: a Quickshell config that
-replaces DMS surface by surface. The workshop's studies
+Interstellar's desktop shell (the folder keeps its first name): a Quickshell
+config that replaces DMS surface by surface, in any of Interstellar's themes. The workshop's studies
 (`workshop/studies/*/v*.html`, served by `scripts/workshop open`) are the
 specification; `workshop/studies/_kit/folio.css` holds the same tokens as
 `Common/Theme.qml`.
@@ -53,6 +53,28 @@ because wtype drops the first key of each call).
 the environment before `run`). QML timers need a window on screen, so load
 `Wallpaper` with any module that has none. `console.warn` shows in the log;
 `console.log` does not.
+
+## Themes
+
+A theme is a set of `Theme` values: Folio (paper, ink, plates, printmaking)
+or Lumen (neutral grays, glass, Inter Display). `Theme.name`, `Theme.lumen`
+and `Theme.prints` say which; `Theme.ink` is the theme's one color in both
+(Lumen's accent) and `Theme.inkText` the text on it. The color comes from
+`Common/Looks.js`, the shell's copy of `tools/azure-folio/looks.py`
+(`test_looks.py` runs both and fails if they disagree), so the shell shows a
+pick exactly as apps and the boot screen get it.
+
+- Never draw Folio's printmaking unconditionally: plates, dither, halftone
+  and the cross grid go through `Plate`, `Develop`, `Halftone` and
+  `CrossGrid`, which draw Lumen's sky, a fade, a flat tint and a pill.
+  Gate anything new on `Theme.prints`.
+- Wells and hairlines mix from `Theme.tint` (Folio's ink, Lumen's text), so
+  Lumen's surfaces stay neutral; use `Theme.ink` only for the accent itself.
+- `INTERSTELLAR_THEME=lumen` pins the theme for a harness run, like
+  `FOLIO_MODE` and `FOLIO_INK` (which takes a name or #rrggbb).
+- Never lock the harness session and then restart the shell: sway keeps the
+  session locked and the screen stays red. `scripts/folio-harness stop`, then
+  `start`.
 
 ## Module contract
 

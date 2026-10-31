@@ -118,7 +118,7 @@ PanelWindow {
                 const c = Art.collections.find(x => x.art.some(a => a.id === plate.plate));
                 return p ? (c ? c.name + " · " : "") + p.title : "";
             }
-            visible: text !== ""
+            visible: text !== "" && Theme.prints
             anchors { right: parent.right; bottom: parent.bottom; rightMargin: 20; bottomMargin: 18 }
             width: Math.min(caption.implicitWidth + 22, win.width * 0.4)
             height: caption.implicitHeight + 14

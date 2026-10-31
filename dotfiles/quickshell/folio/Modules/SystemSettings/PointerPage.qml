@@ -33,7 +33,7 @@ SettingsPage {
         visible: !Input.included && Input.fixture === ""
         Layout.topMargin: 12
         icon: "info"
-        text: "niri does not read Folio's keyboard and pointer file yet. Changes are saved, and apply once config.kdl has include optional=true \"folio-input.kdl\"."
+        text: "niri does not read Interstellar's keyboard and pointer file yet. Changes are saved, and apply once config.kdl has include optional=true \"folio-input.kdl\"."
     }
     Notice {
         visible: !page.anything

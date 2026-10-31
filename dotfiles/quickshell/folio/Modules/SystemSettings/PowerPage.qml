@@ -244,7 +244,7 @@ SettingsPage {
 
     Section {
         title: page.p.hasLid ? "Lid and idle" : "When idle"
-        hint: page.p.hasLid ? "NixOS decides what the lid does (modules/nixos/power.nix); Folio decides when to lock and hibernate."
+        hint: page.p.hasLid ? "NixOS decides what the lid does (modules/nixos/power.nix); Interstellar decides when to lock and hibernate."
                             : "Folio decides when to lock and hibernate."
         Component.onCompleted: page.mark("lid", this)
     }

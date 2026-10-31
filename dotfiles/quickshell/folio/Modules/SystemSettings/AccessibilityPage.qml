@@ -56,7 +56,7 @@ SettingsPage {
     Card {
         divided: true
         SettingRow {
-            icon: "note"; label: "Text size"; hint: "Folio and GTK apps; other apps follow their own settings."
+            icon: "note"; label: "Text size"; hint: "Interstellar and GTK apps; other apps follow their own settings."
             Choice {
                 options: [{ "value": 1, "label": "Default" }, { "value": 1.12, "label": "Larger" }, { "value": 1.25, "label": "Large" }, { "value": 1.5, "label": "Largest" }]
                 value: [1, 1.12, 1.25, 1.5].find(v => Math.abs(v - Theme.textScale) < 0.01) || 1

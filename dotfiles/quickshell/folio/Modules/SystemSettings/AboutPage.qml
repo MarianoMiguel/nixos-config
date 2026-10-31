@@ -63,6 +63,12 @@ SettingsPage {
                     color: Theme.text2; font.pixelSize: Theme.fsS
                     Layout.fillWidth: true; Layout.minimumWidth: 0
                 }
+                // The system and its theme.
+                RowLayout {
+                    Layout.topMargin: 6; spacing: 7
+                    Mark { Layout.preferredWidth: 18; Layout.preferredHeight: 18; color: Theme.ink }
+                    Label { text: "Interstellar · " + (Theme.lumen ? "Lumen" : "Folio"); font.weight: Font.DemiBold; font.pixelSize: Theme.fsS }
+                }
             }
             Button {
                 Layout.alignment: Qt.AlignTop

@@ -135,14 +135,19 @@ PanelWindow {
                         }
                     }
 
-                    // The cross grid and its hints, as on the lock page.
-                    RowLayout {
+                    // The cross grid and its hints, as on the lock page; Lumen's
+                    // field is a wide pill, so its hints go underneath.
+                    GridLayout {
                         Layout.fillWidth: true
                         Layout.topMargin: 4
-                        spacing: 22
+                        columns: Theme.prints ? 2 : 1
+                        columnSpacing: 22
+                        rowSpacing: 12
                         CrossGrid {
                             id: grid
                             cell: 30
+                            Layout.fillWidth: !Theme.prints
+                            Layout.preferredHeight: implicitHeight
                             count: win.owner.shown
                             text: win.owner.buffer
                         }

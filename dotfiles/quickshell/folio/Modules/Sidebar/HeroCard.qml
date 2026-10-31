@@ -46,7 +46,7 @@ Item {
             Layout.fillWidth: true
             spacing: 12
             Cap { text: root.dateText; Layout.fillWidth: true; Layout.minimumWidth: 0 }
-            Cap { text: root.plateIndex >= 0 ? "Pl. " + root.roman(root.plateIndex + 1) : ""; visible: text !== "" }
+            Cap { text: root.plateIndex >= 0 ? "Pl. " + root.roman(root.plateIndex + 1) : ""; visible: text !== "" && Theme.prints }
         }
         // Widgets/PrintText, with native rendering so the pixel face stays crisp.
         Item {
@@ -84,7 +84,7 @@ Item {
             Layout.fillWidth: true
             spacing: 12
             Label { text: root.feed.weather; color: Theme.text2; font.pixelSize: Theme.fsS; Layout.fillWidth: true; Layout.minimumWidth: 0 }
-            Cap { text: root.plate ? root.plate.title : ""; visible: text !== ""; Layout.maximumWidth: 150 }
+            Cap { text: root.plate ? root.plate.title : ""; visible: text !== "" && Theme.prints; Layout.maximumWidth: 150 }
         }
     }
 }

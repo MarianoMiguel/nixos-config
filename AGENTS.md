@@ -21,17 +21,23 @@ desktop), a guided offline installer, and the desktop they run. Start with
 
 - Commit messages carry no AI attribution: no `Co-Authored-By` or session
   trailers, no mention of the assistant.
-- Two shells, one at a time: Folio (`dotfiles/quickshell/folio`, built from
-  the studies) and DMS, the fallback. `mariano-shell use folio|dms` switches
-  and remembers; niri starts the chosen one. Do not remove DMS, Folio's
-  palette (`azure-folio`) or themeport.
+- The desktop is Interstellar; Folio and Lumen are its themes (decision of
+  2026-10-30 in `workshop/README.md`). A theme must reach everything,
+  including the disk-unlock screen, or it does not ship.
+- Two shells, one at a time: Folio, Interstellar's shell
+  (`dotfiles/quickshell/folio`, built from the studies), and DMS, the
+  fallback. `mariano-shell use folio|dms` switches and remembers; niri
+  starts the chosen one. Do not remove DMS, Folio's palette (`azure-folio`)
+  or themeport.
 - Folio shell work: read `dotfiles/quickshell/folio/README.md` (module
   contract, design rules) and test only in `scripts/folio-harness`, never
   against the live session.
 - Pond is a design reference only (`pond-preview`), not a session. Check
   `workshop/taste.json` before proposing anything from Pond or Omarchy: a
   `dislike` there is a decision.
-- Looks never change colors; colors belong to Folio's palette and themeport.
+- Looks never change colors; colors belong to Interstellar's looks
+  (`tools/azure-folio/looks.py`, mirrored by the shell's `Common/Looks.js`)
+  and themeport.
 - Never adopt runtime-downloaded code, Hyprland-only code, passwordless sudo,
   or unencrypted installs.
 - Don't propose a GNOME-only desktop; it was tried and reverted.

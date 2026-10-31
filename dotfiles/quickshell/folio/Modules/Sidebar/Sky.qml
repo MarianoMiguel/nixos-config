@@ -1,8 +1,9 @@
 import QtQuick
 import qs.Common
 
-// A day at a glance: a pill of halftone dots, dense from dusk to dawn and
-// gone at noon, with the sun (an ink dot in a paper halo) at the hour.
+// A day at a glance: a pill of halftone dots (Lumen: a flat tint), dense
+// from dusk to dawn and gone at noon, with the sun (an ink dot in a paper
+// halo) at the hour.
 Canvas {
     id: root
     property real hour: 12              // 0..24, local to the city
@@ -10,6 +11,8 @@ Canvas {
     readonly property color ink: Theme.ink
     readonly property color well: Theme.well
     readonly property color halo: Theme.rgba(Theme.paper, 0.8)
+    readonly property bool prints: Theme.prints
+    onPrintsChanged: requestPaint()
 
     function css(c) { return "rgba(" + Math.round(c.r * 255) + "," + Math.round(c.g * 255) + "," + Math.round(c.b * 255) + "," + c.a + ")"; }
     onNightChanged: requestPaint()
@@ -28,7 +31,12 @@ Canvas {
         ctx.fillStyle = css(root.well);
         ctx.fillRect(0, 0, w, h);
         // Night: 0.9 px dots on a 3 px grid.
-        if (root.night > 0.01) {
+        if (root.night > 0.01 && !root.prints) {
+            ctx.globalAlpha = root.night * 0.3;
+            ctx.fillStyle = css(root.ink);
+            ctx.fillRect(0, 0, w, h);
+            ctx.globalAlpha = 1;
+        } else if (root.night > 0.01) {
             ctx.globalAlpha = root.night;
             ctx.fillStyle = css(root.ink);
             ctx.beginPath();

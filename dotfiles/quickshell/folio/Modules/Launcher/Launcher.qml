@@ -296,8 +296,14 @@ Scope {
         if (Focus.active)
             list.push(sys("focusEnd", "End focus", "bell", "focus stop end off do not disturb", "End", Focus.clock + " left",
                 "Notifications come back now.", () => { act("Focus.stop()", () => Focus.stop()); close(); }, "Focus"));
+        // The other theme, a keystroke away.
+        const other = Theme.lumen ? "folio" : "lumen", otherName = Theme.lumen ? "Folio" : "Lumen";
+        list.push(Object.assign(sys("theme", otherName + " theme", "palette", "theme look folio lumen interstellar appearance style switch", "Switch",
+            Theme.lumen ? "Ink on paper, printed plates" : "Graphite and glass",
+            "Interstellar in " + otherName + ": the desktop, apps and, from the next boot, the disk-unlock screen.",
+            () => { act("Theming.set(theme " + other + ")", () => Theming.set({ "theme": other }, otherName), true); close(); }, "azure-folio set --theme " + other)));
         const col = Art.collections.find(c => c.id === Theme.selection.collection);
-        if (col && col.art.length > 1) {
+        if (Theme.prints && col && col.art.length > 1) {
             const n = ((Theme.selection.art || 0) + 1) % col.art.length;
             list.push(Object.assign(sys("plate", "Next plate", "image", "next plate wallpaper background art picture shuffle", "Print", col.art[n].title,
                 "Prints “" + col.art[n].title + "” from " + col.name + ".",

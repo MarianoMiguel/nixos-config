@@ -10,6 +10,15 @@ this folder and in git, so it survives any tool or AI account.
 
 ## Decisions
 
+- **2026-10-30: Interstellar, with themes.** The desktop is Interstellar.
+  Folio, with its inks, modes and plates, is one theme; Lumen (neutral grays,
+  plain sans-serif, glass) is the second. A theme is everything drawn: the
+  shell, apps, the login and the disk-unlock screen; a theme that cannot reach
+  the disk-unlock screen is not shipped. Each theme takes one color, any
+  color, kept readable by `tools/azure-folio/looks.py`; backgrounds and text
+  stay the theme's. The split lock and unlock layouts are Interstellar's and
+  stay in every theme. Study: `studies/interstellar/v1.html`. This widens
+  "one language" below: one language per theme, never named after a source.
 - **2026-10-28: design our own; Pond is a reference.** Pond's session was
   not ready and much of it was not wanted, so it is no longer a login
   session. What is liked from it (rounded corners, unhurried motion, soft

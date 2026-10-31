@@ -11,7 +11,7 @@ import qs.Widgets
 SettingsPage {
     id: page
     title: "Displays"
-    description: "Drag the displays to match your desk. Folio remembers the arrangement for the displays connected now and brings it back when they connect again."
+    description: "Drag the displays to match your desk. Interstellar remembers the arrangement for the displays connected now and brings it back when they connect again."
 
     property string selected: ""
     readonly property var sel: Outputs.outputFor(selected) || Outputs.outputs.find(o => o.on) || Outputs.outputs[0] || null

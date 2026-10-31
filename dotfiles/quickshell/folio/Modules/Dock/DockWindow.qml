@@ -451,13 +451,10 @@ PanelWindow {
             it.activated(how === "menu" ? Qt.RightButton : how === "middle" ? Qt.MiddleButton : Qt.LeftButton, at);
         }
     }
-    // The dock's menus appear and go at once (instant): used constantly,
-    // they skip the print every other menu has.
     ContextMenu {
         id: menu
         screen: win.screen
         side: "above"
-        instant: true
         maxWidth: 300
         layerName: "folio:dock-menu"
         onDismissed: { win.heldAt = -1; win.settled = false; }

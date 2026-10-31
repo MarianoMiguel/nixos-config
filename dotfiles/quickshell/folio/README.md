@@ -105,12 +105,12 @@ reaches the harness shell with a config dir whose `quickshell/folio` is the
 path the harness runs (`FOLIO_SHELL_DIR`), and a real click needs a
 virtual pointer (zwlr_virtual_pointer_v1) that stays while clients bind it.
 
-Menus are `Widgets/ContextMenu`; the dock's set `instant` (no print, fade
-or slide: it is used constantly), the desktop's print in. The dock ends
-with the Trash, empty or full from `Drives.trash`; `Drives.watchTrash()`
-keeps an inotify watch on it while a dock shows it. `dock trash
-click|menu`, `dock trashMenu`, `dock menu` and `dock choose N` drive it, and
-`drives fixture normal|stress|empty` sets what it holds.
+Menus are `Widgets/ContextMenu`, the dock's and the desktop's alike; they
+appear and go at once (no print, fade or slide: they are used constantly).
+The dock ends with the Trash, empty or full from `Drives.trash`;
+`Drives.watchTrash()` keeps an inotify watch on it while a dock shows it.
+`dock trash click|menu`, `dock trashMenu`, `dock menu` and `dock choose N`
+drive it, and `drives fixture normal|stress|empty` sets what it holds.
 
 ## Module contract
 

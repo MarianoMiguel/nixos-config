@@ -191,9 +191,21 @@ SettingsPage {
     Label { text: "Wallpaper"; font.weight: Font.DemiBold; font.pixelSize: 15; Layout.topMargin: 32; Component.onCompleted: page.mark("wallpaper", this) }
     Label {
         text: Theme.lumen ? "Lumen lights its wallpaper with your color, on every screen, behind the lock and on the disk-unlock screen."
-                          : "A collection is a theme bundle: its plates and its lock art. Plates print in the current ink."
+                          : "A collection is a theme bundle: its plates and its lock art. Plates print in the current ink, your own pictures too."
         color: Theme.text2; font.pixelSize: Theme.fsS; Layout.fillWidth: true; Layout.bottomMargin: 10; wrapMode: Text.WordWrap; maximumLineCount: 2
     }
+    // Your pictures (Services/Art): what the line under their card says.
+    readonly property int mineCount: Art.mine.art.length
+    readonly property string mineLine: mineCount + (mineCount === 1 ? " picture" : " pictures") + " in " + Art.folderShown
+        + (Art.pending ? " · printing " + Art.pending + " more" : "")
+    // Files that are not used, the first with why.
+    readonly property string mineSkipped: {
+        const s = Art.skipped;
+        if (!s.length) return "";
+        const names = s.slice(0, 2).map((x, i) => i === 0 ? x.name + " (" + x.reason + ")" : x.name);
+        return " Not used: " + names.join(", ") + (s.length > 2 ? " and " + (s.length - 2) + " more." : ".");
+    }
+    Component.onCompleted: Art.scan(false)
     // Lumen's skies, each previewed in the current color and mode.
     RowLayout {
         visible: Theme.lumen
@@ -216,7 +228,7 @@ SettingsPage {
         visible: !Theme.lumen
         Layout.fillWidth: true; columns: 4; columnSpacing: 10; rowSpacing: 10
         Repeater {
-            model: Art.collections
+            model: Art.collections.filter(c => !c.user)
             OptionCard {
                 required property var modelData
                 title: modelData.name; subtitle: modelData.description
@@ -232,19 +244,84 @@ SettingsPage {
             }
         }
     }
+    // Your pictures: a strip of the first five, as one more collection.
+    OptionCard {
+        id: mineCard
+        visible: !Theme.lumen && page.mineCount > 0
+        Layout.topMargin: 10
+        title: "Your pictures"
+        subtitle: page.mineLine
+        previewRatio: 16 / 3.2
+        selected: Theme.selection.collection === "mine"
+        busy: selected && Theming.busy && "collection" in Theme.pending
+        onChosen: if (!selected) Theming.set({ "collection": "mine", "art": 0 }, "Your pictures")
+        Row {
+            anchors.fill: parent; spacing: 4
+            Repeater {
+                model: 5
+                Item {
+                    id: slot
+                    required property int index
+                    readonly property var art: Art.mine.art[index] || null
+                    width: (parent.width - 16) / 5; height: parent.height
+                    Plate { anchors.fill: parent; visible: !!slot.art; plate: slot.art ? slot.art.id : ""; textureWidth: 640; developOnLoad: false }
+                    // Room for more.
+                    Rectangle {
+                        anchors.fill: parent; visible: !slot.art; color: Theme.well
+                        Icon { anchors.centerIn: parent; name: "plus"; size: 16; color: Theme.text3 }
+                    }
+                    // More than fit: how many more.
+                    Rectangle {
+                        visible: slot.index === 4 && page.mineCount > 5
+                        anchors { right: parent.right; bottom: parent.bottom; margins: 8 }
+                        width: more.implicitWidth + 14; height: 22; radius: 8; color: Theme.sheetStrong; border.color: Theme.rule
+                        Cap { id: more; anchors.centerIn: parent; text: "+" + (page.mineCount - 5) }
+                    }
+                }
+            }
+        }
+    }
     RowLayout {
+        visible: !Theme.lumen && page.mineCount > 0
+        Layout.fillWidth: true; Layout.topMargin: 6; spacing: 10
+        Label {
+            text: "Each prints in your ink and never leaves this computer; name.json beside one sets its focus and title." + page.mineSkipped
+            color: Theme.text2; font.pixelSize: Theme.fsS; wrapMode: Text.WordWrap; maximumLineCount: 3
+            Layout.fillWidth: true; Layout.minimumWidth: 0
+        }
+        Button { text: "Open folder"; icon: "folder"; onClicked: Art.openFolder() }
+    }
+    // None yet: where they go.
+    Notice {
+        visible: !Theme.lumen && page.mineCount === 0
+        Layout.topMargin: 10
+        icon: Art.pending ? "reload" : "image"
+        text: Art.pending
+            ? "Your pictures: printing " + Art.pending + (Art.pending === 1 ? " picture" : " pictures") + " from " + Art.folderShown + "…"
+            : "Your pictures: drop JPEG, PNG or WebP files into " + Art.folderShown + " and each becomes a plate, printed in your ink. They never leave this computer." + page.mineSkipped
+        action: "Open folder"
+        onActed: Art.openFolder()
+    }
+    // The chosen collection's plates; yours can be many.
+    GridLayout {
+        id: plateGrid
         visible: !Theme.lumen
-        Layout.fillWidth: true; Layout.topMargin: 10; spacing: 10
+        readonly property var art: (Art.collections.find(c => c.id === Theme.selection.collection) || { "art": [] }).art
+        Layout.fillWidth: true; Layout.topMargin: 10
+        columns: Math.max(2, Math.min(4, art.length)); columnSpacing: 10; rowSpacing: 10
         Repeater {
-            model: (Art.collections.find(c => c.id === Theme.selection.collection) || { "art": [] }).art
+            model: plateGrid.art
             OptionCard {
                 required property var modelData
                 required property int index
+                // From the page's column, not the grid's own width (which follows its cards).
+                Layout.fillWidth: false
+                Layout.preferredWidth: (page.columnWidth - (plateGrid.columns - 1) * plateGrid.columnSpacing) / plateGrid.columns
                 title: modelData.title; subtitle: modelData.credit
                 selected: (Theme.selection.art || 0) === index
                 busy: selected && Theming.busy && "art" in Theme.pending
                 onChosen: if (!selected) Theming.set({ "art": index }, "“" + modelData.title + "”")
-                Plate { anchors.fill: parent; plate: modelData.id; textureWidth: 1280; developOnLoad: false }
+                Plate { anchors.fill: parent; plate: modelData.id; textureWidth: plateGrid.columns > 2 ? 800 : 1280; developOnLoad: false }
             }
         }
     }

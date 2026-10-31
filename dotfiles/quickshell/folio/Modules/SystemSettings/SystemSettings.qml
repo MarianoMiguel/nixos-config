@@ -17,7 +17,7 @@ Scope {
 
     readonly property var pages: [
         { "id": "appearance", "title": "Appearance", "icon": "palette", "group": "Look", "page": "appearance", "keys": "mode dark light ink theme color sunset" },
-        { "id": "wallpaper", "title": "Wallpaper", "icon": "image", "group": "Look", "page": "appearance", "anchor": "wallpaper", "keys": "plate collection art background moving dither moonlit" },
+        { "id": "wallpaper", "title": "Wallpaper", "icon": "image", "group": "Look", "page": "appearance", "anchor": "wallpaper", "keys": "plate collection art background moving dither moonlit your pictures photos own folder" },
         { "id": "motion", "title": "Motion", "icon": "sparkle", "group": "Look", "page": "appearance", "anchor": "motion", "keys": "animation reduce still gentle" },
         { "id": "lock", "title": "Lock & screensaver", "icon": "lock", "group": "Look", "page": "appearance", "anchor": "lock", "keys": "idle hibernate screensaver timeout" },
         { "id": "desktop", "title": "Desktop & dock", "icon": "grid", "group": "Look", "page": "appearance", "anchor": "desktop", "keys": "dock sidebar island icons login" },

@@ -22,3 +22,10 @@ dotfiles/quickshell/folio/Modules/*/qmldir
 dotfiles/quickshell/folio/Modules/Launcher/emoji.json
 # Synthesized by scripts/folio-sounds (the harness and the Nix package run it).
 dotfiles/quickshell/*/sounds/
+# The owner's own pictures (tools/azure-folio/pictures.py) live in
+# ~/Pictures/Folio and their prints in the cache, never in the repository;
+# these catch a folder or store that ends up here by mistake.
+/Pictures/
+**/folio-pictures/
+**/folio-pictures-store/
+**/azure-folio/pictures/

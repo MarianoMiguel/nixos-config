@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """Interstellar's look: a theme (Folio or Lumen), a mode and one color.
 
-Folio's art: four collections printed in its ink. The colors themselves come
-from looks.py, which apps, the shell and the boot screen share."""
+Folio's art: the shipped collections printed in its ink, and the owner's own
+pictures (pictures.py: ~/Pictures/Folio, kept in the cache, never read by
+root). The colors themselves come from looks.py, which apps, the shell and
+the boot screen share."""
 import argparse
 import fcntl
 import json
@@ -14,19 +16,37 @@ import tempfile
 from pathlib import Path
 from render import render_cached
 import looks
+import pictures
 
 DATA = Path(os.environ.get('AZURE_FOLIO_DATA', '@data@'))
 STATE = Path.home()/'.local/state/nixos-config/azure-folio/selection.json'
 CACHE = Path(os.environ.get('XDG_CACHE_HOME', str(Path.home()/'.cache')))/'azure-folio/wallpapers'
+MINE = pictures.ID
 
 
-def catalog():
-    return json.loads((DATA/'catalog.json').read_text())
+def catalog(mine=True):
+    """The shipped catalog, and with mine your pictures as one more
+    collection while there are any. Root's bridge reads the shipped one only."""
+    cat=json.loads((DATA/'catalog.json').read_text())
+    user=pictures.collection() if mine else None
+    if user: cat['collections'].append(user)
+    return cat
 
 
-def validate(raw):
-    cat=catalog(); result=dict(cat['defaults'])
+def collection_of(selection,cat):
+    return next(c for c in cat['collections'] if c['id']==selection['collection'])
+
+
+def data_of(collection):
+    """Where a collection's sources and art live: the package, or your pictures' store."""
+    return pictures.STORE if collection['id']==MINE else DATA
+
+
+def validate(raw,cat=None):
+    cat=cat or catalog(); result=dict(cat['defaults'])
     if not isinstance(raw,dict): raise ValueError('Selection must be an object')
+    if raw.get('collection')==MINE and not any(c['id']==MINE for c in cat['collections']):
+        raise ValueError(f'No pictures yet: add JPEG, PNG or WebP files to {pictures.FOLDER}')
     for key,choices in [('collection',[c['id'] for c in cat['collections']]),('mode',['light','dark']),('ink',list(cat['inks']))]:
         if key in raw and not (key=='ink' and raw[key]=='custom'):
             if raw[key] not in choices: raise ValueError('Unknown '+key)
@@ -71,9 +91,22 @@ def folio_ink(selection,mode):
     return looks.derive('folio',mode,pick(selection,'folio'))[0]
 
 
-def read_selection(path=STATE):
-    if not path.exists(): return validate({})
-    return validate(json.loads(path.read_text()))
+def settle(raw,cat):
+    """A saved choice of your pictures that no longer resolves falls back:
+    to the shipped default plate when there are none (they were removed, the
+    cache was cleared, or the reader never sees them: root's bridge), to the
+    last one when the chosen one is past the end."""
+    if not isinstance(raw,dict) or raw.get('collection')!=MINE: return raw
+    mine=next((c for c in cat['collections'] if c['id']==MINE),None)
+    if mine is None: return {k:v for k,v in raw.items() if k not in ('collection','art')}
+    if type(raw.get('art')) is int and raw['art']>=len(mine['art']): return {**raw,'art':len(mine['art'])-1}
+    return raw
+
+
+def read_selection(path=None,cat=None):
+    path=path or STATE;cat=cat or catalog()
+    if not path.exists(): return validate({},cat)
+    return validate(settle(json.loads(path.read_text()),cat),cat)
 
 
 def atomic_json(path,data,mode=0o644):
@@ -87,13 +120,18 @@ def atomic_json(path,data,mode=0o644):
         if os.path.exists(name): os.unlink(name)
 
 
-def appearance(selection):
-    cat=catalog();collection=next(c for c in cat['collections'] if c['id']==selection['collection'])
-    mode=selection['mode'];ink=selection['ink']
+def prefix_of(selection,cat):
     # Pre-printed art exists for the named inks; a custom ink borrows azure's
     # (the shell and the boot screen print plates in any ink themselves).
-    prefix=f"{ink if ink in cat['inks'] else 'azure'}-{mode}"
-    images=[{'title':a['title'],'credit':a['credit'],'portrait':str(DATA/'art'/a['id']/f'{prefix}-portrait.png'),'desktop':str(DATA/'art'/a['id']/f'{prefix}-desktop.png')} for a in collection['art']]
+    ink=selection['ink']
+    return (ink if ink in cat['inks'] else 'azure'),selection['mode']
+
+
+def appearance(selection,cat=None):
+    cat=cat or catalog();collection=collection_of(selection,cat)
+    mode=selection['mode']
+    prefix='-'.join(prefix_of(selection,cat));art=data_of(collection)/'art'
+    images=[{'title':a['title'],'credit':a['credit'],'portrait':str(art/a['id']/f'{prefix}-portrait.png'),'desktop':str(art/a['id']/f'{prefix}-desktop.png')} for a in collection['art']]
     return {**selection,'collectionName':collection['name'],'paper':'#f7f4e9' if mode=='light' else '#101d33','inkColor':folio_ink(selection,mode),'look':looks.resolve(selection['theme'],mode,pick(selection)),'muted':'#536177' if mode=='light' else '#9eb0ca','line':'#d9d0bf' if mode=='light' else '#384c69','images':images}
 
 
@@ -130,17 +168,31 @@ def monitor_outputs():
     return json.loads(result.stdout)
 
 
+def ensure_prints(selection, cat=None):
+    """Your pictures are printed for DMS when chosen, not ahead of time: the
+    chosen one in the selection's ink and mode (shipped plates come printed)."""
+    cat = cat or catalog()
+    collection = collection_of(selection, cat)
+    if collection['id'] != MINE: return
+    ink, mode = prefix_of(selection, cat)
+    pictures.prints(collection['art'][selection['art']]['id'], ink, mode, cat['inks'][ink][mode])
+
+
 def render_wallpapers(selection, outputs):
     cat = catalog()
-    collection = next(c for c in cat['collections'] if c['id'] == selection['collection'])
+    collection = collection_of(selection, cat)
     art = collection['art'][selection['art']]
+    if collection['id'] == MINE:
+        # A renamed picture keeps its renders: only what shapes the crop counts.
+        art = {k: art[k] for k in ('id', 'file', 'generated', 'desktopFocus')}
     ink = folio_ink(selection, selection['mode'])
     paper = '#f7f4e9' if selection['mode'] == 'light' else '#101d33'
-    return {name: str(render_cached(DATA, CACHE, art, size, ink, paper))
+    return {name: str(render_cached(data_of(collection), CACHE, art, size, ink, paper))
             for name, size in display_targets(outputs).items()}
 
 
 def set_wallpaper(selection):
+    ensure_prints(selection)
     selected = appearance(selection)['images'][selection['art']]['desktop']
     wallpapers = render_wallpapers(selection, monitor_outputs())
     result = ipc('folioWallpaper', 'apply', selected, json.dumps(wallpapers), required=True)
@@ -169,6 +221,7 @@ def apply(selection, previous, force=False):
     for key,value in {'fontFamily':'Inter','monoFontFamily':'IBM Plex Mono','lockScreenFontFamily':'Jacquard 24','lockScreenShowDate':'true','greeterFontFamily':'Inter','fontWeight':'400','fontScale':'1','terminalsAlwaysDark':'false'}.items():
         ipc('settings','set',key,value)
     selected=doc['images'][selection['art']]['desktop']
+    if selection['theme']=='folio': ensure_prints(selection)
     # Lumen's wallpaper is drawn by the shell; DMS keeps the last plate.
     if selection['theme']!='folio': pass
     elif ipc('settings','get','currentThemeName') is not None:
@@ -191,20 +244,42 @@ def publish(input_path,output):
         info=input_path.lstat()
         if not stat.S_ISREG(info.st_mode) or info.st_uid!=1000 or info.st_size>4096:
             raise ValueError('Refusing untrusted appearance selection')
-    atomic_json(output,appearance(read_selection(input_path)))
+    # Root never reads your pictures: the shipped catalog only, so a choice
+    # of them reaches the greeter and the boot screen as the shipped default
+    # plate (settle), with the owner's theme, mode and color.
+    cat=catalog(mine=False)
+    atomic_json(output,appearance(read_selection(input_path,cat),cat))
+
+
+def scan_pictures(create=False,wait=True):
+    """Print what is new in your pictures' folder, forget what is gone."""
+    return pictures.scan(catalog(mine=False)['inks'][pictures.SHELL[0]][pictures.SHELL[1]], renders=CACHE, create=create, wait=wait)
+
+
+def stored_collection():
+    try: return json.loads(STATE.read_text()).get('collection')
+    except (OSError, ValueError, AttributeError): return None
 
 
 def main():
     p=argparse.ArgumentParser(description=__doc__);sub=p.add_subparsers(dest='command',required=True)
     sub.add_parser('status');sub.add_parser('catalog')
-    s=sub.add_parser('set');s.add_argument('--collection',choices=[c['id'] for c in catalog()['collections']]);s.add_argument('--mode',choices=['light','dark']);s.add_argument('--theme',choices=looks.THEMES);s.add_argument('--sky',choices=looks.SKIES);s.add_argument('--ink',help='azure, cobalt, slate, custom or #rrggbb');s.add_argument('--accent',help="one of Lumen's colors, custom or #rrggbb");s.add_argument('--art',type=int);s.add_argument('--force',action='store_true')
+    s=sub.add_parser('set');s.add_argument('--collection',choices=[c['id'] for c in catalog(mine=False)['collections']]+[MINE]);s.add_argument('--mode',choices=['light','dark']);s.add_argument('--theme',choices=looks.THEMES);s.add_argument('--sky',choices=looks.SKIES);s.add_argument('--ink',help='azure, cobalt, slate, custom or #rrggbb');s.add_argument('--accent',help="one of Lumen's colors, custom or #rrggbb");s.add_argument('--art',type=int);s.add_argument('--force',action='store_true')
     sub.add_parser('next')
     sub.add_parser('restore')
     sub.add_parser('refresh-wallpapers', help='Refresh per-display crops after a display change')
     q=sub.add_parser('publish');q.add_argument('--input',type=Path,required=True);q.add_argument('--output',type=Path,required=True)
+    y=sub.add_parser('pictures',help=f'Print the pictures in {pictures.FOLDER} as plates of "{pictures.NAME}"');y.add_argument('--create',action='store_true',help='make the folder first')
     args=p.parse_args()
     if args.command=='catalog': print(json.dumps(catalog(),ensure_ascii=False));return
     if args.command=='publish': publish(args.input,args.output);return
+    if args.command=='pictures':
+        doc=scan_pictures(args.create)
+        print(json.dumps({k:doc[k] for k in ['folder','present','pending','arriving','skipped']}|{'pictures':len(doc['collection']['art'])},ensure_ascii=False));return
+    # Your pictures are read again before they are chosen or cycled, so DMS
+    # (which does not watch the folder as Folio's shell does) sees new ones;
+    # not while a scan is already printing (the shell's): its plates do.
+    if args.command in ('set','next','restore') and MINE in (getattr(args,'collection',None),stored_collection()): scan_pictures(wait=False)
     if args.command=='status': print(json.dumps(appearance(read_selection()),ensure_ascii=False));return
     STATE.parent.mkdir(parents=True,exist_ok=True)
     with STATE.with_suffix('.lock').open('w') as lock:
@@ -220,7 +295,7 @@ def main():
                 if value is None: continue
                 if value.startswith('#'): selection[key]='custom';selection[custom]=value
                 else: selection[key]=value
-            if selection['collection']!=previous['collection']: selection['art']=0
+            if selection['collection']!=previous['collection'] and args.art is None: selection['art']=0
         if args.command=='next':
             count=len(appearance(selection)['images']);selection['art']=(selection['art']+1)%count
         force=args.command=='restore' or getattr(args,'force',False)

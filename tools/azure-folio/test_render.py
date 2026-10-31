@@ -8,6 +8,10 @@ from PIL import Image
 import azure_folio as folio
 import render
 
+# Never the owner's own pictures: an empty store.
+_none = tempfile.TemporaryDirectory()
+folio.pictures.STORE = Path(_none.name) / 'store'
+
 
 class DisplayRenderingTests(unittest.TestCase):
     def test_current_mode_and_undocked_preferred_mode(self):

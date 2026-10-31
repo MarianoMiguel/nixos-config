@@ -76,6 +76,21 @@ pick exactly as apps and the boot screen get it.
   session locked and the screen stays red. `scripts/folio-harness stop`, then
   `start`.
 
+## Your pictures
+
+`Art` merges the owner's own pictures as one more collection, `mine`:
+JPEG, PNG or WebP files in `~/Pictures/Folio`, printed by `azure-folio
+pictures` into `$XDG_CACHE_HOME/azure-folio/pictures` (see
+`tools/azure-folio/README.md`, which also has the `name.json` sidecar for a
+focus and a title). It watches the folder and the store's catalog, so a new
+picture appears without a restart; `Art.mask(id)` and `Art.portrait(id)` read
+the store for ids that start with `mine-`. The greeter never shows them. In
+the harness both live in its runtime directory (`folio-pictures`,
+`folio-pictures-store`; `AZURE_FOLIO_PICTURES` and
+`AZURE_FOLIO_PICTURES_STORE` override), and `azure-folio` must be the
+worktree's for the scan to run; `qs ipc call pictures state`, `scan`, `open`
+and `fixture empty|normal` drive it.
+
 ## Module contract
 
 - Root type `Scope`, file `Modules/<Name>/<Name>.qml`; add the name to

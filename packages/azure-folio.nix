@@ -32,6 +32,7 @@ stdenvNoCC.mkDerivation {
     cp ${../assets/azure-folio/fonts}/*.ttf "$out/share/fonts/truetype/"
     cp ${../tools/azure-folio/azure_folio.py} "$out/share/azure-folio/azure_folio.py"
     cp ${../tools/azure-folio/render.py} "$out/share/azure-folio/render.py"
+    cp ${../tools/azure-folio/looks.py} "$out/share/azure-folio/looks.py"
     substituteInPlace "$out/share/azure-folio/azure_folio.py" --replace-fail '@data@' "$out/share/azure-folio"
     makeWrapper ${python}/bin/python3 "$out/bin/azure-folio" --add-flags "$out/share/azure-folio/azure_folio.py"
     runHook postInstall

@@ -29,6 +29,19 @@ class AppearanceTests(unittest.TestCase):
         clean=folio.validate({'path':'/etc/shadow','command':'id','images':[{'portrait':'/etc/shadow'}]})
         self.assertNotIn('path',clean);self.assertNotIn('images',clean)
 
+    def test_themes_and_custom_colors(self):
+        self.assertEqual(folio.validate({})['theme'],'folio')
+        choice=folio.validate({'theme':'lumen','accent':'custom','customAccent':'#D4FF00','ink':'custom','customInk':'#e8590c'})
+        self.assertEqual(folio.pick(choice),'#d4ff00');self.assertEqual(folio.pick(choice,'folio'),'#e8590c')
+        doc=folio.appearance(choice)
+        self.assertEqual(doc['look']['theme'],'lumen')
+        self.assertEqual(doc['inkColor'],folio.looks.derive('folio',choice['mode'],'#e8590c')[0])
+        for art in doc['images']: self.assertTrue(Path(art['portrait']).is_file(),art['portrait'])
+        # A named color keeps the custom one for later.
+        self.assertEqual(folio.pick(folio.validate({'ink':'cobalt','customInk':'#e8590c'})),'cobalt')
+        for raw in [{'theme':'gnome'},{'accent':'#ff0000'},{'ink':'custom'},{'accent':'custom'},{'customInk':'#ff00ff\n'},{'customAccent':'red'},{'customInk':'$(id)'}]:
+            with self.assertRaises(ValueError,msg=raw): folio.validate(raw)
+
     def test_publisher_reconstructs_paths(self):
         with tempfile.TemporaryDirectory() as directory:
             source=Path(directory)/'selection.json';output=Path(directory)/'public.json'

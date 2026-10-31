@@ -482,8 +482,8 @@ def build_dms_theme(theme: Theme, other: Theme | None) -> dict:
         "id": f"themeport-{theme.name}",
         "name": pretty,
         "version": "1.0.0",
-        "author": "Azure Folio" if theme.name.startswith("folio-") else "themeport (from Omarchy community themes)",
-        "description": ("Blue and ivory desktop family" if theme.name.startswith("folio-") else f"Converted from the Omarchy theme '{theme.name}'")
+        "author": "Interstellar" if theme.name.startswith("interstellar-") else "Azure Folio" if theme.name.startswith("folio-") else "themeport (from Omarchy community themes)",
+        "description": ("Interstellar's look" if theme.name.startswith("interstellar-") else "Blue and ivory desktop family" if theme.name.startswith("folio-") else f"Converted from the Omarchy theme '{theme.name}'")
         + (f" paired with '{other.name}'" if other else ""),
         "dark": dms_variant(dark.colors, f"{pretty} Dark" if other or dark.mode == "dark" else pretty),
         "light": dms_variant(light.colors, f"{pretty} Light" if other or light.mode == "light" else pretty),

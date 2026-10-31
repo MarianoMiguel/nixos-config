@@ -175,10 +175,14 @@ Themeport (trusted catalog)
   themeport list
   themeport pick [--hold]
   themeport set THEME [--pair THEME] [--no-restart]
+  themeport look folio|lumen light|dark COLOR [--no-restart]
   themeport wallpapers [--all] [--list] [--hold]
 
 Themes are shipped inside the immutable NixOS system. Online installs,
 browser links, executable hooks and third-party catalogs are disabled.
+`look` applies Interstellar's palette for a theme, a mode and one color
+(a name from the theme's set or #rrggbb), computed by the system's own
+looks.py.
 HELP
       }
 
@@ -235,6 +239,42 @@ HELP
           if [ -n "$pair" ]; then
             set -- "$@" --pair "$pair"
           fi
+          if [ "$no_restart" -eq 1 ]; then
+            set -- "$@" --no-restart
+          fi
+          exec python3 "$renderer" set "$@"
+          ;;
+        look)
+          # Interstellar's look: the palette is computed here, by the system's
+          # looks.py, from three checked values, so the catalog stays closed.
+          [ "$#" -ge 3 ] || { usage >&2; exit 2; }
+          look_theme=$1
+          look_mode=$2
+          look_pick=$3
+          shift 3
+          case "$look_theme" in
+            folio|lumen) ;;
+            *) echo "Unknown theme: $look_theme" >&2; exit 2 ;;
+          esac
+          case "$look_mode" in
+            light) look_other=dark ;;
+            dark) look_other=light ;;
+            *) echo "Unknown mode: $look_mode" >&2; exit 2 ;;
+          esac
+          case "$look_pick" in
+            ""|*[!#0-9A-Za-z]*) echo "Unknown color: $look_pick" >&2; exit 2 ;;
+          esac
+          no_restart=0
+          if [ "''${1:-}" = --no-restart ]; then
+            no_restart=1
+            shift
+          fi
+          [ "$#" -eq 0 ] || { usage >&2; exit 2; }
+          generated="''${XDG_STATE_HOME:-$HOME/.local/state}/themeport/looks"
+          mkdir -p "$generated"
+          python3 ${folio}/share/azure-folio/looks.py themeport \
+            --theme "$look_theme" --mode "$look_mode" --pick "$look_pick" --out "$generated"
+          set -- "$generated/interstellar-$look_theme-$look_mode" --pair "$generated/interstellar-$look_theme-$look_other"
           if [ "$no_restart" -eq 1 ]; then
             set -- "$@" --no-restart
           fi

@@ -46,7 +46,7 @@ class AppearanceTests(unittest.TestCase):
         for art in doc['images']: self.assertTrue(Path(art['portrait']).is_file(),art['portrait'])
         # A named color keeps the custom one for later.
         self.assertEqual(folio.pick(folio.validate({'ink':'cobalt','customInk':'#e8590c'})),'cobalt')
-        self.assertEqual(folio.validate({})['sky'],'prism');self.assertEqual(folio.validate({'sky':'haze'})['sky'],'haze')
+        self.assertEqual(folio.validate({})['sky'],'orbit');self.assertEqual(folio.validate({'sky':'haze'})['sky'],'haze')
         for raw in [{'sky':'stars'},{'sky':'haze\n'},{'theme':'gnome'},{'accent':'#ff0000'},{'ink':'custom'},{'accent':'custom'},{'customInk':'#ff00ff\n'},{'customAccent':'red'},{'customInk':'$(id)'}]:
             with self.assertRaises(ValueError,msg=raw): folio.validate(raw)
 

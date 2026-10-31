@@ -211,13 +211,13 @@ SettingsPage {
         visible: Theme.lumen
         Layout.fillWidth: true; spacing: 10
         Repeater {
-            model: [{ "id": "prism", "t": "Prism", "s": "Light through fluted glass" }, { "id": "glow", "t": "Glow", "s": "One soft luminous shape" }, { "id": "haze", "t": "Haze", "s": "A full-bleed gradient" }]
+            model: [{ "id": "orbit", "t": "Orbit", "s": "A ring of light and its trail" }, { "id": "prism", "t": "Prism", "s": "Light through fluted glass" }, { "id": "glow", "t": "Glow", "s": "One soft luminous shape" }, { "id": "haze", "t": "Haze", "s": "A full-bleed gradient" }]
             OptionCard {
                 id: scard
                 required property var modelData
                 title: modelData.t; subtitle: modelData.s
                 previewRatio: 16 / 10
-                selected: (Theme.selection.sky || "prism") === modelData.id
+                selected: (Theme.selection.sky || "orbit") === modelData.id
                 busy: selected && Theming.busy && "sky" in Theme.pending
                 onChosen: if (!selected) Theming.set({ "sky": modelData.id }, modelData.t)
                 Plate { anchors.fill: parent; forceTheme: "lumen"; forceSky: scard.modelData.id; developOnLoad: false }

@@ -4,8 +4,8 @@
 The desktop's selection lives in the encrypted home. The greeter bridge
 (modules/nixos/themeport.nix) publishes a root-owned, validated copy at
 /var/lib/azure-folio/appearance.json. `publish` reads only that file and
-keeps three values from it: the theme, the mode and one color, each checked
-against the closed sets looks.py knows. It prints that look with build.py
+keeps four values from it: the theme, the mode, one color and Lumen's sky,
+each checked against the closed sets looks.py knows. It prints that look with build.py
 into a private directory, packs it as a small initrd archive, and replaces
 the file on the boot partition atomically. The boot loader loads that file
 after NixOS's own initrd (modules/nixos/folio-boot.nix adds the entry line).
@@ -33,7 +33,7 @@ THEME = 'interstellar-look'
 STAGING = 'etc/interstellar/boot-look'   # in the initrd, beside nothing of NixOS's own
 RUNTIME = '/run/interstellar/themes'     # where the check puts it, and Plymouth reads it
 MAX_INPUT = 64 * 1024
-FORMAT = 1
+FORMAT = 2   # the published state's format: 2 adds the sky
 
 
 class LookError(ValueError):
@@ -42,8 +42,10 @@ class LookError(ValueError):
 
 # ------------------------------------------------------------------ the input
 
-def validate(looks, look):
-    """Exactly a theme, a mode and a color from the closed sets, or an error."""
+def validate(looks, look, sky):
+    """Exactly a theme, a mode, a color and a sky from the closed sets, or an
+    error. (The sky is Lumen's wallpaper; Folio prints its plate whatever it
+    is.)"""
     if not isinstance(look, dict):
         raise LookError('look must be an object')
     theme, mode, pick = look.get('theme'), look.get('mode'), look.get('pick')
@@ -51,13 +53,15 @@ def validate(looks, look):
         raise LookError('unknown theme')
     if type(mode) is not str or mode not in looks.MODES:
         raise LookError('unknown mode')
+    if type(sky) is not str or sky not in looks.SKIES:
+        raise LookError('unknown sky')
     if type(pick) is not str:
         raise LookError('unknown color')
     if pick in looks.NAMED[theme]:
-        return theme, mode, pick
+        return theme, mode, pick, sky
     # A custom color is exactly #rrggbb: no space, no newline, nothing else.
     if len(pick) == 7 and pick[0] == '#' and all(c in '0123456789abcdefABCDEF' for c in pick[1:]):
-        return theme, mode, pick.lower()
+        return theme, mode, pick.lower(), sky
     raise LookError('unknown color')
 
 
@@ -94,9 +98,11 @@ def read_appearance(path, owner=0):
 
 
 def look_from(looks, data):
-    """(theme, mode, pick) from the appearance document, or None when it
+    """(theme, mode, pick, sky) from the appearance document, or None when it
     carries no look: written by a bridge older than Interstellar's looks,
-    which means the built-in look, as when nothing is published."""
+    which means the built-in look, as when nothing is published. The sky
+    sits beside the look, as the selection keeps it; absent, it is the
+    first in looks.SKIES (orbit)."""
     try:
         doc = json.loads(data.decode('utf-8'))
     except (UnicodeDecodeError, json.JSONDecodeError):
@@ -105,7 +111,7 @@ def look_from(looks, data):
         raise LookError('not an object')
     if 'look' not in doc:
         return None
-    return validate(looks, doc['look'])
+    return validate(looks, doc['look'], doc['sky'] if 'sky' in doc else looks.SKIES[0])
 
 
 # ------------------------------------------------------------------ the archive
@@ -147,12 +153,12 @@ def archive(theme_dir, look):
 
 def render(args, look, out):
     looks = build.load_module('looks', args.looks)
-    theme, mode, pick = look
+    theme, mode, pick, sky = look
     build.build(looks=looks, render=build.load_module('render', args.render), assets=args.assets,
                 template=args.script.read_text(), out=out, name=args.name, theme=theme, mode=mode,
                 pick=pick, art_id=args.art, sizes=build.parse_sizes(args.size),
                 bold_font=args.bold_font, theme_name=THEME,
-                install_dir=f'{RUNTIME}/{THEME}')
+                install_dir=f'{RUNTIME}/{THEME}', sky_style=sky)
 
 
 # ------------------------------------------------------------------ writing
@@ -251,7 +257,7 @@ def publish(args):
 
 def overlay(args):
     looks = build.load_module('looks', args.looks)
-    look = validate(looks, {'theme': args.theme, 'mode': args.mode, 'pick': args.pick})
+    look = validate(looks, {'theme': args.theme, 'mode': args.mode, 'pick': args.pick}, args.sky)
     with tempfile.TemporaryDirectory() as tmp:
         theme_dir = Path(tmp) / THEME
         render(args, look, theme_dir)
@@ -276,6 +282,7 @@ def main(argv=None):
     o.add_argument('--theme', required=True)
     o.add_argument('--mode', required=True)
     o.add_argument('--pick', required=True)
+    o.add_argument('--sky', default='orbit')
     o.add_argument('--out', type=Path, required=True)
     args = p.parse_args(argv)
     try:

@@ -58,7 +58,7 @@ ShaderEffect {
     property string forceSky: ""            // a preview of one style
     readonly property var sky: {
         const mode = root.forceMode || Theme.mode, night = mode === "dark";
-        const style = ["prism", "glow", "haze"].indexOf(root.forceSky || Quickshell.env("LUMEN_SKY") || Theme.selection.sky || "prism");
+        const style = ["prism", "glow", "haze", "orbit"].indexOf(root.forceSky || Quickshell.env("LUMEN_SKY") || Theme.selection.sky || "orbit");
         const o = Looks.oklch(Looks.derive("lumen", mode, Theme.pickOf("lumen"))[0]);
         const h = o[2], c = Math.max(0.12, Math.min(o[1] * 1.3, 0.24));
         // Spread toward violet and pink: up the wheel from cool hues, down from warm ones.
@@ -66,7 +66,7 @@ ShaderEffect {
         const haze = style === 2;
         const L = night ? (haze ? [0.55, 0.5, 0.6, 0.45] : [0.52, 0.5, 0.56, 0.62]) : (haze ? [0.8, 0.78, 0.84, 0.76] : [0.62, 0.6, 0.66, 0.72]);
         const tone = i => Looks.lch(L[i], c * (haze && !night ? 0.75 : 1), h + s * [0, 40, 80, 120][i]);
-        return { "field": night ? "#0b0b0e" : "#eff0f3", "lights": [tone(0), tone(1), tone(2), tone(3)],
+        return { "field": night ? (style === 3 ? "#151516" : "#0b0b0e") : "#eff0f3", "lights": [tone(0), tone(1), tone(2), tone(3)],
                  "style": Math.max(0, style), "night": night ? 1 : 0 };
     }
     property color field: sky.field
@@ -159,10 +159,16 @@ ShaderEffect {
         onFinished: { root.front = !root.front; root.mixAB = 0; }
     }
 
-    // The moving dither changes nine times a second; render only then.
+    // The moving dither changes nine times a second; render only then, and
+    // only where it can be seen: in a window that is showing (a hidden one,
+    // or one never shown, keeps its items "visible"), and not while nobody
+    // could see it. Desktop plates hold still under the lock; the lock's own
+    // sets unseen to Unseen.screensOff.
+    property bool unseen: Unseen.desktop
+    readonly property bool seen: visible && Window.visibility !== Window.Hidden && !unseen
     Timer {
         interval: 111; repeat: true
-        running: root.breathe > 0 && root.visible
+        running: root.breathe > 0 && root.seen
         onTriggered: root.time += 0.111
     }
 

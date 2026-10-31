@@ -2,13 +2,15 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell.Io
 import qs.Common
+import qs.Services
 import qs.Widgets
 
 // World clock: one row per city (Settings "world.cities", the first is
 // home): name, how far it is from home ("Tomorrow, +14 h", "+8 h 45 m"), a
 // sky strip whose dots thicken at night with the sun at the hour, and the
 // time. QML has no time zones, so `date` reports each zone's UTC offset and
-// abbreviation; it is asked again every ten minutes, which catches
+// abbreviation; it is asked again every ten minutes while the sidebar shows
+// unlocked (and on showing, when the last answer is older), which catches
 // daylight-saving changes. A city with no name shows its zone's abbreviation
 // (Central Europe reads CET in winter and CEST in summer).
 SideCard {
@@ -18,6 +20,8 @@ SideCard {
     readonly property string zones: cities.map(c => c[1]).join(" ")
     property var offsets: ({})         // zone -> minutes east of UTC
     property var abbrs: ({})           // zone -> "CET", "CEST", "EDT"…
+    property real asked: 0
+    function ask() { asked = Date.now(); probe.running = true; }
 
     implicitHeight: col.implicitHeight + 12
 
@@ -38,9 +42,11 @@ SideCard {
             }
         }
     }
-    onZonesChanged: probe.running = true
-    Component.onCompleted: probe.running = true
-    Timer { interval: 600000; running: true; repeat: true; onTriggered: probe.running = true }
+    onZonesChanged: ask()
+    Component.onCompleted: ask()
+    readonly property bool showing: feed.ticking && !Session.locked
+    onShowingChanged: if (showing && Date.now() - asked >= 600000) ask()
+    Timer { interval: 600000; running: root.showing; repeat: true; onTriggered: root.ask() }
 
     function ymd(ms) { const d = new Date(ms); return d.getUTCFullYear() * 10000 + d.getUTCMonth() * 100 + d.getUTCDate(); }
     function label(i, zone) {

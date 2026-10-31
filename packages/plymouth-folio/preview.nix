@@ -20,6 +20,7 @@
 {
   mode ? "dark",
   theme ? "folio",
+  sky ? "orbit",
   xres ? 1920,
   yres ? 1200,
   looks ? false,
@@ -55,6 +56,7 @@ let
   '';
 
   # Published looks: azure-folio's selection, as the Settings app writes it.
+  # Every sky in dark mode; the last one is also on the shutdown page.
   published = [
     {
       name = "folio-light-custom";
@@ -64,7 +66,7 @@ let
         ink = "custom";
         customInk = "#8a2be2";
       };
-      look = "folio light #8a2be2";
+      look = "folio light #8a2be2 orbit";
     }
     {
       name = "folio-dark-cobalt";
@@ -73,37 +75,60 @@ let
         mode = "dark";
         ink = "cobalt";
       };
-      look = "folio dark cobalt";
+      look = "folio dark cobalt orbit";
     }
     {
-      name = "lumen-dark-blue";
+      name = "lumen-dark-prism";
       selection = {
         theme = "lumen";
         mode = "dark";
         accent = "blue";
+        sky = "prism";
       };
-      look = "lumen dark blue";
+      look = "lumen dark blue prism";
       interact = true;
     }
     {
-      name = "lumen-light-custom";
+      name = "lumen-light-orbit";
       selection = {
         theme = "lumen";
         mode = "light";
         accent = "custom";
         customAccent = "#ff6a00";
+        sky = "orbit";
       };
-      look = "lumen light #ff6a00";
+      look = "lumen light #ff6a00 orbit";
     }
     {
-      name = "lumen-dark-custom";
+      name = "lumen-dark-glow";
       selection = {
         theme = "lumen";
         mode = "dark";
         accent = "custom";
         customAccent = "#00c49a";
+        sky = "glow";
       };
-      look = "lumen dark #00c49a";
+      look = "lumen dark #00c49a glow";
+    }
+    {
+      name = "lumen-dark-haze";
+      selection = {
+        theme = "lumen";
+        mode = "dark";
+        accent = "purple";
+        sky = "haze";
+      };
+      look = "lumen dark purple haze";
+    }
+    {
+      name = "lumen-dark-orbit";
+      selection = {
+        theme = "lumen";
+        mode = "dark";
+        accent = "blue";
+        sky = "orbit";
+      };
+      look = "lumen dark blue orbit";
     }
   ];
 in
@@ -151,7 +176,7 @@ pkgs.testers.runNixOSTest {
         virtualisation.rootDevice = "/dev/mapper/nixos-crypt";
         mariano.folio.boot = {
           enable = true;
-          inherit theme mode;
+          inherit theme mode sky;
         };
         # The test VM has a serial console; Plymouth would show text there
         # (and everywhere) unless told to ignore it. Bonhart has none.

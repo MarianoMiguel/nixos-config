@@ -8,6 +8,9 @@ import Quickshell.Io
 // operator (`tailscale set --operator=$USER`); otherwise canToggle is false.
 // In the harness the command is only recorded (Sys.run). Network's fixtures
 // set this one's too (setFixture), so the Network page shows every state.
+// The status is asked once at start, then every 30 s only while someone is
+// looking: the sidebar open (it also asks on opening) or Settings › Network
+// watching Network; never while locked. A toggle asks again when it is done.
 Singleton {
     id: root
 
@@ -97,7 +100,10 @@ Singleton {
         onExited: { root.busy = false; root.refresh(); }
     }
 
-    Timer { interval: 30000; running: !root.fake; repeat: true; triggeredOnStart: true; onTriggered: root.refresh() }
+    readonly property bool watched: (Shell.sidebarOpen || Network.watchers > 0) && !Session.locked
+    onWatchedChanged: if (watched) refresh()
+    Component.onCompleted: refresh()
+    Timer { interval: 30000; running: root.watched && !root.fake; repeat: true; onTriggered: root.refresh() }
 
     // ------------------------------------------------------------ fixtures
 

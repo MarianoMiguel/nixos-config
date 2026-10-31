@@ -29,7 +29,7 @@ ACCENTS = {'blue': '#0a7aff', 'purple': '#a050e8', 'pink': '#ef4f97', 'red': '#f
 NAMED = {'folio': INKS, 'lumen': ACCENTS}
 DEFAULT = {'folio': 'azure', 'lumen': 'blue'}
 # The window, the terminal and Chrome's frame.
-BACKGROUND = {'folio': {'light': '#f7f4e9', 'dark': '#101d33'}, 'lumen': {'light': '#ffffff', 'dark': '#1e1e20'}}
+BACKGROUND = {'folio': {'light': '#f7f4e9', 'dark': '#101d33'}, 'lumen': {'light': '#ffffff', 'dark': '#141416'}}
 # Text on a Lumen accent when white would not read.
 INK_ON_LIGHT = '#1d1d1f'
 
@@ -157,11 +157,11 @@ def colors(theme, mode, pick):
              'cyan': '#356c82' if light else '#9fc8d8', 'magenta': '#6d6089' if light else '#c5b5df', 'blue': accent}
     else:
         # Neutral grays; terminal colors that read on white and on graphite.
-        p = {'background': '#ffffff' if light else '#1e1e20', 'foreground': '#1d1d1f' if light else '#f5f5f7',
-             'lighter_background': '#f5f5f7' if light else '#2c2c2e', 'dark_background': '#f2f2f5' if light else '#252527',
-             'darker_background': '#e8e8ed' if light else '#161618', 'dark_foreground': '#6e6e73' if light else '#a1a1a6',
+        p = {'background': '#ffffff' if light else '#141416', 'foreground': '#1d1d1f' if light else '#f5f5f7',
+             'lighter_background': '#f5f5f7' if light else '#1e1e21', 'dark_background': '#f2f2f5' if light else '#1a1a1c',
+             'darker_background': '#e8e8ed' if light else '#0b0b0c', 'dark_foreground': '#6e6e73' if light else '#a1a1a6',
              'bright_foreground': '#000000' if light else '#ffffff', 'muted': '#86868b' if light else '#8e8e93',
-             'selection': mix(accent, '#ffffff', 0.72) if light else mix(accent, '#1e1e20', 0.55),
+             'selection': mix(accent, '#ffffff', 0.72) if light else mix(accent, '#141416', 0.55),
              'red': '#c4281c' if light else '#ff6961', 'green': '#1e7d36' if light else '#5fd068',
              'yellow': '#8f6400' if light else '#ffd60a', 'orange': '#b25000' if light else '#ffa24c',
              'cyan': '#0b7285' if light else '#64d2ff', 'magenta': '#9d36c7' if light else '#da8fff',

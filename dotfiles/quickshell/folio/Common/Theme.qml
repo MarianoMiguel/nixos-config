@@ -70,10 +70,10 @@ Singleton {
 
     // The four sources; everything else derives from them. "ink" is the
     // theme's color in both themes (Lumen's accent), "paper" its window.
-    property color paper: lumen ? (dark ? "#1e1e20" : "#ffffff") : (dark ? "#101d33" : "#f7f4e9")
+    property color paper: lumen ? (dark ? "#141416" : "#ffffff") : (dark ? "#101d33" : "#f7f4e9")
     property color ink: look[0]
     property color text: lumen ? (dark ? "#f5f5f7" : "#1d1d1f") : (dark ? "#e4e9f0" : "#1a2740")
-    property color sheetBase: lumen ? (dark ? "#2a2a2c" : "#f6f6f8") : (dark ? "#182a49" : "#fffdf6")
+    property color sheetBase: lumen ? (dark ? "#1f1f22" : "#f6f6f8") : (dark ? "#182a49" : "#fffdf6")
     Behavior on paper { ColorAnimation { duration: root.tPage; easing.type: Easing.OutCubic } }
     Behavior on ink { ColorAnimation { duration: root.tPage; easing.type: Easing.OutCubic } }
     Behavior on text { ColorAnimation { duration: root.tPage; easing.type: Easing.OutCubic } }

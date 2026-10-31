@@ -11,7 +11,7 @@ var ACCENTS = { "blue": "#0a7aff", "purple": "#a050e8", "pink": "#ef4f97", "red"
                 "yellow": "#ffc800", "green": "#30c35a", "teal": "#2bb3c8", "graphite": "#8a8a90" };
 var NAMED = { "folio": INKS, "lumen": ACCENTS };
 var DEFAULT = { "folio": "azure", "lumen": "blue" };
-var BACKGROUND = { "folio": { "light": "#f7f4e9", "dark": "#101d33" }, "lumen": { "light": "#ffffff", "dark": "#1e1e20" } };
+var BACKGROUND = { "folio": { "light": "#f7f4e9", "dark": "#101d33" }, "lumen": { "light": "#ffffff", "dark": "#141416" } };
 var INK_ON_LIGHT = "#1d1d1f";
 var HEX = /^#[0-9a-fA-F]{6}$/;
 

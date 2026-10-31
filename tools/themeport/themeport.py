@@ -494,10 +494,11 @@ def build_dms_theme(theme: Theme, other: Theme | None) -> dict:
 
 
 def render_browser_policy(colors: dict[str, str]) -> str:
-    # Chrome derives its whole tonal palette from this seed. The background
-    # (Folio's paper or night) gives a tan or gray browser; the accent (Folio's
-    # ink) gives one tinted like the rest of the desktop.
-    return json.dumps({"BrowserThemeColor": colors["accent"]}, indent=2) + "\n"
+    # Chrome paints its frame (tab strip, title bar) in this color as given
+    # and shades the toolbar from it, whatever its own light/dark mode. The
+    # background keeps the browser on the same paper or night as the
+    # terminal; the accent made a dark-mode browser pale (Folio's dark ink).
+    return json.dumps({"BrowserThemeColor": colors["background"]}, indent=2) + "\n"
 
 
 def render_tmux(colors: dict[str, str]) -> str:
@@ -1536,8 +1537,8 @@ def apply_browsers(meta: dict) -> None:
     deadline = time.monotonic() + 5
     while time.monotonic() < deadline:
         try:
-            # The policy seeds Chrome from the accent (render_browser_policy).
-            if json.loads(policy.read_text()).get("BrowserThemeColor") == meta["accent"]:
+            # The policy seeds Chrome from the background (render_browser_policy).
+            if json.loads(policy.read_text()).get("BrowserThemeColor") == meta["background"]:
                 break
         except (OSError, json.JSONDecodeError):
             pass

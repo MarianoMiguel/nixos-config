@@ -79,6 +79,8 @@ def validate_render(name: str, outdir: Path, expect_mode: str) -> None:
     policy = json.loads((outdir / "chrome/color.json").read_text())
     check(set(policy) == {"BrowserThemeColor"}, f"{prefix} unexpected Chrome policy keys")
     check(bool(HEX_RE.match(policy["BrowserThemeColor"])), f"{prefix} bad BrowserThemeColor")
+    # Chrome paints its frame in the seed itself: the terminal's background.
+    check(policy["BrowserThemeColor"] == meta["background"], f"{prefix} Chrome frame differs from the background")
 
     tmux = (outdir / "tmux/themeport.conf").read_text()
     check("status-style" in tmux and "#" in tmux, f"{prefix} tmux colors incomplete")

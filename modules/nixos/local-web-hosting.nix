@@ -13,6 +13,11 @@ let
   applicationPaths = map (application: application.path) applicationList;
   portApplicationList = lib.mapAttrsToList (name: application: application // { inherit name; }) cfg.portApplications;
   portApplicationPorts = map (application: application.port) portApplicationList;
+  gatewayPorts = lib.unique (
+    [ cfg.port ]
+    ++ lib.optionals cfg.tls.enable [ cfg.tls.port ]
+    ++ portApplicationPorts
+  );
   dashboardEntryCount = builtins.length applicationList + builtins.length portApplicationList;
 
   proxyLocations = builtins.foldl' (
@@ -148,7 +153,7 @@ in
     port = lib.mkOption {
       type = lib.types.port;
       default = 80;
-      description = "LAN-facing HTTP port used by nginx.";
+      description = "HTTP port used by nginx.";
     };
 
     tls = {
@@ -157,7 +162,7 @@ in
       port = lib.mkOption {
         type = lib.types.port;
         default = 443;
-        description = "LAN-facing HTTPS port used by nginx.";
+        description = "HTTPS port used by nginx.";
       };
 
       caDownloadPath = lib.mkOption {
@@ -169,8 +174,23 @@ in
 
     openFirewall = lib.mkOption {
       type = lib.types.bool;
-      default = true;
-      description = "Whether to open the gateway port in the NixOS firewall.";
+      default = false;
+      description = ''
+        Whether to open the gateway ports on every interface in the NixOS
+        firewall, which hands the gateway to the whole LAN. Prefer
+        firewallInterfaces.
+      '';
+    };
+
+    firewallInterfaces = lib.mkOption {
+      type = lib.types.listOf lib.types.str;
+      default = [ ];
+      example = [ "tailscale0" ];
+      description = ''
+        Interfaces on which to open the gateway ports, and nowhere else.
+        Loopback is always allowed, so the machine itself reaches the gateway
+        even when this is empty.
+      '';
     };
 
     title = lib.mkOption {
@@ -248,7 +268,7 @@ in
 
           port = lib.mkOption {
             type = lib.types.port;
-            description = "Dedicated LAN-facing port used by nginx for this application.";
+            description = "Dedicated port used by nginx for this application.";
           };
 
           listenAddresses = lib.mkOption {
@@ -447,12 +467,11 @@ in
       } // portApplicationVirtualHosts;
     };
 
-    networking.firewall.allowedTCPPorts = lib.optionals cfg.openFirewall (
-      lib.unique (
-        [ cfg.port ]
-        ++ lib.optionals cfg.tls.enable [ cfg.tls.port ]
-        ++ portApplicationPorts
-      )
-    );
+    networking.firewall = {
+      allowedTCPPorts = lib.optionals cfg.openFirewall gatewayPorts;
+      interfaces = lib.genAttrs cfg.firewallInterfaces (_: {
+        allowedTCPPorts = gatewayPorts;
+      });
+    };
   };
 }

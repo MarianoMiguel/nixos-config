@@ -8,7 +8,7 @@
 - automatic `/path` to `/path/` redirects
 - a generated dashboard at `/`
 - WebSocket forwarding when requested
-- a single firewall opening for the gateway
+- firewall openings only on the interfaces you name (on Bonhart: Tailscale)
 
 ## Register another server
 
@@ -43,7 +43,19 @@ services.localWebHosting.applications.live-app = {
 };
 ```
 
-The upstream should listen on `127.0.0.1`, not `0.0.0.0`. nginx is the only service that needs to accept LAN connections.
+The upstream should listen on `127.0.0.1`, not `0.0.0.0`. nginx is the only service that needs to accept network connections.
+
+## Who can reach it
+
+nginx listens on every address; the firewall decides who gets through. By default the gateway opens nothing, so only the machine itself (loopback) reaches it. Open its ports on chosen interfaces only:
+
+```nix
+services.localWebHosting.firewallInterfaces = [ "ts0" ];
+```
+
+`openFirewall = true` opens them on every interface instead, which hands the gateway, and every application behind it, to the whole LAN.
+
+Bonhart opens the gateway on Tailscale only (`ts0`): `http://bonhart.local` from Wi-Fi or Ethernet is closed, and other devices use the tailnet name, `http://bonhart-3.taile97d70.ts.net/`. Port 443 on the tailnet name belongs to `tailscale serve` (Overfly), so over Tailscale the gateway answers on plain HTTP, inside Tailscale's encrypted tunnel. The local CA below covers `bonhart.local` and `bonhart`, not the tailnet name.
 
 ## Applications that need their own port
 
@@ -62,7 +74,7 @@ services.localWebHosting.portApplications.my-app = {
 
 This example becomes available at `https://bonhart.local:3773/` and is linked from the generated dashboard. With TLS enabled, a plain HTTP request to that port is redirected to HTTPS. `listenAddresses` can restrict nginx to one interface address when another process already owns the same port on Tailscale or another interface.
 
-The gateway does not add authentication to a dedicated-port application. Its upstream authentication still applies, but otherwise every device on the permitted LAN can reach it; expose development tools only on a trusted network.
+The gateway does not add authentication to a dedicated-port application. Its upstream authentication still applies, but otherwise every device that can reach the gateway's ports can reach it; expose development tools only on a trusted network.
 
 ## HTTPS on the local network
 

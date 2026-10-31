@@ -157,7 +157,7 @@ PanelWindow {
                             RowLayout {
                                 spacing: 10
                                 Icon { name: "keyboard"; size: 20; color: Theme.ink }
-                                Label { Layout.fillWidth: true; Layout.minimumWidth: 0; text: "Type your password"; color: Theme.text2 }
+                                Label { Layout.fillWidth: true; Layout.minimumWidth: 0; text: win.owner.passwordHint; color: Theme.text2 }
                             }
                             RowLayout {
                                 visible: win.owner.fingerprint

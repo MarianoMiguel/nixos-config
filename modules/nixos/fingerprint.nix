@@ -19,7 +19,9 @@ in
 
   # DMS handles its lock screen itself, while greetd and the normal system
   # authentication surfaces use PAM. DMS's fingerprint settings are enforced
-  # in home.nix so login, lock, polkit and sudo all expose the same capability.
+  # in home.nix so login, lock and sudo all expose the same capability.
+  # Admin prompts (polkit) take the root password only (users.nix makes root
+  # the only administrator identity), so polkit-1 has no fingerprint.
   security.pam.services = {
     # PAM rule overrides are an experimental NixOS interface and need review
     # when the nixpkgs PAM module changes. Relative ordering remains owned by
@@ -32,10 +34,7 @@ in
       fprintAuth = true;
       rules.auth.fprintd.settings = fingerprintFallback;
     };
-    polkit-1 = {
-      fprintAuth = true;
-      rules.auth.fprintd.settings = fingerprintFallback;
-    };
+    polkit-1.fprintAuth = false;
     sudo = {
       fprintAuth = true;
       rules.auth.fprintd.settings = fingerprintFallback;

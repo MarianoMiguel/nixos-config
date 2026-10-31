@@ -33,4 +33,7 @@
   security.sudo.extraConfig = ''
     Defaults rootpw
   '';
+  # Admin prompts (polkit) ask for the same password: root is the only
+  # administrator identity, so being in wheel is not enough to approve one.
+  security.polkit.adminIdentities = [ "unix-user:root" ];
 }

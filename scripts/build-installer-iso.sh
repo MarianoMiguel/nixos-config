@@ -74,7 +74,19 @@ if ! command -v nix >/dev/null 2>&1; then
   exit 1
 fi
 
-flake="path:$repo"
+# A path: flake is copied into the store whole, untracked files and all, so
+# evaluate a snapshot of the workspace without git metadata, agent worktrees
+# (.claude/), build results or payload archives. Uncommitted files stay in it.
+# A stale flake.lock must fail (--no-update-lock-file) rather than be updated
+# in the snapshot only.
+snapshot=$(mktemp -d "${TMPDIR:-/tmp}/nixos-config-installer.XXXXXX")
+trap 'chmod -R u+w "$snapshot" 2>/dev/null; rm -rf "$snapshot"' EXIT
+tar -C "$repo" \
+  --exclude=.git --exclude=.claude --exclude=.direnv --exclude=.envrc --exclude=.omo \
+  --exclude=__pycache__ --exclude=payload --exclude=result --exclude='result-*' \
+  --exclude='*.iso' --exclude='*.tar.zst' --exclude='*.tar.zst.age' --exclude='*.manifest.txt' \
+  -cf - . | tar -C "$snapshot" -xf -
+flake="path:$snapshot"
 out_link=${OUT_LINK:-result-installer}
 
 # The ISO embeds complete workstation closures, so the build needs tens of
@@ -96,20 +108,20 @@ fi
 
 if [[ ${SKIP_VALIDATION:-0} != 1 ]]; then
   echo "Evaluating every flake output..." >&2
-  nix flake check --no-build "$flake"
+  nix flake check --no-build --no-update-lock-file "$flake"
 
   # Build only the systems this image will actually embed. Everything is
   # needed by the ISO anyway, so this work is never wasted; doing it first
   # gives clear per-system progress and errors.
   for configuration in "${install_targets[@]}"; do
     echo "Building $configuration..." >&2
-    nix build --no-link \
+    nix build --no-link --no-update-lock-file \
       "$flake#nixosConfigurations.$configuration.config.system.build.toplevel"
   done
 fi
 
 echo "Building the installer from the current workspace snapshot..." >&2
-nix build --out-link "$out_link" "$flake#$iso_attribute"
+nix build --no-update-lock-file --out-link "$out_link" "$flake#$iso_attribute"
 iso=$(find "$out_link/iso" -maxdepth 1 -type f -name '*.iso' | sort | tail -n 1)
 
 if [[ -z "${iso:-}" ]]; then

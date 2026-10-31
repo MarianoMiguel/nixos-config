@@ -40,9 +40,8 @@ in
 
   # The Elgato Prompter teleprompter is a DisplayLink device (USB 17e9:ff1a),
   # so it only comes up as a display with the EULA-gated DisplayLink stack
-  # (evdi + the proprietary DisplayLinkManager). Enable it here as a tracked
-  # setting: a flake checkout outside /etc/nixos cannot see the gitignored
-  # storage.nix, so the choice must live in a committed file.
+  # (evdi + the proprietary DisplayLinkManager). Enable it here, in a
+  # committed file that bonhart-install shares, not in storage.nix.
   mariano.displaylink.enable = true;
 
   # pond-preview, Pond's shell as a live design reference (workshop/).

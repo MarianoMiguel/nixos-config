@@ -45,7 +45,7 @@ desktop), a guided offline installer, and the desktop they run. Start with
 ## Building and testing
 
 - The Mac has no Nix. Build on Bonhart over `ssh bonhart-agent`, in a copy:
-  `rsync -a --exclude=.git ./ bonhart-agent:.cache/pond-workshop/nixos-config/`
+  `rsync -a --exclude=.git --exclude=.claude ./ bonhart-agent:.cache/pond-workshop/nixos-config/`
   then `nix build path:.#...` there. Bonhart's own checkout
   (`~/Development/personal/nixos-config`, which `/etc/nixos` points to) may
   hold uncommitted local work; leave it alone.

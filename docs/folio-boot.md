@@ -1,49 +1,124 @@
-# Folio boot and disk-unlock screen
+# Interstellar boot and disk-unlock screen
 
 `mariano.folio.boot.enable` (in `modules/nixos/folio-boot.nix`, imported by
-Bonhart) replaces the bare console LUKS prompt with Folio's page:
-Plymouth with the `folio` theme (`packages/plymouth-folio`). It is **off**
-until the owner has tried it in person. Off, the system builds exactly as
-before: same initrd, kernel, kernel parameters and bootloader.
+Bonhart) replaces the bare console LUKS prompt with Interstellar's page:
+Plymouth with the `interstellar` theme (`packages/plymouth-folio`), in the
+owner's look. A look is a theme (Folio or Lumen), a mode (light or dark) and
+one color, resolved by `tools/azure-folio/looks.py` exactly as the desktop
+resolves it. Off, the system builds as it did before the boot screen.
 
 ## What it shows
 
-The lock screen's composition. On the left is the plate, printed at the screen's
-exact pixel size. On the right is the paper page, with the machine's name tab
-hanging from the top edge. When the disk asks for its passphrase:
+The lock screen's split in every theme: the theme's art on the left (56 %),
+the page on the right.
 
-- "Encrypted disk", then **Unlock Bonhart's disk**, a rule, and a well that
-  prints one ink dot per typed character. The caret breathes while it waits.
-  Past the well's width, the count appears.
-- "Type the disk passphrase, then press Enter." Then "Checking the
-  passphrase…". If the disk refuses, the well shakes and says "That
-  passphrase didn't unlock the disk. Try again."
-- "Caps Lock is on." when it is.
-- systemd's own prompt text, small, under the hint.
-- At the foot: "Esc · boot messages" and the unit being started.
+- **Folio**: the plate printed in the look's ink at the screen's exact pixel
+  size, and the paper page with the machine's name tab hanging from its top
+  edge. "Encrypted disk", then **Unlock Bonhart's disk**, a rule, and a well
+  that prints one ink dot per typed character with a breathing caret.
+- **Lumen**: a nebula in hues around the accent (deep space with fine stars
+  at night, a pale haze by day) and a plain page in the window color: a
+  neutral pill with the laptop and the machine's name, "Disk encrypted",
+  **Unlock** in Inter Bold, "Type Bonhart's passphrase to start.", and a pill
+  field with dots in the text color, a blinking accent caret and a round
+  accent button with an arrow. At the foot: "US keyboard · Esc shows the boot
+  messages".
 
-After the unlock, the page reads "Starting Bonhart · Disk unlocked" until the
-greeter takes over. Shutdown and restart show "Bonhart is shutting down" or
-"Bonhart is restarting".
+In both, the field shakes when the disk refuses a passphrase, with "That
+passphrase didn't unlock the disk. Try again."; "Checking the passphrase…"
+while it checks; "Caps Lock is on." when it is; systemd's own prompt text,
+small, near the field; and the unit being started at the foot. After the
+unlock the page reads "Disk unlocked." until the greeter takes over.
+Shutdown and restart show their own page in the same look.
 
-Paper, ink and plate are fixed when the system is built. The desktop's
-light/dark selection lives in the encrypted home, so the boot can't read it,
-and a copy in `/var/lib` sits on the same encrypted disk. The defaults are night
-paper, azure ink and Doré's *Nightfall*. A night page follows the firmware's
-black screen without a flash of paper, in a dark room or in the KVM's capture.
-To change them:
+Secondary text uses the higher-contrast tokens. The build (and every print
+of a published look) fails if any text pairing falls below 4.5:1, or 7:1 for
+the main text; the color itself is kept readable by `looks.py`.
+
+## Following the look without a rebuild
+
+The desktop's selection lives in the encrypted home, and a copy in `/var/lib`
+sits on the same encrypted disk, so the boot can't read either. The look
+reaches the boot partition instead (`followLook`, on by default):
+
+1. Settings writes the owner's selection. Themeport's root bridge
+   (`azure-folio-greeter-state`) rebuilds `/var/lib/azure-folio/appearance.json`
+   from it, as it does for the greeter.
+2. `interstellar-boot-look.path` watches that root-owned file and starts
+   `interstellar-boot-look.service`. The service reads only that file:
+   a small regular file, owned and writable by root alone, never through a
+   symlink. From it, it keeps three values, each checked against the
+   closed sets of `looks.py`: a known theme, light or dark, and a named color of
+   that theme or exactly `#rrggbb`. Anything else is refused, and the boot
+   partition keeps its last look. No password is involved, and nothing else
+   crosses into the boot files.
+3. It prints that look with the same `build.py` the system build uses,
+   in a private temporary directory. It packs the theme as a small
+   deterministic initrd archive with a manifest of SHA-256 sums, the manifest's
+   own checksum last. It replaces `/boot/EFI/interstellar/look.cpio`
+   atomically (temporary file, fsync, rename, fsync). The service runs
+   sandboxed: no network, no home, no capabilities, a read-only system except
+   that directory, its state directory and `/run/interstellar`.
+4. The default boot entry lists `initrd /EFI/interstellar/look.cpio` after
+   NixOS's initrd. systemd-boot loads both and the kernel unpacks them in
+   order. The look lands in `/etc/interstellar/boot-look`, a path NixOS's
+   initrd does not have, so nothing of NixOS's is replaced or written through.
+5. In the initrd, `interstellar-boot-look-check.service` runs before Plymouth.
+   It shows the archive's look only if the manifest's checksum, the manifest
+   and every file in it check out, with plain file names and both theme files
+   present. Then it copies the look to
+   `/run/interstellar/themes/interstellar-look`. Plymouth's configuration
+   asks for that theme first and falls back to the built-in `interstellar`
+   theme (`plymouthd.defaults`) when it is not there.
+
+So the next boot, and the shutdown page, show the look the owner chose. The
+plate stays the one set below (`art`); a look changes theme, mode and color.
+The theme, mode and color sit unencrypted on the boot partition, as approved.
+
+### Why it can't block the unlock
+
+- **No look published, or a bridge older than the looks**: the file is empty.
+  systemd-boot skips empty initrd files, so the built-in look shows.
+- **A file cut short, damaged, random, or of another format**: the kernel
+  unpacks what it can, or stops at a bad header ("Initramfs unpacking
+  failed"), after NixOS's initrd is already in place. The check finds the
+  manifest missing or a checksum wrong and leaves Plymouth on the built-in
+  look. Plymouth never sees a partial theme. This matters because a script
+  theme that fails to parse shows a blank page while still taking keys.
+  Every refusal exits 0, the check has a 10 s timeout, and Plymouth starts
+  after it either way. If the check itself is missing, Plymouth does not find
+  the look and uses the built-in one. On the next start (it runs at every
+  boot), the service puts the published look back.
+- **A missing file** would stop systemd-boot at any entry that names it
+  ("Error preparing initrd"). The file always exists before an entry names
+  it: the boot loader installer creates it (empty) when it is missing, then
+  adds the line. The service only ever replaces it by rename. Only the
+  default generation (and its specialisations) names it. Every older
+  generation stays exactly as NixOS wrote it, so choosing the previous
+  generation at the boot menu never depends on this file.
+- **Plymouth off for one boot** (`plymouth.enable=0`, below) still works:
+  the look is just an unused archive then.
+
+To stop following the look and always show the built-in one:
+`mariano.folio.boot.followLook = false;`.
+
+## The built-in look
+
+Shown until a look has been published, and whenever the published one is
+missing or damaged. The defaults are Folio, night paper, azure ink and
+Doré's *Nightfall*. A night page follows the firmware's black screen without
+a flash of paper, in a dark room or in the KVM's capture.
 
 ```nix
 mariano.folio.boot = {
   enable = true;
-  mode = "light";          # or "dark"
-  ink = "azure";           # azure | cobalt | slate
-  art = "summer-sicily";   # any id in assets/azure-folio/catalog.json
+  theme = "folio";         # or "lumen"
+  mode = "dark";           # or "light"
+  ink = "azure";           # Folio: azure | cobalt | slate | "#rrggbb"
+  accent = "blue";         # Lumen: one of its nine colors | "#rrggbb"
+  art = "dore-nightfall";  # any id in assets/azure-folio/catalog.json
 };
 ```
-
-Secondary text uses Folio's higher-contrast tokens. The build fails if any
-text pairing falls below 4.5:1, or 7:1 for the main text.
 
 ## The remote unlock path (the Comet)
 
@@ -55,7 +130,8 @@ Nothing on the KVM path changes surface:
   Plymouth's `UseSimpledrm=1` so the page appears at once. Without it, Plymouth
   ignores that framebuffer for 8 seconds. Whatever reaches the HDMI output
   before Linux reaches it now as well. This change does not add amdgpu to the
-  initrd.
+  initrd. The art is printed for 1920x1200 and for 1920x1080, the usual mode a
+  KVM capture asks for.
 - Keys from the Comet arrive as a USB keyboard. The initrd has no XKB data, so
   Plymouth reads them through the console with the same `us` keymap as today.
   A passphrase means the same keystrokes as before.
@@ -70,70 +146,136 @@ Nothing on the KVM path changes surface:
 - What happens after three refused passphrases is still up to systemd, as
   today. Its emergency path quits Plymouth before it writes to the console.
   This was not tried in the VM.
+- Plymouth moves into the real root before the switch and redraws the page
+  when amdgpu replaces the firmware framebuffer. A published look is read
+  again from `/run`, which survives the switch. The built-in look is read from
+  the initrd's copy of the theme, which the system now keeps in its closure
+  so a garbage collection cannot remove it.
 
 ## Trying it in person
 
-1. In `hosts/bonhart/common.nix` (or `local.nix`), set
-   `mariano.folio.boot.enable = true;`, then run
-   `sudo nixos-rebuild boot --flake /etc/nixos#bonhart`. Use `boot`, not
-   `switch`: Plymouth only matters at the next start, and `boot` leaves the
-   running system alone.
+1. Pull, then run `sudo nixos-rebuild boot --flake /etc/nixos#bonhart`. Use
+   `boot`, not `switch`: Plymouth only matters at the next start, and `boot`
+   leaves the running system alone. The installer creates
+   `/boot/EFI/interstellar/look.cpio` (empty) and adds it to the new default
+   entry.
 2. Reboot with the Comet connected and watch both the panel and the Comet's
-   view. Check that the page appears before the prompt is needed and that
-   typing prints dots. Type a wrong passphrase once and check the "Try again"
-   message. Press Esc and Esc again, then unlock.
-3. Close the lid, or use the "Hibernate" action, so that Bonhart resumes
+   view. On this first boot, the built-in look shows. Once logged in,
+   `systemctl status interstellar-boot-look` should report the look it wrote
+   (`journalctl -u interstellar-boot-look`).
+3. Change the look in Settings (for example Lumen, light), wait a few seconds,
+   and reboot. Check that the page appears in that look before the prompt is
+   needed and that typing prints dots. Type a wrong passphrase once and check
+   the "Try again" message. Press Esc and Esc again, then unlock.
+4. Close the lid, or use the "Hibernate" action, so that Bonhart resumes
    through the prompt. Unlock and confirm that the session comes back.
-4. Try once with the lid in the position it will be left in, as the departure
+5. Try once with the lid in the position it will be left in, as the departure
    checklist in `docs/remote-workstation.md` asks.
 
-**Roll back:** at the boot menu choose the previous generation, then remove
-the line and run `sudo nixos-rebuild boot` (or
-`sudo nixos-rebuild switch --rollback` once logged in). For a single boot,
-`plymouth.enable=0` at the boot menu also works.
+**Roll back:** for a single boot, add `plymouth.enable=0` at the boot menu
+(`e`), or choose the previous generation, whose entry does not load the look.
+To keep the boot screen but drop the published look, set
+`mariano.folio.boot.followLook = false;` and run `sudo nixos-rebuild boot`.
+To return to the previous system, `sudo nixos-rebuild switch --rollback`
+once logged in. `/boot/EFI/interstellar` can stay; nothing loads it then.
 
 ## Cost when on
 
 - The initrd grows by about 8 MB, to 36 MB (Plymouth, pango/cairo, the theme
-  and five font files). The ESP has plenty of room.
+  and five font files). The published look adds a second archive of about
+  0.3 MB (Folio) or 1 MB (Lumen) on the boot partition, and the same in
+  `/run` (RAM) while the system runs, for the shutdown page.
+- Printing a look takes about two seconds of one core, in the background:
+  when theme, mode or color change, when a new system prints differently, or
+  when the file on the boot partition (or its copy in `/run`) is not the one
+  it last wrote. Otherwise the service only compares and exits.
 - Kernel parameters gain `quiet splash rd.udev.log_level=3 udev.log_level=3
   rd.systemd.show_status=auto`, and the console log level drops from 4 to 3.
   Errors still print, and Esc shows the rest.
 
-## What has been verified (2026-10-29, builds and VMs only)
+## What has been verified
 
-- With the option off, Bonhart's `system.build.toplevel` derivation is
-  identical to the tree without this work. With it on, the full system builds.
-  Only the initrd, the kernel parameters and the console log level change. The
-  kernel and the bootloader installer stay the same, and the initrd stays
-  systemd.
-- The enabled initrd contains plymouthd, the script, pango and DRM plugins, the
-  `folio` theme, the fonts, `UseSimpledrm=1` and the
-  `systemd-ask-password-plymouth` agent. Bonhart's crypttab is unchanged.
-- A UEFI VM with a 1920x1200 firmware framebuffer (and a second run at
-  1920x1080), a LUKS root and the systemd initrd: Plymouth drew the page on
-  simpledrm at once, and read keys through the console with the `us` keymap.
-  A wrong passphrase was refused with the retry message. Esc showed the boot
-  messages with the prompt still live, and Esc again returned to the page. The
-  Caps Lock warning worked. The passphrase `Folio-unlock#26` (shifted
-  characters, `-`, `#`) unlocked the disk. After the unlock the page showed
-  "Starting Bonhart · Disk unlocked" across the VM's GPU driver taking over,
-  and powering off showed the shutdown page. Light paper worked as well. OCR
-  of the dark page reads every line, the systemd prompt included.
-- The same with Bonhart's layout (LUKS, then LVM root and swap): hibernated,
-  powered on, unlocked through the page, and the session image was restored.
+From the sources Bonhart runs (2026-10-31):
+
+- systemd-boot 260.2 (`initrd_prepare`) loads every `initrd` line of an
+  entry in order. It fails the entry when a file is missing, skips a 0-byte
+  file, and pads each initrd but the last to 4 bytes. Bonhart's initrd is
+  36,052,378 bytes, not a multiple of 4, so the padding is what lets the
+  kernel find the archive after it.
+- Kernel 6.18 (`init/initramfs.c`) unpacks archives in order. Before each
+  entry it removes an existing path of another type (so a file or directory
+  replaces a symlink there), and it follows symlinks in the parent path. A
+  truncated plain archive raises no error, and a bad header stops unpacking
+  with "Initramfs unpacking failed".
+- Plymouth 26.134 tries `/run/plymouth/themes`, then the configured
+  `ThemeDir`, then its own path, and falls back to `plymouthd.defaults` when
+  the theme is not found. A script that fails to parse still "shows",
+  blank. Before the switch to the real root it moves into `/sysroot`, so
+  `/run` (moved by systemd) stays visible to it.
+
+In builds and VMs only (2026-10-30/31):
+
+- Bonhart's full system builds. Its initrd holds the check, bash and
+  coreutils, `plymouthd.conf` with `Theme=interstellar-look` and
+  `ThemeDir=/run/interstellar/themes`, and `plymouthd.defaults` with the
+  built-in `interstellar`. Its boot installer runs the hook after NixOS's
+  builder. The built-in Folio default prints byte for byte the same images as
+  before. The unit tests pass (23).
+- A UEFI VM booted as Bonhart does: systemd-boot, kernel 6.18, a zstd initrd
+  after the AMD microcode archive, LUKS root, 1920x1200. The installer
+  created the empty `look.cpio` and added it to the default entry only. With
+  it empty, the built-in look showed. Then, five times: `azure-folio publish`
+  wrote appearance.json, the service printed the look to the boot partition,
+  and the next boot's check reported "showing the look on the boot
+  partition". The five looks were Folio light with a custom `#8a2be2`,
+  Folio dark cobalt, Lumen dark blue, Lumen light with a custom `#ff6a00`,
+  and Lumen dark with a custom `#00c49a`. Each prompt accepted the
+  passphrase. In Lumen: a wrong passphrase showed the retry line, Esc showed
+  the boot messages and returned, and the Caps Lock warning appeared.
+- A cut at half the file, a cut at the manifest's checksum, a flipped byte
+  and 64 KiB of random data each booted to the built-in look with a working
+  prompt. The check reported incomplete, manifest, checksum, and "no look"
+  respectively; for the random file, the kernel logged "invalid magic". Each
+  time the service put the published look back at once.
+- The probe archive showed the kernel's symlink handling in the initrd. A
+  file under a symlinked directory was written into the store copy behind
+  it. A file entry replaced a symlinked file. A directory entry replaced a
+  symlinked directory with an empty one. That is why the look only adds its
+  own directory.
+- After that, powering off showed the shutdown page in the published look,
+  from its copy in `/run`.
+- Built-in Lumen, light, at 1920x1080 (the KVM's mode, so the 1080 print),
+  and the built-in Folio default at 1920x1200. Each run went through a wrong
+  passphrase, Esc to the boot messages and back, Caps Lock, the passphrase
+  `Folio-unlock#26` and power-off. After the unlock, the page read "Disk
+  unlocked." across the VM's GPU driver taking over from the firmware
+  framebuffer. OCR reads every line of the Lumen page.
+- The boot messages behind Esc are readable in both modes. Before this,
+  the theme wrote its console colors with six hex digits where Plymouth reads
+  `0xRRGGBBAA`: cyan text on night paper, and nearly invisible text on a light
+  page.
+- Earlier (2026-10-29, Folio only): unlocking through the page after
+  hibernation with Bonhart's LUKS, LVM root and swap layout; the passphrase
+  `Folio-unlock#26` with shifted characters; 1920x1080.
 - Not tested: the real panel and HDMI path through the Comet, amdgpu taking
-  over from simpledrm after the unlock (a VM has no amdgpu), and the greeter
-  handover on Bonhart.
+  over from simpledrm after the unlock (a VM has no amdgpu), the greeter
+  handover on Bonhart, and the service on Bonhart's own boot partition.
 
 ## Previewing without rebooting
 
 `packages/plymouth-folio/preview.nix` boots a UEFI VM whose root is on LUKS,
-through the systemd initrd with this module on. It drives the prompt with
-keystrokes and saves screenshots. It never touches the running system:
+through systemd-boot and the systemd initrd with this module on, as Bonhart
+does (kernel 6.18, zstd initrd after the AMD microcode archive). It drives the
+prompt with keystrokes and saves screenshots. It never touches the running
+system:
 
 ```sh
-nix build --impure -f packages/plymouth-folio/preview.nix -L          # dark, 1920x1200
-nix build --impure -f packages/plymouth-folio/preview.nix --argstr mode light -o result-light
+nix build --impure -f packages/plymouth-folio/preview.nix -L          # built-in look, dark, 1920x1200
+nix build --impure -f packages/plymouth-folio/preview.nix --argstr theme lumen --argstr mode light -o result-lumen
+nix build --impure -f packages/plymouth-folio/preview.nix --arg looks true -o result-looks   # the published-look path
 ls result/   # *.png
 ```
+
+The unit tests (validation, the archive, and the initrd check against
+archives cut short or damaged the way the kernel unpacks them) are a flake
+check: `nix build "path:.#checks.x86_64-linux.interstellar-boot" -L`.

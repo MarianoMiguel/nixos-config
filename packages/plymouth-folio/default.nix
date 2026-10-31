@@ -2,11 +2,19 @@
 # screen. modules/nixos/folio-boot.nix installs it; build.py draws it from
 # Interstellar's looks (tools/azure-folio/looks.py), fonts and art for one
 # look: a theme (Folio or Lumen), a mode and one color.
+#
+# This is the look built into the initrd. When the owner changes the
+# desktop's look, passthru.publisher prints the same theme for the new look
+# and writes it to the boot partition (boot_look.py), so the next boot
+# follows without a rebuild.
 {
   lib,
   runCommand,
+  writeShellApplication,
   python3,
   librsvg,
+  bash,
+  coreutils,
   inter,
   # Argument names avoid nixpkgs attributes (callPackage would fill `ink`
   # and `art` with unrelated packages).
@@ -45,13 +53,14 @@ let
   src = runCommand "interstellar-boot-src" { } ''
     mkdir -p "$out"
     cp ${./build.py} "$out/build.py"
+    cp ${./boot_look.py} "$out/boot_look.py"
     cp ${./interstellar.script} "$out/interstellar.script"
     cp ${../../tools/azure-folio/looks.py} "$out/looks.py"
     cp ${../../tools/azure-folio/render.py} "$out/render.py"
   '';
 
   # Everything a print needs besides the look itself: fixed when the system
-  # is built.
+  # is built, never read from the owner's files.
   common = [
     "--assets"
     "${../../assets/azure-folio}"
@@ -75,12 +84,43 @@ let
     s
   ]) printSizes;
 
+  # interstellar-boot-look publish|overlay: prints a look with the same
+  # code and writes it as a boot archive (boot_look.py).
+  publisher = writeShellApplication {
+    name = "interstellar-boot-look";
+    runtimeInputs = [ librsvg ];
+    text = ''
+      exec ${python}/bin/python3 -I ${src}/boot_look.py ${lib.escapeShellArgs (common ++ machine)} "$@"
+    '';
+  };
+
   fonts = runCommand "plymouth-interstellar-fonts" { } ''
     # Inter and IBM Plex Mono for the strings Plymouth renders at boot
     # (systemd's prompt, messages, the console viewer).
     mkdir -p "$out"
     cp ${../../assets/azure-folio/fonts}/font-{0,1,2,3,4}.ttf "$out/"
   '';
+
+  # The unit tests: the checks on the published look, the archive and the
+  # initrd's check of it (test_boot_look.py).
+  tests =
+    runCommand "interstellar-boot-tests"
+      {
+        nativeBuildInputs = [
+          python
+          librsvg
+          bash
+          coreutils
+        ];
+      }
+      ''
+        set -o pipefail
+        export BOOT_LOOK_ARGS=${lib.escapeShellArg (builtins.toJSON (common ++ machine))}
+        export BOOT_LOOK_CHECK=${./boot-look-check.sh}
+        cp ${src}/*.py .
+        cp ${./test_boot_look.py} test_boot_look.py
+        python3 -m unittest -v test_boot_look 2>&1 | tee "$out"
+      '';
 in
 runCommand "plymouth-theme-interstellar"
   {
@@ -89,7 +129,13 @@ runCommand "plymouth-theme-interstellar"
       librsvg
     ];
     passthru = {
-      inherit fonts src;
+      inherit
+        fonts
+        publisher
+        src
+        tests
+        ;
+      checkScript = ./boot-look-check.sh;
     };
     meta = {
       description = "Interstellar's Plymouth boot and disk-unlock screen";

@@ -206,7 +206,12 @@
               bash tests/${name}.sh
               touch "$out"
             ''
-        );
+        )
+        // {
+          # The boot look: what may cross into the boot files, the archive and
+          # the initrd's check of it (packages/plymouth-folio/test_boot_look.py).
+          interstellar-boot = (pkgs.callPackage ./packages/plymouth-folio { }).tests;
+        };
 
       packages.${system} = {
         cmux-browser = self.nixosConfigurations.bonhart.pkgs.callPackage ./packages/cmux-browser.nix { };

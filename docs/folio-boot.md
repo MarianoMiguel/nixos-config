@@ -230,18 +230,26 @@ In builds and VMs only (2026-10-30/31):
   `ThemeDir=/run/interstellar/themes`, and `plymouthd.defaults` with the
   built-in `interstellar`. Its boot installer runs the hook after NixOS's
   builder. The built-in Folio default prints byte for byte the same images as
-  before. The unit tests pass (23).
+  before. The unit tests pass (24).
+- Lumen's skies against the shell (2026-10-31): each style and mode drawn by
+  the shell's wallpaper in `scripts/folio-harness` and by `build.py`, at
+  1920x1200 with the blue accent. In every pair at least 82 % of pixels are
+  identical, 99 % are within one level, and with the grain averaged over 8x8
+  pixels the two differ by under 0.1 level on average and 0.6 at most. The
+  few pixels further apart are grain pixels whose hash rounds differently
+  on the GPU.
 - A UEFI VM booted as Bonhart does: systemd-boot, kernel 6.18, a zstd initrd
   after the AMD microcode archive, LUKS root, 1920x1200. The installer
   created the empty `look.cpio` and added it to the default entry only. With
-  it empty, the built-in look showed. Then, five times: `azure-folio publish`
-  wrote appearance.json, the service printed the look to the boot partition,
-  and the next boot's check reported "showing the look on the boot
-  partition". The five looks were Folio light with a custom `#8a2be2`,
-  Folio dark cobalt, Lumen dark blue, Lumen light with a custom `#ff6a00`,
-  and Lumen dark with a custom `#00c49a`. Each prompt accepted the
-  passphrase. In Lumen: a wrong passphrase showed the retry line, Esc showed
-  the boot messages and returned, and the Caps Lock warning appeared.
+  it empty, the built-in look showed. Then, seven times: `azure-folio publish`
+  wrote appearance.json, the service printed the look to the boot partition
+  under its sandbox, and the next boot's check reported "showing the look on
+  the boot partition". The looks were Folio light with a custom `#8a2be2`,
+  Folio dark cobalt, Lumen dark blue with prism, Lumen light with a custom
+  `#ff6a00` and orbit, Lumen dark with a custom `#00c49a` and glow, Lumen
+  dark purple with haze, and Lumen dark blue with orbit. Each prompt accepted
+  the passphrase. In Lumen: a wrong passphrase showed the retry line, Esc
+  showed the boot messages and returned, and the Caps Lock warning appeared.
 - A cut at half the file, a cut at the manifest's checksum, a flipped byte
   and 64 KiB of random data each booted to the built-in look with a working
   prompt. The check reported incomplete, manifest, checksum, and "no look"
@@ -254,8 +262,9 @@ In builds and VMs only (2026-10-30/31):
   own directory.
 - After that, powering off showed the shutdown page in the published look,
   from its copy in `/run`.
-- Built-in Lumen, light, at 1920x1080 (the KVM's mode, so the 1080 print),
-  and the built-in Folio default at 1920x1200. Each run went through a wrong
+- Built-in Lumen, light, at 1920x1080 (the KVM's mode, so the 1080 print;
+  run before the skies replaced the nebula), and the built-in Folio default
+  at 1920x1200. Each run went through a wrong
   passphrase, Esc to the boot messages and back, Caps Lock, the passphrase
   `Folio-unlock#26` and power-off. After the unlock, the page read "Disk
   unlocked." across the VM's GPU driver taking over from the firmware

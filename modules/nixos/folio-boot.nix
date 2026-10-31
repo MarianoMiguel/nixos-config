@@ -7,13 +7,13 @@
 
 # Interstellar's boot and disk-unlock screen: Plymouth with the
 # "interstellar" theme (packages/plymouth-folio) instead of the bare console
-# LUKS prompt, in the owner's look: Folio (plate and paper) or Lumen (nebula
-# and page), light or dark, in one color.
+# LUKS prompt, in the owner's look: Folio (plate and paper) or Lumen (its
+# sky and page), light or dark, in one color.
 #
 # The look built into the initrd comes from the options below. With
 # `followLook` (the default) the screen then follows the desktop without a
 # rebuild: when the owner changes the look, a root service prints it from
-# three checked values (theme, mode, color) and writes it to the boot
+# four checked values (theme, mode, color, Lumen's sky) and writes it to the boot
 # partition as a small second initrd, which the default boot entry loads
 # after NixOS's own. In the initrd, a check shows it only if every file in
 # it is intact; otherwise Plymouth shows the built-in look
@@ -54,6 +54,7 @@ let
     folioMode = cfg.mode;
     bootColor = if cfg.theme == "folio" then cfg.ink else cfg.accent;
     folioArt = cfg.art;
+    bootSky = cfg.sky;
   };
 
   # Where the published look lives: beside the entries that name it (an
@@ -146,11 +147,12 @@ in
       type = lib.types.bool;
       default = true;
       description = ''
-        Follow the desktop's look (theme, mode and color) without a rebuild.
+        Follow the desktop's look (theme, mode, color and Lumen's sky)
+        without a rebuild.
         The look the owner chooses is published by themeport's root bridge to
         ${appearance}; a root service prints it and writes it to
         ${lookFile}, and the default boot entry loads it after NixOS's
-        initrd. Only these three checked values cross into the boot files.
+        initrd. Only these four checked values cross into the boot files.
         Off, the boot screen always shows the look set below.
       '';
     };
@@ -193,6 +195,17 @@ in
       description = "Lumen's accent for the built-in look: one of Lumen's colors or #rrggbb (kept readable by looks.py).";
     };
 
+    sky = lib.mkOption {
+      type = lib.types.enum [
+        "orbit"
+        "prism"
+        "glow"
+        "haze"
+      ];
+      default = "orbit";
+      description = "Lumen's sky for the built-in look, as shaders/lumen.frag draws it: orbit (a tilted ring of light with a soft trail), prism (ribbons of light through fluted glass), glow (one soft luminous shape) or haze (a full-bleed gradient).";
+    };
+
     art = lib.mkOption {
       type = lib.types.str;
       default = "dore-nightfall";
@@ -200,7 +213,7 @@ in
       description = ''
         Folio plate shown beside the page, by catalog id
         (assets/azure-folio/catalog.json); the build fails on an unknown id.
-        It stays fixed: a published look changes theme, mode and color only.
+        It stays fixed: a published look changes theme, mode, color and sky only.
       '';
     };
 
@@ -298,7 +311,7 @@ in
         # On the running system: print the published look and write it to the
         # boot partition. It reads only the root-owned file themeport's bridge
         # (azure-folio-greeter-state) reconstructs from the owner's selection,
-        # and keeps three values from it, each checked again here.
+        # and keeps four values from it, each checked again here.
         systemd.services.interstellar-boot-look = {
           description = "Write Interstellar's look to the boot partition for the disk-unlock screen";
           wantedBy = [ "multi-user.target" ];
@@ -358,6 +371,11 @@ in
               "@system-service"
               "~@privileged @resources"
             ];
+            # A refused call fails instead of killing the print: numpy's
+            # OpenBLAS asks for NUMA placement (mbind) as it loads, and does
+            # without it. It needs no threads here either.
+            SystemCallErrorNumber = "EPERM";
+            Environment = [ "OPENBLAS_NUM_THREADS=1" ];
             UMask = "0077";
             Nice = 10;
             IOSchedulingClass = "idle";

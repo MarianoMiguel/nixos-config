@@ -73,16 +73,32 @@ class Validation(unittest.TestCase):
             boot_look.look_from(LOOKS, data)
 
     def test_named_and_custom_colors(self):
-        self.assertEqual(self.ok(doc('folio', 'dark', 'azure')), ('folio', 'dark', 'azure'))
-        self.assertEqual(self.ok(doc('lumen', 'light', 'graphite')), ('lumen', 'light', 'graphite'))
-        self.assertEqual(self.ok(doc('lumen', 'light', '#FF00Ff')), ('lumen', 'light', '#ff00ff'))
-        self.assertEqual(self.ok(doc('folio', 'light', '#8a2be2')), ('folio', 'light', '#8a2be2'))
+        self.assertEqual(self.ok(doc('folio', 'dark', 'azure')), ('folio', 'dark', 'azure', 'orbit'))
+        self.assertEqual(self.ok(doc('lumen', 'light', 'graphite')), ('lumen', 'light', 'graphite', 'orbit'))
+        self.assertEqual(self.ok(doc('lumen', 'light', '#FF00Ff')), ('lumen', 'light', '#ff00ff', 'orbit'))
+        self.assertEqual(self.ok(doc('folio', 'light', '#8a2be2')), ('folio', 'light', '#8a2be2', 'orbit'))
+
+    def test_skies(self):
+        # The sky sits beside the look, as azure-folio's selection keeps it;
+        # absent, it is the first of looks.SKIES, orbit.
+        self.assertEqual(LOOKS.SKIES[0], 'orbit')
+        for sky in ('orbit', 'prism', 'glow', 'haze'):
+            with self.subTest(sky=sky):
+                self.assertEqual(self.ok(doc('lumen', 'dark', 'blue', sky=sky)), ('lumen', 'dark', 'blue', sky))
+        self.assertEqual(self.ok(doc('folio', 'dark', 'azure', sky='haze')), ('folio', 'dark', 'azure', 'haze'))
+        for sky in ('Prism', 'prism\n', ' prism', 'prism ', 'ORBIT', 'orbit\x00', '', 'nebula', 'glow,haze',
+                    None, 0, True,
+                    ['prism'], {'style': 'prism'}):
+            with self.subTest(sky=sky):
+                self.bad(doc('lumen', 'dark', 'blue', sky=sky))
 
     def test_what_azure_folio_publishes(self):
-        # appearance.json carries look = looks.resolve(theme, mode, pick).
-        data = json.dumps({'theme': 'lumen', 'mode': 'dark', 'look': LOOKS.resolve('lumen', 'dark', '#12ab34'),
+        # appearance.json carries look = looks.resolve(theme, mode, pick) and,
+        # beside it, the selection's sky.
+        data = json.dumps({'theme': 'lumen', 'mode': 'dark', 'sky': 'glow',
+                           'look': LOOKS.resolve('lumen', 'dark', '#12ab34'),
                            'images': [{'desktop': '/x.png'}], 'paper': '#101d33'}).encode()
-        self.assertEqual(self.ok(data), ('lumen', 'dark', '#12ab34'))
+        self.assertEqual(self.ok(data), ('lumen', 'dark', '#12ab34', 'glow'))
 
     def test_bad_json(self):
         for data in (b'', b'{', b'{"look": }', b'\xff\xfe', b'null', b'[]', b'"lumen"', b'{"look": null}',
@@ -184,7 +200,7 @@ def theme_dir(root):
 class Archive(unittest.TestCase):
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp())
-        self.look = ('lumen', 'dark', '#12ab34')
+        self.look = ('lumen', 'dark', '#12ab34', 'glow')
         self.blob = boot_look.archive(theme_dir(self.tmp), self.look)
 
     def test_deterministic(self):
@@ -206,7 +222,7 @@ class Archive(unittest.TestCase):
 
     def test_manifest(self):
         files = {n.rsplit('/', 1)[-1]: d for n, m, d, _ in entries(self.blob) if stat.S_ISREG(m)}
-        self.assertEqual(files['LOOK'], b'lumen dark #12ab34\n')
+        self.assertEqual(files['LOOK'], b'lumen dark #12ab34 glow\n')
         lines = files['MANIFEST'].decode().splitlines()
         listed = {line.split('  ')[1]: line.split('  ')[0] for line in lines}
         self.assertEqual(set(listed), set(files) - {'MANIFEST', 'MANIFEST.sha256'})
@@ -223,7 +239,7 @@ class InitrdCheck(unittest.TestCase):
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp())
         self.src = theme_dir(self.tmp)
-        self.blob = boot_look.archive(self.src, ('folio', 'light', 'cobalt'))
+        self.blob = boot_look.archive(self.src, ('folio', 'light', 'cobalt', 'prism'))
 
     def check(self, blob):
         root = Path(tempfile.mkdtemp(dir=self.tmp))
@@ -240,11 +256,11 @@ class InitrdCheck(unittest.TestCase):
     def assertComplete(self, live):
         for p in self.src.iterdir():
             self.assertEqual((live / p.name).read_bytes(), p.read_bytes(), p.name)
-        self.assertEqual((live / 'LOOK').read_text(), 'folio light cobalt\n')
+        self.assertEqual((live / 'LOOK').read_text(), 'folio light cobalt prism\n')
 
     def test_valid_archive_is_shown(self):
         out, live = self.check(self.blob)
-        self.assertIn('showing the look on the boot partition: folio light cobalt', out)
+        self.assertIn('showing the look on the boot partition: folio light cobalt prism', out)
         self.assertComplete(live)
         self.assertEqual(sorted(p.name for p in live.parent.iterdir()), [boot_look.THEME])
 
@@ -339,7 +355,7 @@ class Publish(unittest.TestCase):
         self.publish()
         blob = self.boot.read_bytes()
         files = {n.rsplit('/', 1)[-1]: d for n, m, d, _ in entries(blob) if stat.S_ISREG(m)}
-        self.assertEqual(files['LOOK'], b'lumen light #ff6a00\n')
+        self.assertEqual(files['LOOK'], b'lumen light #ff6a00 orbit\n')
         self.assertIn(b'ImageDir=/run/interstellar/themes/interstellar-look\n', files['interstellar-look.plymouth'])
         # Boot messages behind Esc: Lumen's light text and window, opaque
         # (Plymouth reads 0xRRGGBBAA).
@@ -355,7 +371,7 @@ class Publish(unittest.TestCase):
         env = {**os.environ, 'INTERSTELLAR_STAGING': str(root / boot_look.STAGING),
                'INTERSTELLAR_THEMES': str(root / 'run/themes')}
         proc = subprocess.run(['bash', '-e', CHECK], env=env, capture_output=True, text=True, check=True)
-        self.assertIn('showing the look on the boot partition: lumen light #ff6a00', proc.stdout)
+        self.assertIn('showing the look on the boot partition: lumen light #ff6a00 orbit', proc.stdout)
 
         # The same look again: nothing is rewritten.
         before = self.boot.stat()
@@ -370,8 +386,20 @@ class Publish(unittest.TestCase):
         self.assertTrue((live / 'interstellar-look.script').exists())
         self.assertEqual(self.boot.read_bytes(), blob)
 
+        # Another sky alone prints the look again, with that sky's art.
+        self.input.write_bytes(doc('lumen', 'light', '#ff6a00', sky='haze'))
+        self.publish()
+        hazy = {n.rsplit('/', 1)[-1]: d for n, m, d, _ in entries(self.boot.read_bytes()) if stat.S_ISREG(m)}
+        self.assertEqual(hazy['LOOK'], b'lumen light #ff6a00 haze\n')
+        self.assertIn(b'haze sky.', hazy['interstellar-look.script'])
+        self.assertNotEqual(hazy['art-1920x1200.png'], files['art-1920x1200.png'])
+        self.input.write_bytes(doc('lumen', 'light', '#ff6a00'))
+        self.publish()
+        self.assertEqual(self.boot.read_bytes(), blob)
+
         # A refused file leaves the boot partition as it was.
-        for bad in (b'{', doc('lumen', 'light', '#ff6a00\n'), doc('pond', 'dark', 'blue')):
+        for bad in (b'{', doc('lumen', 'light', '#ff6a00\n'), doc('pond', 'dark', 'blue'),
+                    doc('lumen', 'light', '#ff6a00', sky='nebula')):
             self.input.write_bytes(bad)
             with self.assertRaises(SystemExit) as e:
                 self.publish()

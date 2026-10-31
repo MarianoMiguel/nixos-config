@@ -25,6 +25,8 @@
   # or #rrggbb.
   bootColor ? "azure",
   folioArt ? "dore-nightfall",
+  # Lumen's sky: orbit, prism, glow or haze (shaders/lumen.frag).
+  bootSky ? "orbit",
   # Screen sizes the art is printed for, pixel for pixel. Bonhart's
   # firmware console (and panel) is 1920x1200; 1920x1080 is the usual HDMI
   # mode a KVM capture asks for. Other sizes scale the nearest print.
@@ -42,9 +44,20 @@ assert lib.elem folioMode [
   "light"
   "dark"
 ];
+assert lib.elem bootSky [
+  "orbit"
+  "prism"
+  "glow"
+  "haze"
+];
 
 let
-  python = python3.withPackages (p: [ p.pillow ]);
+  # numpy draws Lumen's skies per pixel, as the shader does; the system
+  # already carries it.
+  python = python3.withPackages (p: [
+    p.pillow
+    p.numpy
+  ]);
 
   # Inter Bold for Lumen's title, from Inter's own static collection
   # (build.py finds the face by name).
@@ -149,5 +162,6 @@ runCommand "plymouth-theme-interstellar"
       --theme ${bootTheme} \
       --mode ${folioMode} \
       --pick ${lib.escapeShellArg bootColor} \
+      --sky ${bootSky} \
       ${lib.escapeShellArgs machine}
   ''

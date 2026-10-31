@@ -3,9 +3,10 @@
 `mariano.folio.boot.enable` (in `modules/nixos/folio-boot.nix`, imported by
 Bonhart) replaces the bare console LUKS prompt with Interstellar's page:
 Plymouth with the `interstellar` theme (`packages/plymouth-folio`), in the
-owner's look. A look is a theme (Folio or Lumen), a mode (light or dark) and
-one color, resolved by `tools/azure-folio/looks.py` exactly as the desktop
-resolves it. Off, the system builds as it did before the boot screen.
+owner's look. A look is a theme (Folio or Lumen), a mode (light or dark),
+one color and, for Lumen, its sky, resolved by `tools/azure-folio/looks.py`
+exactly as the desktop resolves it. Off, the system builds as it did before
+the boot screen.
 
 ## What it shows
 
@@ -16,8 +17,13 @@ the page on the right.
   size, and the paper page with the machine's name tab hanging from its top
   edge. "Encrypted disk", then **Unlock Bonhart's disk**, a rule, and a well
   that prints one ink dot per typed character with a breathing caret.
-- **Lumen**: a nebula in hues around the accent (deep space with fine stars
-  at night, a pale haze by day) and a plain page in the window color: a
+- **Lumen**: its sky, drawn as the shell's `shaders/lumen.frag` draws it,
+  pixel for pixel, in the accent's hue and three neighbours: **orbit** (a
+  tilted ring of light with a soft trail, the default), **prism** (ribbons
+  of light seen through diagonal fluted glass), **glow** (one soft luminous
+  shape) or **haze** (a full-bleed gradient), near black at night and pale
+  grey by day, each with the shader's still film grain. Beside it, a plain
+  page in the window color: a
   neutral pill with the laptop and the machine's name, "Disk encrypted",
   **Unlock** in Inter Bold, "Type Bonhart's passphrase to start.", and a pill
   field with dots in the text color, a blinking accent caret and a round
@@ -47,10 +53,11 @@ reaches the boot partition instead (`followLook`, on by default):
 2. `interstellar-boot-look.path` watches that root-owned file and starts
    `interstellar-boot-look.service`. The service reads only that file:
    a small regular file, owned and writable by root alone, never through a
-   symlink. From it, it keeps three values, each checked against the
-   closed sets of `looks.py`: a known theme, light or dark, and a named color of
-   that theme or exactly `#rrggbb`. Anything else is refused, and the boot
-   partition keeps its last look. No password is involved, and nothing else
+   symlink. From it, it keeps four values, each checked against the
+   closed sets of `looks.py`: a known theme, light or dark, a named color of
+   that theme or exactly `#rrggbb`, and the sky (orbit, prism, glow or haze;
+   orbit when the file has none). Anything else is refused, and the boot partition
+   keeps its last look. No password is involved, and nothing else
    crosses into the boot files.
 3. It prints that look with the same `build.py` the system build uses,
    in a private temporary directory. It packs the theme as a small
@@ -72,8 +79,8 @@ reaches the boot partition instead (`followLook`, on by default):
    theme (`plymouthd.defaults`) when it is not there.
 
 So the next boot, and the shutdown page, show the look the owner chose. The
-plate stays the one set below (`art`); a look changes theme, mode and color.
-The theme, mode and color sit unencrypted on the boot partition, as approved.
+plate stays the one set below (`art`); a look changes theme, mode, color and
+sky. These four values sit unencrypted on the boot partition, as approved.
 
 ### Why it can't block the unlock
 
@@ -116,6 +123,7 @@ mariano.folio.boot = {
   mode = "dark";           # or "light"
   ink = "azure";           # Folio: azure | cobalt | slate | "#rrggbb"
   accent = "blue";         # Lumen: one of its nine colors | "#rrggbb"
+  sky = "orbit";           # Lumen: orbit | prism | glow | haze
   art = "dore-nightfall";  # any id in assets/azure-folio/catalog.json
 };
 ```
@@ -183,10 +191,12 @@ once logged in. `/boot/EFI/interstellar` can stay; nothing loads it then.
 
 - The initrd grows by about 8 MB, to 36 MB (Plymouth, pango/cairo, the theme
   and five font files). The published look adds a second archive of about
-  0.3 MB (Folio) or 1 MB (Lumen) on the boot partition, and the same in
-  `/run` (RAM) while the system runs, for the shutdown page.
-- Printing a look takes about two seconds of one core, in the background:
-  when theme, mode or color change, when a new system prints differently, or
+  0.3 MB (Folio) or 2.5 to 3.5 MB (Lumen: its film grain does not compress)
+  on the boot partition, and the same in `/run` (RAM) while the system runs,
+  for the shutdown page.
+- Printing a look takes about two seconds of one core, in the background
+  (a Lumen sky alone, under one: numpy computes it as the shader does):
+  when theme, mode, color or sky change, when a new system prints differently, or
   when the file on the boot partition (or its copy in `/run`) is not the one
   it last wrote. Otherwise the service only compares and exits.
 - Kernel parameters gain `quiet splash rd.udev.log_level=3 udev.log_level=3
@@ -271,7 +281,7 @@ system:
 
 ```sh
 nix build --impure -f packages/plymouth-folio/preview.nix -L          # built-in look, dark, 1920x1200
-nix build --impure -f packages/plymouth-folio/preview.nix --argstr theme lumen --argstr mode light -o result-lumen
+nix build --impure -f packages/plymouth-folio/preview.nix --argstr theme lumen --argstr sky glow -o result-lumen
 nix build --impure -f packages/plymouth-folio/preview.nix --arg looks true -o result-looks   # the published-look path
 ls result/   # *.png
 ```

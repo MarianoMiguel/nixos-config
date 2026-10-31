@@ -2,9 +2,10 @@
 """Print Interstellar's Plymouth theme: the art on the left, the page on the right.
 
 One look is a theme (Folio or Lumen), a mode and one color, resolved by
-tools/azure-folio/looks.py exactly as the desktop resolves it. Folio prints
-its plate in the derived ink beside a paper page; Lumen shows a nebula in
-hues around its accent beside a plain page in the window color.
+tools/azure-folio/looks.py exactly as the desktop resolves it, and for Lumen
+its sky. Folio prints its plate in the derived ink beside a paper page;
+Lumen shows its sky (prism, glow or haze, as shaders/lumen.frag draws it)
+beside a plain page in the window color.
 
 Everything static is drawn here, with Interstellar's own fonts, icons and
 palette, so the disk-unlock screen does not depend on font rendering inside
@@ -26,7 +27,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFont, ImageMath, features
+from PIL import Image, ImageDraw, ImageFont, features
 
 SHARE = 0.56  # the lock's split: art 56 %, page 44 %
 
@@ -323,106 +324,144 @@ def print_art(render, source, art, size, ink, paper, moonlit):
     return out
 
 
-def mulberry32(seed):
-    """The study's star generator (rand() in v1.html), bit for bit."""
-    state = [seed & 0xffffffff]
-
-    def imul(a, b):
-        return (a * b) & 0xffffffff
-
-    def nxt():
-        state[0] = (state[0] + 0x6d2b79f5) & 0xffffffff
-        s = state[0]
-        t = imul(s ^ (s >> 15), 1 | s)
-        t = ((t + imul(t ^ (t >> 7), 61 | t)) & 0xffffffff) ^ t
-        return ((t ^ (t >> 14)) & 0xffffffff) / 4294967296
-    return nxt
-
-
-def bayer(x, y, levels=3):
-    """The ordered-dither (Bayer) matrix of side 2**levels at x, y: each
-    finer 2x2 level [[0, 2], [3, 1]] is the more significant digit."""
-    v = 0
-    for i in range(levels):
-        xb, yb = (x >> i) & 1, (y >> i) & 1
-        v = v * 4 + (((xb ^ yb) << 1) | yb)
-    return v
-
-
-def nebula(looks, mode, accent, size):
-    """Lumen's wallpaper: soft glows in hues around the accent over a sky;
-    deep space with fine stars at night, a pale haze by day.
-
-    Each glow is a gaussian (sigma 0.42 of its radius, in widths) composited
-    as straight color: col = mix(col, glow, alpha * g). Matches the shell."""
-    w, h = size
-    dark = mode == 'dark'
-    _, chroma, hue = looks.oklch(accent)
-    c = max(0.06, min(chroma, 0.16))
-    sky = (rgb('#0a0b12'), rgb('#141420')) if dark else (rgb('#eef0f6'), rgb('#f8f7fb'))
-    glows = [(0.22, 0.34, 0.42), (0.78, 0.58, 0.38), (0.52, 1.02, 0.46), (0.92, 0.08, 0.22)]
-    if dark:
-        offsets, alphas = (0, 46, -52, 90), (0.9, 0.75, 0.7, 0.45)
-        tone = lambda dh: looks.lch(0.42, c, hue + dh)  # noqa: E731
+def sky_lights(looks, mode, pick, style):
+    """Plate.qml's `sky`: the field and four lights for a style and mode, in
+    the accent's hue and three neighbours leaning toward violet and pink."""
+    night = mode == 'dark'
+    _, chroma, hue = looks.oklch(looks.derive('lumen', mode, pick)[0])
+    c = max(0.12, min(chroma * 1.3, 0.24))
+    s = 1 if (hue > 200 or hue < 20) else -1
+    haze = style == 'haze'
+    if night:
+        lums = [0.55, 0.5, 0.6, 0.45] if haze else [0.52, 0.5, 0.56, 0.62]
     else:
-        offsets, alphas = (0, 40, -48, 24), (0.85, 0.7, 0.65, 0.4)
-        tone = lambda dh: looks.lch(0.87, min(c, 0.11), hue + dh)  # noqa: E731
+        lums = [0.8, 0.78, 0.84, 0.76] if haze else [0.62, 0.6, 0.66, 0.72]
+    chroma = c * (0.75 if haze and not night else 1)
+    lights = [looks.lch(lums[i], chroma, hue + s * (0, 40, 80, 120)[i]) for i in range(4)]
+    # Orbit's night is a touch lighter; by day it lays its light on a fixed grey.
+    field = ('#151516' if style == 'orbit' else '#0b0b0e') if night else '#eff0f3'
+    return field, lights
 
-    def column(values):
-        img = Image.new('F', (1, h))
-        img.putdata(values)
-        return img.resize((w, h), Image.Resampling.NEAREST)
 
-    def line(values):
-        img = Image.new('F', (w, 1))
-        img.putdata(values)
-        return img.resize((w, h), Image.Resampling.NEAREST)
+def sky(looks, mode, pick, style, size):
+    """Lumen's sky (dotfiles/quickshell/folio/shaders/lumen.frag), computed
+    per pixel as the shader does: orbit (a tilted ring of light with a soft
+    trail), prism (ribbons of light through fluted glass), glow (one soft
+    luminous shape) or haze (a full-bleed gradient), each with the shader's
+    still film grain. Colours are Qt's: the hex values over 255, mixed as
+    they are."""
+    import numpy as np
 
-    # The sky, per channel, as floats so the glows don't band before the end.
-    bands = [column([a + (b - a) * (y + 0.5) / h for y in range(h)]) for a, b in zip(*sky)]
-    for (gx, gy, r), dh, alpha in zip(glows, offsets, alphas):
-        color = rgb(tone(dh))
-        sigma = 0.42 * r * w
-        cx, cy = gx * w, gy * h
-        fx = line([math.exp(-((x + 0.5 - cx) ** 2) / (2 * sigma * sigma)) for x in range(w)])
-        fy = column([alpha * math.exp(-((y + 0.5 - cy) ** 2) / (2 * sigma * sigma)) for y in range(h)])
-        weight = ImageMath.lambda_eval(lambda a: a['x'] * a['y'], x=fx, y=fy)
-        bands = [ImageMath.lambda_eval(lambda a: a['c'] + (a['g'] - a['c']) * a['k'], c=band, g=float(g), k=weight)
-                 for band, g in zip(bands, color)]
-    # Down to 8 bits through an 8x8 Bayer threshold (converting truncates, so
-    # floor(c + t) averages to c): a pale haze moves a few levels across
-    # hundreds of pixels and would otherwise show contour rings.
-    n = 8
-    tile = Image.new('F', (n, n))
-    tile.putdata([(bayer(x, y) + 0.5) / (n * n) for y in range(n) for x in range(n)])
-    strip = Image.new('F', (w, n))
-    for x in range(0, w, n):
-        strip.paste(tile, (x, 0))
-    threshold = Image.new('F', (w, h))
-    for y in range(0, h, n):
-        threshold.paste(strip, (0, y))
-    out = Image.merge('RGB', [ImageMath.lambda_eval(lambda a: a['c'] + a['t'], c=b, t=threshold).convert('L')
-                              for b in bands])
-    if dark:
-        # 180 stars as the study draws them on its 0.75-scale canvas of the
-        # 1280 x 800 mock's art (538 px wide); positions are fractions.
-        k, ss = w / 538, 8
-        r = mulberry32(7)
-        for _ in range(180):
-            a = 0.12 + r() * 0.5
-            s = (0.55 if r() < 0.94 else 1.1) * k
-            x, y = r() * w, r() * h
-            box = math.ceil(s) + 2
-            # The disc drawn 8x larger at its sub-pixel spot, then averaged
-            # down to an antialiased mask; white is blended through it.
-            patch = Image.new('L', (2 * box * ss, 2 * box * ss), 0)
-            ox, oy = (box + x % 1) * ss, (box + y % 1) * ss
-            ImageDraw.Draw(patch).ellipse((ox - s * ss, oy - s * ss, ox + s * ss, oy + s * ss),
-                                          fill=round(255 * a))
-            patch = patch.resize((2 * box, 2 * box), Image.Resampling.BOX)
-            out.paste((255, 255, 255), (math.floor(x) - box, math.floor(y) - box,
-                                        math.floor(x) + box, math.floor(y) + box), patch)
-    return out
+    w, h = size
+    night = mode == 'dark'
+    field_hex, light_hex = sky_lights(looks, mode, pick, style)
+    f32 = np.float32
+    field = np.array(rgb(field_hex), f32) / 255
+    l0, l1, l2, l3 = (np.array(rgb(x), f32) / 255 for x in light_hex)
+    aspect = w / h
+    ux = ((np.arange(w, dtype=f32) + 0.5) / w)[None, :]
+    uy = ((np.arange(h, dtype=f32) + 0.5) / h)[:, None]
+
+    def smoothstep(e0, e1, x):
+        t = np.clip((x - e0) / (e1 - e0), 0, 1)
+        return t * t * (3 - 2 * t)
+
+    def mix(a, b, t):
+        return a + (b - a) * t
+
+    def tint(color, amount):
+        return color[None, None, :] * amount[..., None]
+
+    def expose(light, exposure):
+        if night:
+            return field + (1 - field) * (1 - np.exp(-light * exposure))
+        peak = light.max(axis=-1)
+        towards = mix(light / np.maximum(peak, 1e-3)[..., None] * 0.9, 1.0, 0.12)
+        return mix(field, towards, ((1 - np.exp(-peak * exposure)) * 0.88)[..., None])
+
+    def ribbons(px, py):
+        x = px / aspect
+        total = np.zeros(np.broadcast(px, py).shape + (3,), f32)
+        for i, tone in enumerate((l0, l1, l2)):
+            y = 1.02 - 0.92 * x + 0.06 * np.sin(x * 3.3 + i * 2.3) + (i - 1.0) * 0.085
+            wd = 0.045 + 0.018 * i
+            d = py - y
+            along = 0.35 + 0.65 * (0.5 + 0.5 * np.sin(x * 5.1 + i * 1.9 + 0.6)) ** 1.6
+            total += tint(tone, np.exp(-d * d / (2 * wd * wd)) * along * (1.3 - 0.25 * i))
+        d3 = py - (1.16 - 0.92 * x)
+        total += tint(l3, 0.5 * np.exp(-d3 * d3 / (2 * 0.05 * 0.05)) * smoothstep(0.25, 0.85, x))
+        return total
+
+    if style == 'prism':
+        px, py = np.broadcast_arrays(ux * aspect, uy)
+        # Fluted glass: diagonal bands, each refracting what is behind it.
+        ca, sa = math.cos(math.radians(-40)), math.sin(math.radians(-40))
+        qx = ca * px + sa * py
+        width = 0.2
+        band = np.floor(qx / width)
+        t = qx / width - band
+        vx = (t - 0.5) * width * 1.4
+        vy = (t - 0.5) * 0.05 + np.sin(band * 2.7) * 0.02
+        light = ribbons(px + ca * vx - sa * vy, py + sa * vx + ca * vy)
+        # Each band is lit toward its far edge; the edge catches what is behind it.
+        light *= (0.55 + 0.75 * t * t)[..., None]
+        light += light * (0.9 * smoothstep(0.95, 1.0, t))[..., None]
+        col = expose(light, 1.15 if night else 0.9)
+    elif style == 'glow':
+        px, py = ux * aspect, uy
+        cx, cy = aspect * 0.56, 0.47
+
+        def lobe(dx, dy, k):
+            return np.exp(-((px - cx - dx) ** 2) / k) * np.exp(-((py - cy - dy) ** 2) / k)
+        f = lobe(-0.15, 0.03, 0.026) + lobe(0.11, -0.07, 0.03) + 0.85 * lobe(0.06, 0.11, 0.02)
+        body = smoothstep(0.42, 0.78, f)
+        core = smoothstep(0.75, 1.5, f)
+        halo = np.exp(-np.hypot(px - cx, py - cy) / 0.2) * (1 - body)
+        light = (tint(l1, body * 1.25) + tint(l2, halo * 0.4)
+                 + tint(mix(l0, 1.0, 0.7 if night else 0.25), core * 1.5))
+        col = expose(light, 1.6 if night else 1.1)
+    elif style == 'orbit':
+        ca, sa = math.cos(math.radians(-24)), math.sin(math.radians(-24))
+        px, py = ux * aspect - aspect * 0.53, uy - 0.52
+        qx = (ca * px + sa * py) / 0.27
+        qy = (-sa * px + ca * py) / 0.185
+        r = np.hypot(qx, qy)
+        th = np.arctan2(qy, qx)
+        # The edge: brightest low and to the right, gone at the top left.
+        side = (0.5 + 0.5 * np.cos(th - math.radians(70))) ** 2.6
+        edge = np.exp(-(((r - 1) / (0.012 + 0.05 * (1 - side))) ** 2)) * side
+        # The trail: wide haze outside the ring, sweeping up and to the left.
+        sweep = (0.5 + 0.5 * np.cos(th - math.radians(235))) ** 1.6
+        trail = np.exp(-(((r - 1.18) / 0.32) ** 2)) * sweep * 0.55 + np.exp(-(((r - 1) / 0.12) ** 2)) * 0.12
+        light = tint(mix(l0, 1.0, 0.55), edge * 2.2) + tint(mix(l1, 1.0, 0.3), trail)
+        base = field if night else np.array([0.80, 0.80, 0.82], f32)
+        col = base + (1 - base) * (1 - np.exp(-light * 1.6))
+    else:
+        warm_deep = l3 * (0.55 if night else 0.8)
+        peach = mix(l3, np.array([1.0, 0.82, 0.68], f32), 0.45)
+        cool = mix(l0, np.array([0.55, 0.85, 1.0], f32), 0.35)
+        x = ux[0][:, None]
+        top = mix(warm_deep, l1, smoothstep(0, 0.75, x))
+        top = mix(top, l0, smoothstep(0.6, 1.0, x))
+        bottom = mix(peach, l2, smoothstep(0, 0.5, x))
+        bottom = mix(bottom, cool, smoothstep(0.5, 1.0, x))
+        col = mix(top[None], bottom[None], smoothstep(0, 1, uy)[..., None])
+        col = col * 0.78 if night else mix(col, 1.0, 0.12)
+
+    # Film grain: fine, still, strongest in the mid-tones, stronger at night.
+    # The shader's hash of each (one-pixel) dot, in single precision as the
+    # GPU computes it.
+    gx, gy = np.broadcast_arrays(np.arange(w, dtype=f32)[None, :] + 17, np.arange(h, dtype=f32)[:, None] + 17)
+    p3 = np.stack([gx, gy, gx], axis=-1) * f32(0.1031)
+    p3 -= np.floor(p3)
+    shifted = p3[..., [1, 2, 0]] + f32(33.33)
+    p3 += (p3[..., 0] * shifted[..., 0] + p3[..., 1] * shifted[..., 1] + p3[..., 2] * shifted[..., 2])[..., None]
+    noise = (p3[..., 0] + p3[..., 1]) * p3[..., 2]
+    noise -= np.floor(noise)
+    luma = col[..., 0] * 0.299 + col[..., 1] * 0.587 + col[..., 2] * 0.114
+    grain = (noise - 0.5) * (0.075 if night else 0.04)
+    col = col + (grain * (0.45 + 0.55 * (1 - np.abs(luma * 2 - 1))))[..., None]
+    return Image.fromarray(np.clip(np.rint(col * 255), 0, 255).astype(np.uint8), 'RGB')
 
 
 def find_face(path, family, style):
@@ -465,7 +504,7 @@ def script_header(look, p, sizes):
         return f'pal.{name}.r = {r}; pal.{name}.g = {g}; pal.{name}.b = {b};'
     lines = [
         f'# Generated by build.py: {look["name"]}, {look["theme"]} theme, {look["mode"]}, {look["pick"]}'
-        + (f', {look["art"]}.' if look['theme'] == 'folio' else '.'),
+        + (f', {look["art"]}.' if look['theme'] == 'folio' else f', {look["sky"]} sky.'),
         f'theme = "{look["theme"]}";',
         # paper: the page; ink: the typed count; text3: systemd's own prompt.
         color('paper', 'page'), color('text'), color('text2'), color('text3'), color('ink', 'dot'),
@@ -535,7 +574,7 @@ def folio_page(kit, p, name, art, save):
 
 
 def lumen_page(kit, p, name, save, content_w):
-    # The page's shadow on the nebula and its 10 % separator.
+    # The page's shadow on the sky and its 10 % separator.
     save(spine(p['shade'], 0.16, p['sep'] + (26,)), 'spine.png')
 
     # A neutral pill at the top: the laptop and the machine's name.
@@ -581,15 +620,16 @@ def lumen_page(kit, p, name, save, content_w):
 
 
 def build(*, looks, render, assets, template, out, name, theme, mode, pick, art_id, sizes,
-          bold_font, theme_name, install_dir=None):
+          bold_font, theme_name, install_dir=None, sky_style='orbit'):
     """Print the theme for one look into `out`. Plymouth finds its images and
     script at `install_dir` (where `out` will be at boot; default: `out`)."""
-    if theme not in looks.THEMES or mode not in looks.MODES or not looks.valid_pick(theme, pick):
-        sys.exit(f'Unknown look: {theme} {mode} {pick}')
+    if (theme not in looks.THEMES or mode not in looks.MODES or not looks.valid_pick(theme, pick)
+            or sky_style not in looks.SKIES):
+        sys.exit(f'Unknown look: {theme} {mode} {pick} {sky_style}')
     catalog = json.loads((assets / 'catalog.json').read_text())
     art = find_art(catalog, art_id) if theme == 'folio' else None
     p = folio_palette(looks, mode, pick) if theme == 'folio' else lumen_palette(looks, mode, pick)
-    print(f'Interstellar boot · {name} · {theme} · {mode} · {pick}' + (f' · {art_id}' if art else ''), flush=True)
+    print(f'Interstellar boot · {name} · {theme} · {mode} · {pick} · ' + (art_id if art else sky_style), flush=True)
     check_contrast(p, FOLIO_PAIRS if theme == 'folio' else LUMEN_PAIRS)
 
     fonts = assets / 'fonts'
@@ -610,9 +650,9 @@ def build(*, looks, render, assets, template, out, name, theme, mode, pick, art_
             img = print_art(render, assets / 'sources' / art['file'], art, panel,
                             p['ink'], p['paper'], moonlit=mode == 'dark')
         else:
-            img = nebula(looks, mode, looks.to_hex(v / 255 for v in p['accent']), panel)
+            img = sky(looks, mode, pick, sky_style, panel)
         save(img, f'art-{w}x{h}.png')
-        print(f'  printed {art["id"] if art else "nebula"} for {w}x{h}', flush=True)
+        print(f'  printed {art["id"] if art else sky_style} for {w}x{h}', flush=True)
 
     layout = LAYOUT[theme]
     if theme == 'folio':
@@ -623,14 +663,14 @@ def build(*, looks, render, assets, template, out, name, theme, mode, pick, art_
 
     if '#@GENERATED@' not in template:
         sys.exit('interstellar.script lost its #@GENERATED@ marker')
-    look = {'name': name, 'theme': theme, 'mode': mode, 'pick': pick, 'art': art_id}
+    look = {'name': name, 'theme': theme, 'mode': mode, 'pick': pick, 'art': art_id, 'sky': sky_style}
     (out / f'{theme_name}.script').write_text(template.replace('#@GENERATED@', script_header(look, p, sizes)))
 
     where = install_dir or out
     # Plymouth reads these as 0xRRGGBBAA: six digits would be a nearly
     # transparent, wrongly tinted text in the boot messages behind Esc.
     hexa = lambda c: '0x' + bytes(c).hex() + 'ff'  # noqa: E731
-    desc = f'{theme}, {mode}, {pick}' + (f', {art_id}' if art else '')
+    desc = f'{theme}, {mode}, {pick}, ' + (art_id if art else sky_style)
     (out / f'{theme_name}.plymouth').write_text(f"""[Plymouth Theme]
 Name=Interstellar
 Description=Interstellar's boot and disk-unlock screen ({desc})
@@ -670,12 +710,14 @@ def main():
     parser.add_argument('--mode', choices=['light', 'dark'], required=True)
     parser.add_argument('--pick', required=True, help="the theme's color: a name from its set, or #rrggbb")
     parser.add_argument('--art', required=True, help="Folio's plate, by catalog id")
+    parser.add_argument('--sky', default='orbit', help="Lumen's sky: orbit, prism, glow or haze")
     parser.add_argument('--size', action='append', required=True, help='WIDTHxHEIGHT')
     args = parser.parse_args()
     build(looks=load_module('looks', args.looks), render=load_module('render', args.render),
           assets=args.assets, template=args.script.read_text(), out=args.out, name=args.name,
           theme=args.theme, mode=args.mode, pick=args.pick, art_id=args.art, sizes=parse_sizes(args.size),
-          bold_font=args.bold_font, theme_name=args.theme_name, install_dir=args.install_dir)
+          bold_font=args.bold_font, theme_name=args.theme_name, install_dir=args.install_dir,
+          sky_style=args.sky)
 
 
 if __name__ == '__main__':

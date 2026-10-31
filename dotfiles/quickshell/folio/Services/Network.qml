@@ -2,6 +2,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import qs.Common
 
 // NetworkManager through nmcli: Wi-Fi (the network in use with its details,
 // the networks in range, the saved ones), Ethernet and NetworkManager VPNs.
@@ -299,11 +300,14 @@ esac
         stdout: StdioCollector {}
         onExited: { root.scanning = false; root.refresh(); }
     }
-    // The monitor dies with the shell (a killed shell would leave it running).
-    Process {
+    // The monitor dies with the shell (a killed shell would leave it running),
+    // and starts again if it ends; what it missed meanwhile is read again.
+    PersistentMonitor {
+        name: "Network: nmcli monitor"
         running: true
         command: ["sh", "-c", "command -v setpriv >/dev/null && exec setpriv --pdeathsig TERM nmcli monitor; exec nmcli monitor"]
         stdout: SplitParser { onRead: _ => debounce.restart() }
+        onRestarted: debounce.restart()
     }
     Timer { id: debounce; interval: 400; onTriggered: root.refresh() }
     Timer { interval: 8000; repeat: true; running: root.watchers > 0 && !root.fake; onTriggered: root.refresh() }

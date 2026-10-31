@@ -2,6 +2,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import qs.Common
 import "InputKdl.js" as Kdl
 
 // Keyboard, mouse and touchpad: what niri's config says (config.kdl and every
@@ -150,11 +151,14 @@ Singleton {
             + "f=$(ls -d /nix/store/*-xkeyboard-config-*/share/X11/xkb/rules/evdev.lst 2>/dev/null | tail -1); [ -n \"$f\" ] && exec cat \"$f\""]
         stdout: StdioCollector { onStreamFinished: { const c = Kdl.catalog(text); if (c.layouts.length) root.catalog = c; else console.warn("Input: no xkb layout list found"); } }
     }
-    // Hotplug: a mouse plugged in or out.
-    Process {
+    // Hotplug: a mouse plugged in or out (read again after the monitor
+    // restarts, in case one came or went meanwhile).
+    PersistentMonitor {
+        name: "Input: udevadm monitor"
         running: !root.harness && root.fixture === ""
         command: ["udevadm", "monitor", "--udev", "--subsystem-match=input"]
         stdout: SplitParser { onRead: line => { if (/ (add|remove) /.test(line)) hotplug.restart(); } }
+        onRestarted: hotplug.restart()
     }
     Timer { id: hotplug; interval: 500; onTriggered: root.readHardware() }
     Connections {

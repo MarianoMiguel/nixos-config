@@ -26,13 +26,9 @@ in
     ../../modules/nixos/displaylink.nix
     ../../modules/nixos/fingerprint.nix
     ../../modules/nixos/folio-boot.nix
-    ../../modules/nixos/local-web-hosting.nix
-    ../../modules/nixos/intervals.nix
-    ../../modules/nixos/overfly.nix
     ../../modules/nixos/power.nix
     ../../modules/nixos/remote-workstation.nix
     ../../modules/nixos/battery.nix
-    ../../modules/nixos/tv-remotes.nix
   ]
   ++ lib.optional (builtins.pathExists ./local.nix) ./local.nix;
 
@@ -52,23 +48,6 @@ in
   # look; see docs/folio-boot.md for the KVM unlock path, the look on the boot
   # partition and how to skip it for one boot (plymouth.enable=0).
   mariano.folio.boot.enable = true;
-
-  services.localWebHosting = {
-    enable = true;
-    hostName = "bonhart.local";
-    title = "Bonhart Local";
-    tls.enable = true;
-    # Reachable over Tailscale and from Bonhart itself, never from the Wi-Fi
-    # or Ethernet LAN. nginx still listens on every address; the firewall
-    # decides. ts0 is already a trusted interface (networking.nix); naming it
-    # here keeps the gateway reachable over Tailscale even if that trust is
-    # narrowed later.
-    openFirewall = false;
-    firewallInterfaces = [ config.services.tailscale.interfaceName ];
-    # Tailscale-only services stay Tailscale-only. The gateway adds no
-    # authentication to a dedicated-port application, so proxying one onto
-    # the Wi-Fi address would hand it to every device on the LAN.
-  };
 
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;

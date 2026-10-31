@@ -1,7 +1,11 @@
 import QtQuick
 import qs.Common
+import qs.Services
 
 // Four equalizer bars that dance while music plays and settle when paused.
+// They step twelve times a second, not every frame (the island would redraw
+// at the display's rate for as long as music plays), and hold still while
+// the lock covers them or the screens are off.
 Item {
     id: root
 
@@ -15,9 +19,11 @@ Item {
     implicitWidth: 3 * 4 + 2 * 3
     implicitHeight: 12
 
-    NumberAnimation on phase {
-        from: 0; to: 1; duration: 900; loops: Animation.Infinite
-        running: root.visible && root.amp > 0.001
+    // One loop is 900 ms.
+    Timer {
+        interval: 83; repeat: true
+        running: root.visible && root.amp > 0.001 && !Unseen.desktop
+        onTriggered: root.phase = (root.phase + interval / 900) % 1
     }
     Row {
         anchors.bottom: parent.bottom

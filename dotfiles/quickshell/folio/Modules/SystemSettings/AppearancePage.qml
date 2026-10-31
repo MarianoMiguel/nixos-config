@@ -286,18 +286,18 @@ SettingsPage {
 
     // Lock & screensaver
     Label { text: "Lock & screensaver"; font.weight: Font.DemiBold; font.pixelSize: 15; Layout.topMargin: 32; Component.onCompleted: page.mark("lock", this) }
-    Label { text: Theme.lumen ? "The screensaver is the sky, with the clock drifting over it. Touch anything and it lifts away." : "The screensaver is the plate, moving harder, with the clock drifting over it. Touch anything and it lifts away."; color: Theme.text2; font.pixelSize: Theme.fsS; Layout.fillWidth: true; Layout.bottomMargin: 10 }
+    Label { text: "The screensaver is the lock's split: the " + (Theme.lumen ? "sky" : "plate, breathing,") + " beside a page with the date, the clock, the weather and what's playing. Touch anything and it lifts away."; color: Theme.text2; font.pixelSize: Theme.fsS; Layout.fillWidth: true; Layout.bottomMargin: 10; wrapMode: Text.WordWrap; maximumLineCount: 2 }
+    // The screensaver itself (Widgets/SaverPage), laid out for a 1920 x 1200
+    // screen and scaled into the card.
     Rectangle {
-        Layout.fillWidth: true; Layout.preferredHeight: width / 2.6; radius: 14; clip: true; color: Theme.paper; border.color: Theme.rule
-        Plate { anchors.fill: parent; anchors.margins: 1; plate: Art.current; breathe: 1; textureWidth: 1600; developOnLoad: false }
-        Rectangle {
-            id: drift
-            width: driftText.implicitWidth + 28; height: driftText.implicitHeight + 10; radius: 14; color: Theme.sheetStrong
-            Text { id: driftText; anchors.centerIn: parent; text: Qt.formatTime(clock.date, "HH:mm"); font.family: Theme.hero; font.weight: Theme.heroWeight; font.pixelSize: 54; color: Theme.ink }
-            SequentialAnimation on x { loops: Animation.Infinite; NumberAnimation { from: 30; to: 420; duration: 26000; easing.type: Easing.InOutSine } NumberAnimation { from: 420; to: 30; duration: 26000; easing.type: Easing.InOutSine } }
-            SequentialAnimation on y { loops: Animation.Infinite; NumberAnimation { from: 20; to: 110; duration: 17000; easing.type: Easing.InOutSine } NumberAnimation { from: 110; to: 20; duration: 17000; easing.type: Easing.InOutSine } }
+        id: saverCard
+        Layout.fillWidth: true; Layout.preferredHeight: width / 1.6; radius: 14; clip: true; color: Theme.paper; border.color: Theme.rule
+        SaverPage {
+            width: 1920; height: 1200
+            transform: Scale { xScale: (saverCard.width - 2) / 1920; yScale: (saverCard.height - 2) / 1200 }
+            x: 1; y: 1
+            textureWidth: 1600
         }
-        SystemClock { id: clock; precision: SystemClock.Minutes }
     }
     Rectangle {
         Layout.fillWidth: true; Layout.topMargin: 12; radius: Theme.rM; color: Theme.well; border.color: Theme.rule

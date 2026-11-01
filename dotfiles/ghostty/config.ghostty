@@ -17,3 +17,7 @@ font-size = 12
 
 # A title bar of its own, with Interstellar's window lights (GTK CSS from themeport).
 window-decoration = client
+
+# Ghostty's default Ctrl+Enter toggles fullscreen; agent CLIs (Claude Code,
+# Codex) use it, so let it reach the terminal.
+keybind = ctrl+enter=unbind

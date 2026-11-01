@@ -63,11 +63,11 @@ in
           chmod -R u+w "$out"
           rm "$out/lazy-lock.json"
           ln -s ${mutableState}/nvim/lazy-lock.json "$out/lazy-lock.json"
-          rm "$out/lua/plugins/dankcolors.lua"
+          rm "$out/lua/plugins/themeport.lua"
           # Themeport renders this from the immutable, reviewed catalog. Link
           # Neovim to that output directly instead of asking DMS to execute
           # user Matugen templates merely to update an editor palette.
-          ln -s ${mutableState}/themeport/neovim/generated.lua "$out/lua/plugins/dankcolors.lua"
+          ln -s ${mutableState}/themeport/neovim/generated.lua "$out/lua/plugins/themeport.lua"
         '';
       in
       {

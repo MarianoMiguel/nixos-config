@@ -130,13 +130,6 @@ class PicturesTests(unittest.TestCase):
         self.assertTrue(all(Path(i['desktop']).is_relative_to(self.store) for i in doc['images']))
         folio.ensure_prints(choice)
         self.assertTrue(Path(doc['images'][1]['desktop']).is_file());self.assertTrue(Path(doc['images'][1]['portrait']).is_file())
-        # DMS's per-display renders crop the gray source, as for shipped plates.
-        outputs={'eDP-1':{'current_mode':0,'modes':[{'width':160,'height':100}]}}
-        rendered=Path(folio.render_wallpapers(choice,outputs)['eDP-1'])
-        self.assertTrue(rendered.is_relative_to(self.renders))
-        with self.Image.open(rendered) as image:
-            self.assertEqual(image.size,(160,100))
-            self.assertEqual(len(image.convert('RGB').getcolors()),2)
 
     def test_cli_sets_a_picture(self):
         self.picture('a.png');self.picture('b.png',shade=200)
@@ -200,8 +193,6 @@ class PicturesTests(unittest.TestCase):
 
     def test_store_follows_the_folder(self):
         self.picture('b.png');doc=self.scan();first=doc['collection']['art'][0]['id']
-        choice=folio.validate({'collection':'mine','art':0})
-        folio.render_wallpapers(choice,{'eDP-1':{'current_mode':0,'modes':[{'width':64,'height':40}]}})
         # A rename prints nothing again; a new picture never moves the first.
         os.rename(self.folder/'b.png',self.folder/'renamed.png');self.picture('a.png',shade=128)
         with patch.object(pictures,'print_picture',wraps=pictures.print_picture) as printed:
@@ -212,12 +203,11 @@ class PicturesTests(unittest.TestCase):
         # A new focus is a new print, in the same place.
         (self.folder/'renamed.json').write_text('{"focus": [0.2, 0.3]}')
         doc=self.scan();self.assertNotEqual(doc['collection']['art'][0]['id'],first);self.assertEqual(doc['collection']['art'][0]['title'],'renamed')
-        # Gone from the folder: gone from the store and from DMS's renders.
+        # Gone from the folder: gone from the store.
         for f in self.folder.iterdir(): f.unlink()
         doc=self.scan()
         self.assertEqual(doc['collection']['art'],[])
         self.assertEqual(list((self.store/'art').iterdir()),[]);self.assertEqual(list((self.store/'sources').iterdir()),[])
-        self.assertFalse(any(p.name.startswith('mine-') for p in self.renders.iterdir()))
         self.assertIsNone(pictures.collection())
 
     def test_a_picture_still_arriving_waits(self):

@@ -52,7 +52,7 @@ local function install_watcher()
     return
   end
 
-  local current_file_path = vim.fn.stdpath("config") .. "/lua/plugins/dankcolors.lua"
+  local current_file_path = vim.fn.stdpath("config") .. "/lua/plugins/themeport.lua"
   local uv = vim.uv or vim.loop
   local watcher = uv.new_fs_event()
   local timer = uv.new_timer()

@@ -11,12 +11,6 @@ let
       --method org.gnome.Shell.Extensions.VicinaeWindowManagement.Execute \
       "$1"
   '';
-  systemMenuCommand = pkgs.writeShellScript "open-mariano-system-menu" ''
-    exec ${pkgs.ghostty}/bin/ghostty \
-      --class=system.actions \
-      --title="System Actions" \
-      -e /run/current-system/sw/bin/mariano-system-menu --terminal
-  '';
 in
 {
   # gdbus is the deliberately small bridge between the Vicinae command
@@ -90,7 +84,6 @@ in
           "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/vicinae-center/"
           "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/vicinae-almost-maximize/"
           "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/vicinae-hide-others/"
-          "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/system-actions/"
         ];
       };
 
@@ -116,12 +109,6 @@ in
         binding = "<Alt>apostrophe";
         command = "${gnomeWindowAction} hide-others";
         name = "Hide Other Applications";
-      };
-
-      "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/system-actions" = {
-        binding = "<Super>space";
-        command = "${systemMenuCommand}";
-        name = "System Actions";
       };
     };
   };

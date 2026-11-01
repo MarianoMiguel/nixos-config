@@ -140,15 +140,10 @@ in
     keyboards.default = {
       ids = [ "*" ];
       settings = {
-        # Super+digit workspace switches were landing as bare digits in the
-        # focused input. keyd monitor showed why: on a fast chord the physical
-        # Super release and the digit press fall in the same keyboard scan,
-        # and the keyboard reports the release first, so the digit reaches
-        # niri with no modifier. oneshot keeps Super applied to the next key
-        # press after a tap; held, it is a normal modifier. The timeout keeps
-        # a stray tap from hijacking the next unrelated key.
-        main.leftmeta = "oneshot(meta)";
-        global.oneshot_timeout = 250;
+        # Super is left alone so a tap reaches GNOME as the Activities key.
+        # (Under niri, leftmeta was oneshot(meta): on a fast Super+digit chord
+        # the keyboard reports Super's release before the digit. oneshot also
+        # swallowed a bare tap, which GNOME needs.)
         alt = {
           d = "pagedown";
           left = "home";

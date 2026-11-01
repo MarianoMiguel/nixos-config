@@ -1,9 +1,8 @@
-"""The unix socket that the tap daemon and the DMS widget both talk to.
+"""The unix socket that `voiceagent toggle`, `dictate` and the rest talk to.
 
 Commands go in, state broadcasts come out, newline-delimited JSON both ways.
-Keeping this a plain socket rather than routing through DMS means the agent
-still works with the shell's plugin disabled -- the widget is a view, not the
-control path.
+The GNOME shortcuts run those commands; any view of the state is a client
+here, not the control path.
 """
 
 from __future__ import annotations

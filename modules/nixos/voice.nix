@@ -1,12 +1,10 @@
-{ pkgs, quickshell, ... }:
+{ pkgs, ... }:
 
 let
   # The agent no longer speaks: it types into a Claude Code terminal you can
   # watch, so replies are read rather than heard. Synthesis is gone along with
   # the headless session it used to narrate.
-  voiceagent = pkgs.callPackage ../../packages/voiceagent {
-    quickshell = quickshell.packages.${pkgs.stdenv.hostPlatform.system}.default;
-  };
+  voiceagent = pkgs.callPackage ../../packages/voiceagent { };
 
   # Both the dictation daemon and the live voice agent transcribe through one
   # whisper-server, so a single copy of the model stays resident instead of two.
@@ -40,12 +38,11 @@ in
       description = "Local speech-to-text server for voice input";
       wantedBy = [ "graphical-session.target" ];
       partOf = [ "graphical-session.target" ];
-      # Deliberately no ConditionEnvironment=XDG_CURRENT_DESKTOP=niri here.
-      # niri publishes that variable to the systemd user manager slightly after
-      # graphical-session.target is reached, so a unit pulled in by the target
-      # evaluates the condition too early, fails it, and is skipped without an
-      # error anywhere. librepods gets away with the same condition only
-      # because it is ordered after dms.service.
+      # Deliberately no ConditionEnvironment=XDG_CURRENT_DESKTOP here. A
+      # session can publish that variable to the systemd user manager slightly
+      # after graphical-session.target is reached, so a unit pulled in by the
+      # target evaluates the condition too early, fails it, and is skipped
+      # without an error anywhere.
       serviceConfig = {
         ExecStart = pkgs.lib.concatStringsSep " " [
           "${whisperCpp}/bin/whisper-server"
@@ -71,22 +68,44 @@ in
       after = [ "whisper-server.service" ];
       wants = [ "whisper-server.service" ];
       # No ConditionEnvironment, for the reason spelled out on whisper-server.
-      # niri, ghostty, ydotool, quickshell and Claude Code come from the system
-      # profile. The voiceagent wrapper retains ~/.local/bin only as a
-      # compatibility fallback for older user-managed installations.
+      # ghostty, ydotool, systemd-run and busctl come with the voiceagent
+      # wrapper, Claude Code from the system profile. The wrapper retains
+      # ~/.local/bin only as a compatibility fallback for older user-managed
+      # installations.
       path = [
         "/run/current-system/sw"
         "/etc/profiles/per-user/mariano"
       ];
       serviceConfig = {
-        # The user manager is started before Niri exports the shell's Qt
-        # variables. Force the overlay onto Wayland so Qt does not select the
-        # unavailable XCB platform and abort when dictation begins.
+        # The optional level panel is Qt: keep it on Wayland, since the user
+        # manager may start before the session exports its Qt variables.
         Environment = "QT_QPA_PLATFORM=wayland";
         ExecStart = "${voiceagent}/bin/voiceagent daemon";
         Restart = "on-failure";
         RestartSec = 5;
       };
+    };
+  };
+
+  # Alt+A dictates into the focused window, Alt+S sends one spoken prompt to
+  # the Claude Code terminal. Alt rather than the letters' usual modifiers:
+  # keyd owns Alt+D and Alt+U for PageDown and PageUp (the [alt] layer in
+  # desktop.nix); Alt+A and Alt+S fall through it untouched. The list of
+  # custom keybindings is merged with Vicinae's (vicinae.nix).
+  home-manager.users.mariano.dconf.settings = {
+    "org/gnome/settings-daemon/plugins/media-keys".custom-keybindings = [
+      "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/voice-dictate/"
+      "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/voice-agent/"
+    ];
+    "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/voice-dictate" = {
+      binding = "<Alt>a";
+      command = "${voiceagent}/bin/voiceagent dictate";
+      name = "Dictate into the focused window";
+    };
+    "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/voice-agent" = {
+      binding = "<Alt>s";
+      command = "${voiceagent}/bin/voiceagent toggle";
+      name = "Talk to the voice agent";
     };
   };
 }

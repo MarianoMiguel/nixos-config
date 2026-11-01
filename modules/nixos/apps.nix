@@ -218,6 +218,19 @@ let
   #     description = "Vector design canvas that lives alongside code";
   #     homepage = "https://www.pencil.dev/";
   #   };
+  # Paper's download links always serve the newest build; its update feed,
+  # https://download.todesktop.com/2601167vjw8xe/latest-linux.yml, names the
+  # versioned file pinned here.
+  paperDesktop = wrapDesignAppImage {
+    pname = "paper-desktop";
+    version = "0.5.18";
+    url = "https://download.todesktop.com/2601167vjw8xe/paper-desktop-0.5.18-build-261031pthw9s82w-x86_64.AppImage";
+    hash = "sha256-TxJ8+a8bb2XOGv7YzDoPcQ5RZ794nzbAFvRCr5aECrk=";
+    desktopFile = "paper-desktop.desktop";
+    iconFile = "paper-desktop.png";
+    description = "Design tool to create, share and ship work";
+    homepage = "https://paper.design/";
+  };
 in
 
 {
@@ -243,6 +256,8 @@ in
     "x-scheme-handler/figma" = "io.github.nickvdp.figma-desktop-linux.desktop";
     "x-scheme-handler/granola" = "granola.desktop";
     "x-scheme-handler/granola-dev" = "granola.desktop";
+    "x-scheme-handler/paper" = "paper-desktop.desktop";
+    "x-scheme-handler/paper-dev" = "paper-desktop.desktop";
     # "x-scheme-handler/pencil" = "pencil.desktop";
   };
   xdg.mime.addedAssociations = browserMimeAssociations;
@@ -288,6 +303,7 @@ in
       fluent-reader
       obsbotCameraControl
       figmaDesktop
+      paperDesktop
       vscode
       gearlever
       font-manager

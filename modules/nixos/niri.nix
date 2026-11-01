@@ -577,6 +577,20 @@ in
       { package = codexbarGnomeExtension; }
     ];
   };
+  # The extension's stored default is Gemini through Homebrew's codexbar path,
+  # which never runs here. Claude and Codex go through the system codexbar
+  # (the patch above resolves it on PATH), signed in with each tool's OAuth.
+  home-manager.users.mariano.dconf.settings."org/gnome/shell/extensions/codexbar".providers =
+    builtins.toJSON [
+      {
+        name = "Claude";
+        command = "codexbar --provider claude --source oauth --format json";
+      }
+      {
+        name = "Codex";
+        command = "codexbar --provider codex --source oauth --format json";
+      }
+    ];
 
   environment.systemPackages = with pkgs; [
     brightnessctl

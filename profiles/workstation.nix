@@ -13,7 +13,6 @@
     ../modules/nixos/niri.nix
     ../modules/nixos/niri-pip.nix
     ../modules/nixos/nix.nix
-    ../modules/nixos/pond.nix
     ../modules/nixos/folio-shell.nix
     ../modules/nixos/folio-greeter.nix
     ../modules/nixos/reminders.nix

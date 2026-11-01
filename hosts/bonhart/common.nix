@@ -40,9 +40,6 @@ in
   # committed file that bonhart-install shares, not in storage.nix.
   mariano.displaylink.enable = true;
 
-  # pond-preview, Pond's shell as a live design reference (workshop/).
-  mariano.pond.enable = true;
-
   # Interstellar's boot and disk-unlock screen (Plymouth), in the desktop's
   # look; see docs/folio-boot.md for the KVM unlock path, the look on the boot
   # partition and how to skip it for one boot (plymouth.enable=0).

@@ -4,19 +4,22 @@
 #
 # Keeping the battery at ~80% instead of a full 100% charge measurably slows
 # lithium-ion wear, which is the right default while docked. But an 80% cap is
-# wrong the moment the machine goes mobile, so this has to be a one-click
-# toggle rather than a fixed policy. The DMS "battery-limit" plugin pill drives
-# it; everything it needs lives here.
+# wrong the moment the machine goes mobile, so this is a toggle rather than a
+# fixed policy: `battery-charge-limit full` before travelling, `health` after.
 #
-# Three pieces make the toggle instant and durable:
+# Two pieces make the toggle instant and durable:
 #   * a `battery-charge-limit` helper that writes the sysfs threshold and
 #     records the choice in a state file,
 #   * a boot-time oneshot that, as root, hands the `wheel` group write access
 #     to the threshold attribute and then re-applies the recorded choice. The
-#     write grant is what lets the helper run from the unprivileged DMS process
-#     with no pkexec password prompt (DMS's own settings tab prompts every
-#     time); re-applying is needed because a cold boot resets
+#     write grant is what lets the helper run unprivileged, with no password
+#     prompt; re-applying is needed because a cold boot resets
 #     `charge_control_end_threshold` back to 100.
+#
+# GNOME's own "Preserve Battery Health" switch (Settings > Power, through
+# UPower) writes the same sysfs thresholds, and UPower re-applies its own
+# choice when it starts, as this service does at boot. Use one or the other:
+# leave GNOME's switch off while this toggle is in use.
 #
 # The permission grant lives in this service rather than a udev rule on
 # purpose: a udev `add` rule only fires for devices that appear after it loads,
@@ -31,11 +34,10 @@ let
   stateDir = "/var/lib/battery-charge-limit";
   stateFile = "${stateDir}/limit";
 
-  # One helper for every path: the plugin ("health"/"full"), the boot service
-  # ("apply"), and the pill's state read ("read"). It walks BAT* and writes
-  # whichever end-threshold attribute the driver exposes, mirroring the probe
-  # order DMS itself uses. Writes to sysfs succeed either as root (the boot
-  # service) or as a wheel user (the plugin, via the udev rule below).
+  # One helper for every path: the toggle ("health"/"full"), the boot service
+  # ("apply"), and a state read ("read"). It walks BAT* and writes whichever
+  # end-threshold attribute the driver exposes. Writes to sysfs succeed either
+  # as root (the boot service) or as a wheel user (the write grant below).
   batteryChargeLimit = pkgs.writeShellApplication {
     name = "battery-charge-limit";
     runtimeInputs = [ pkgs.coreutils ];

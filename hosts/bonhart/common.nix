@@ -28,6 +28,7 @@ in
     ../../modules/nixos/folio-boot.nix
     ../../modules/nixos/power.nix
     ../../modules/nixos/remote-workstation.nix
+    ../../modules/nixos/rex.nix
     ../../modules/nixos/battery.nix
   ]
   ++ lib.optional (builtins.pathExists ./local.nix) ./local.nix;

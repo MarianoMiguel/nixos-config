@@ -26,6 +26,13 @@
     # daemon current; the stable branch lags several releases behind.
     nixpkgs-tailscale.url = "github:NixOS/nixpkgs/nixos-unstable";
     codex-desktop-linux.url = "github:ilysenko/codex-desktop-linux";
+    # Rex's NixOS module and prebuilt binary (modules/nixos/rex.nix). The
+    # preview channel carries tagged builds, not every change, which suits a
+    # machine left unattended; Update All moves it with the other inputs.
+    rex = {
+      url = "https://pkgs.superlogical.com/rex/nix/preview.tar.gz";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     librepods-rust = {
       url = "github:librepods-org/librepods?ref=linux/rust";
       inputs.nixpkgs.follows = "nixpkgs";

@@ -78,6 +78,20 @@ of Bonhart.
 
 Reference: [Comet Pro Tailscale setup](https://docs.gl-inet.com/kvm/en/user_guide/gl-rm10/quick_setup_guide/#tailscale).
 
+### Rex
+
+Bonhart runs Rex's login server (`modules/nixos/rex.nix`), reached through
+Tailscale Serve over HTTPS on port 7297. Tailscale names each caller; only
+office@marianomiguel.com is admitted, and its sessions run as `mariano`. No
+firewall port is opened. In a Rex app, add the host as
+`bonhart.taile97d70.ts.net`; the CLI equivalent is
+`rex -S bonhart.taile97d70.ts.net ls`. The client device must be on the
+tailnet as the same Tailscale login.
+
+Check it from Bonhart with `systemctl status rex-login-server
+rex-tailscale-serve` and `tailscale serve status`. Sessions belong to the
+per-account server, which keeps running when the login server restarts.
+
 For files, use SFTP or `rsync` over the same SSH alias. Keep source repositories
 in Git. For a one-off transfer, `scp HANDOFF.md bonhart-agent:~/Handoff/` works
 after `ssh bonhart-agent 'mkdir -p ~/Handoff'`. Do not mirror live agent SQLite

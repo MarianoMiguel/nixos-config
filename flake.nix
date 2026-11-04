@@ -11,7 +11,8 @@
       url = "github:nix-community/disko";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    dms.url = "github:AvengeMedia/DankMaterialShell";
+    # DMS's greeter, the login screen until a GDM one is styled to match the
+    # disk-unlock screen (modules/nixos/login-screen.nix).
     dank-greeter = {
       url = "github:AvengeMedia/dank-greeter";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -24,29 +25,7 @@
     # It tracks nixos-unstable so `mariano-system-update-all` keeps the VPN
     # daemon current; the stable branch lags several releases behind.
     nixpkgs-tailscale.url = "github:NixOS/nixpkgs/nixos-unstable";
-    quickshell = {
-      url = "github:quickshell-mirror/quickshell";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
     codex-desktop-linux.url = "github:ilysenko/codex-desktop-linux";
-    dms-codexbar = {
-      url = "github:zakstam/dms-codexbar";
-      flake = false;
-    };
-    cat-dms = {
-      url = "github:xi-ve/cat-dms";
-      flake = false;
-    };
-    codeIsland-dms = {
-      url = "github:payprays/codeIsland-dms";
-      flake = false;
-    };
-    niri-pip = {
-      # Keep the reviewed v0.2.1 source immutable. This is intentionally not a
-      # moving tag because the daemon controls compositor windows at runtime.
-      url = "github:t1ktakdev/niri-pip/4f2075ce35697169e43889aadd55f0900f1d4710";
-      flake = false;
-    };
     librepods-rust = {
       url = "github:librepods-org/librepods?ref=linux/rust";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -60,12 +39,7 @@
       nixpkgs-unstable,
       home-manager,
       dank-greeter,
-      dms,
-      quickshell,
       codex-desktop-linux,
-      dms-codexbar,
-      cat-dms,
-      codeIsland-dms,
       ...
     }:
     let
@@ -111,7 +85,6 @@
       };
       sharedModules = [
         home-manager.nixosModules.home-manager
-        dms.nixosModules.dank-material-shell
         dank-greeter.nixosModules.default
         {
           # The commit each generation was built from, for `nixos-version
@@ -241,9 +214,6 @@
         virtualhere-client = self.nixosConfigurations.bonhart.pkgs.callPackage ./packages/virtualhere-client.nix { };
         fido-bridge = self.nixosConfigurations.bonhart.pkgs.callPackage ./packages/fido-bridge.nix { };
         librepods = inputs.librepods-rust.packages.${system}.default;
-        niri-pip = self.nixosConfigurations.bonhart.pkgs.callPackage ./packages/niri-pip.nix {
-          src = inputs.niri-pip;
-        };
         qt-interstellar-decorations =
           self.nixosConfigurations.bonhart.pkgs.callPackage ./packages/qt-interstellar-decorations
             { };

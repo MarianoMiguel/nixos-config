@@ -2,19 +2,16 @@
   imports = [
     ../modules/nixos/apps.nix
     ../modules/nixos/backups.nix
-    ../modules/nixos/capture.nix
     ../modules/nixos/desktop.nix
     ../modules/nixos/development.nix
     ../modules/nixos/fonts.nix
+    ../modules/nixos/gnome.nix
     ../modules/nixos/home.nix
+    ../modules/nixos/login-screen.nix
     ../modules/nixos/manifesto.nix
     ../modules/nixos/networking.nix
     ../modules/nixos/neovim.nix
-    ../modules/nixos/niri.nix
-    ../modules/nixos/niri-pip.nix
     ../modules/nixos/nix.nix
-    ../modules/nixos/folio-shell.nix
-    ../modules/nixos/folio-greeter.nix
     ../modules/nixos/reminders.nix
     ../modules/nixos/system-actions.nix
     ../modules/nixos/themeport.nix
@@ -23,6 +20,5 @@
     ../modules/nixos/vicinae.nix
     ../modules/nixos/voice.nix
     ../modules/nixos/virtualisation.nix
-    ../modules/nixos/workspace-modes.nix
   ];
 }

@@ -68,7 +68,6 @@ mkdir -p \
   "$scratch/state" \
   "$scratch/system" \
   "$scratch/test-mariano-mutable-dotfile-seed/dms" \
-  "$scratch/test-mariano-mutable-dotfile-seed/niri/dms" \
   "$scratch/test-mariano-mutable-dotfile-seed/nvim" \
   "$scratch/test-mariano-mutable-dotfile-seed/themeport/neovim"
 : > "$scratch/state/install.log"
@@ -80,8 +79,7 @@ exit 0
 EOF
 chmod +x "$scratch/disko-script"
 touch \
-  "$scratch/test-mariano-mutable-dotfile-seed/dms/plugin-settings.json" \
-  "$scratch/test-mariano-mutable-dotfile-seed/niri/dms/binds.kdl" \
+  "$scratch/test-mariano-mutable-dotfile-seed/dms/settings.json" \
   "$scratch/test-mariano-mutable-dotfile-seed/nvim/lazy-lock.json" \
   "$scratch/test-mariano-mutable-dotfile-seed/themeport/neovim/generated.lua"
 # Mutable dotfiles are out-of-store symlinks into the installed user's home

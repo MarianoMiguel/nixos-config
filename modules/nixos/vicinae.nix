@@ -49,8 +49,7 @@ in
       ];
     };
 
-    # Vicinae is the GNOME launcher. Niri uses DMS for both its general app
-    # launcher and the curated system-actions surface.
+    # Vicinae is the launcher, and only GNOME runs it.
     systemd.user.services.vicinae.Unit.ConditionEnvironment =
       "XDG_CURRENT_DESKTOP=GNOME";
 

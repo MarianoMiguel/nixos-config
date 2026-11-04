@@ -1,11 +1,8 @@
-"""Interstellar's looks: every pick reads, and the shell agrees with apps.
+"""Interstellar's looks: every pick reads.
 
-Run: python3 tools/azure-folio/test_looks.py (the shell check needs node:
-nix shell nixpkgs#nodejs -c python3 tools/azure-folio/test_looks.py).
+Run: python3 tools/azure-folio/test_looks.py
 """
 import json
-import shutil
-import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -14,7 +11,6 @@ import looks
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parent.parent
-SHELL_LOOKS = REPO / 'dotfiles/quickshell/folio/Common/Looks.js'
 
 # Hues all round the wheel at several lightnesses and chromas, plus grays and
 # the corners of the cube, where gamut and contrast fight hardest.
@@ -76,16 +72,6 @@ class LookTests(unittest.TestCase):
                 self.assertIn(f'mode = "{mode}"', text)
                 self.assertIn(f'accent = "{looks.derive("lumen", mode, "#d4ff00")[0]}"', text)
                 self.assertIn(f'background = "{looks.BACKGROUND["lumen"][mode]}"', text)
-
-    @unittest.skipUnless(shutil.which('node'), 'node is not installed')
-    def test_shell_agrees(self):
-        all_cases = list(cases())
-        script = SHELL_LOOKS.read_text().replace('.pragma library', '', 1)
-        runner = script + '\nconst cases = JSON.parse(require("fs").readFileSync(0, "utf8"));\n' \
-            'process.stdout.write(JSON.stringify(cases.map(([t, m, p]) => derive(t, m, p))));\n'
-        result = subprocess.run(['node', '-e', runner], input=json.dumps(all_cases), capture_output=True, text=True, check=True)
-        for (theme, mode, pick), got in zip(all_cases, json.loads(result.stdout)):
-            self.assertEqual(tuple(got), looks.derive(theme, mode, pick), f'{theme} {mode} {pick}')
 
 
 if __name__ == '__main__':

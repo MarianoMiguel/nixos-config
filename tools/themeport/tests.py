@@ -339,7 +339,7 @@ def main() -> int:
         except BaseException as exc:  # noqa: BLE001
             failures.append(f"[aether-install] blew up: {exc}")
 
-        # The Niri hotkey's first picker must expose the new source directly,
+        # The picker's first rows must expose the new source directly,
         # even on a machine with no downloaded themes yet.
         try:
             picker_rows = themeport._theme_picker_rows([])

@@ -6,8 +6,9 @@ takes one color, a named one from its own set or any #rrggbb. Its hue is
 kept and its lightness moves until it reads (derive), so no pick can make the
 desktop unreadable. Everything else in a palette belongs to the theme.
 
-The shell runs the same rules in dotfiles/quickshell/folio/Common/Looks.js;
-test_looks.py keeps the two equal.
+Apps (themeport), the login screen and the boot screen all take their
+colors from here. (The Folio shell ran the same rules in its Looks.js,
+archived with it on the archive/interstellar-niri branch.)
 """
 import argparse
 import json

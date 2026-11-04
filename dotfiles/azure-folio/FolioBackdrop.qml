@@ -104,7 +104,7 @@ Rectangle {
     Column {
         x: folio.contentX; y: folio.authY - Math.max(49, folio.height*.055); spacing: 7
         Text { text: folio.userLabel; color: folio.ink; font.family: "IBM Plex Mono"; font.pixelSize: Math.max(12,folio.width*.010); font.letterSpacing: 1 }
-        Text { text: "@hostname@ · NIRI".toUpperCase(); color: folio.muted; font.family: "IBM Plex Mono"; font.pixelSize: Math.max(10,folio.width*.0075); font.letterSpacing: 1 }
+        Text { text: "@hostname@ · GNOME".toUpperCase(); color: folio.muted; font.family: "IBM Plex Mono"; font.pixelSize: Math.max(10,folio.width*.0075); font.letterSpacing: 1 }
     }
     Text {
         x: folio.contentX; y: folio.height*.95

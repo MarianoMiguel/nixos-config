@@ -31,7 +31,19 @@
     vim
 
     nodejs_24
-    pnpm
+    # pnpm 10, as on the Mac: monarch/core/sso pins engines.pnpm to ^9 || ^10,
+    # and repositories that name a packageManager switch to it either way.
+    pnpm_10
+    # The project toolchains the Mac also carries: bun for the bonhart
+    # research repo, Rust for koti, themebridge and the Storytold crates, the
+    # AWS CLI for monarch/infra-aws, and psql for Monarch database checks.
+    bun
+    cargo
+    rustc
+    rustfmt
+    clippy
+    awscli2
+    postgresql
     python3
     python3Packages.pip
     uv

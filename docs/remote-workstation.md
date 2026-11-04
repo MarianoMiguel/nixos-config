@@ -487,9 +487,10 @@ Known audit findings:
   an outside-network recovery test are still pending.
 - `sshd` runs at boot and the MacBook's public key is configured. User lingering
   is enabled. This is not a completed Mac-to-Bonhart login test.
-- This change makes AC lid-close ignore the lid in logind and GNOME. DMS already
-  has AC idle sleep disabled. On battery, idle hibernation after 15 minutes and
-  lid-close hibernation remain as outage safeguards. Verify actual AC detection.
+- This change makes AC lid-close ignore the lid in logind and GNOME, and GNOME
+  never idles to sleep on AC (`sleep-inactive-ac-type = "nothing"`, power.nix).
+  On battery, idle hibernation after 15 minutes and lid-close hibernation
+  remain as outage safeguards. Verify actual AC detection.
 - Root and swap are LUKS encrypted. After a cold boot or relevant recovery path,
   the Comet must display the boot/disk-unlock prompt and send keyboard input.
   Tailscale on Linux only becomes available after the disk is unlocked.
@@ -529,7 +530,7 @@ systemctl --failed
 systemctl --user --failed
 tmux ls
 journalctl -b -p err --no-pager
-systemctl --user restart dms.service
+loginctl list-sessions
 sudo systemctl restart sshd
 ```
 

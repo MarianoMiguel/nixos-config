@@ -47,9 +47,10 @@ The desktop's selection lives in the encrypted home, and a copy in `/var/lib`
 sits on the same encrypted disk, so the boot can't read either. The look
 reaches the boot partition instead (`followLook`, on by default):
 
-1. Settings writes the owner's selection. Themeport's root bridge
-   (`azure-folio-greeter-state`) rebuilds `/var/lib/azure-folio/appearance.json`
-   from it, as it does for the greeter.
+1. `azure-folio set`, `next` or `restore` writes the owner's selection
+   (`~/.local/state/nixos-config/azure-folio/selection.json`). Themeport's
+   root bridge (`azure-folio-greeter-state`) rebuilds
+   `/var/lib/azure-folio/appearance.json` from it, as it does for the greeter.
 2. `interstellar-boot-look.path` watches that root-owned file and starts
    `interstellar-boot-look.service`. The service reads only that file:
    a small regular file, owned and writable by root alone, never through a
@@ -231,7 +232,8 @@ In builds and VMs only (2026-10-30/31):
   built-in `interstellar`. Its boot installer runs the hook after NixOS's
   builder. The built-in Folio default prints byte for byte the same images as
   before. The unit tests pass (24).
-- Lumen's skies against the shell (2026-10-31): each style and mode drawn by
+- Lumen's skies against the shell (2026-10-31; the shell and its harness are
+  archived on `archive/interstellar-niri`): each style and mode drawn by
   the shell's wallpaper in `scripts/folio-harness` and by `build.py`, at
   1920x1200 with the blue accent. In every pair at least 82 % of pixels are
   identical, 99 % are within one level, and with the grain averaged over 8x8

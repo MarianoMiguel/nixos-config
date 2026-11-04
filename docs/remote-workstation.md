@@ -12,15 +12,15 @@ and encrypted-disk prompt when Linux is unavailable. Neither an AI subscription
 nor a working Linux desktop should be required to reach the Comet.
 
 Current Linux address: `100.71.230.32`, MagicDNS
-`bonhart-3.taile97d70.ts.net`. There are older Bonhart entries in this tailnet;
-do not accidentally connect to `bonhart` or `bonhart-1`.
+`bonhart.taile97d70.ts.net`. The older Bonhart entries (`bonhart-1`,
+`bonhart-3`) have left the tailnet, and the node now holds the plain name.
 
 Add to the Mac's `~/.ssh/config` (choose the private key corresponding to the
 MacBook public key already in `modules/nixos/users.nix`):
 
 ```sshconfig
 Host bonhart-agent
-  HostName bonhart-3.taile97d70.ts.net
+  HostName bonhart.taile97d70.ts.net
   User mariano
   IdentityFile ~/.ssh/id_ed25519
   IdentitiesOnly yes
@@ -54,7 +54,7 @@ the reverse login can be verified. No passphrase was copied or removed.
 For the iPhone, use an SSH app such as Blink, generate a separate Ed25519 key
 **on the phone**, and add only its public key to
 `users.users.mariano.openssh.authorizedKeys.keys` in `modules/nixos/users.nix`.
-Configure host `bonhart-3.taile97d70.ts.net`, port `22`, user `mariano`, and the
+Configure host `bonhart.taile97d70.ts.net`, port `22`, user `mariano`, and the
 phone's key. Bonhart's verified Ed25519 host-key fingerprint is
 `SHA256:wRqmKZpUVNsjKwcUh+AL5n0HFO4BgZ1EW4RsGNgFFho`.
 Keep the private key on the phone. Verify `ssh`, `sudo -v`, and reconnecting to
@@ -65,9 +65,9 @@ Reference: [Blink host configuration](https://docs.blink.sh/basics/hosts).
 
 ### Comet Pro's independent address
 
-`bonhart-3.taile97d70.ts.net` belongs to the Linux host (it serves no web
-endpoint since Overfly was removed); it is not the Comet. The Comet must join the tailnet separately
-so its console remains reachable when Linux is offline.
+`bonhart.taile97d70.ts.net` belongs to the Linux host (its only web endpoint
+is Rex on port 7297, below); it is not the Comet. The Comet must join the
+tailnet separately so its console remains reachable when Linux is offline.
 
 The Comet is enrolled in the tailnet as `glkvm.taile97d70.ts.net`, IP
 `100.86.90.3`. Its HTTP endpoint responds and redirects to HTTPS. Open
@@ -83,14 +83,16 @@ Reference: [Comet Pro Tailscale setup](https://docs.gl-inet.com/kvm/en/user_guid
 Bonhart runs Rex's login server (`modules/nixos/rex.nix`), reached through
 Tailscale Serve over HTTPS on port 7297. Tailscale names each caller; only
 office@marianomiguel.com is admitted, and its sessions run as `mariano`. No
-firewall port is opened. In a Rex app, add the host as
-`bonhart.taile97d70.ts.net`; the CLI equivalent is
-`rex -S bonhart.taile97d70.ts.net ls`. The client device must be on the
-tailnet as the same Tailscale login.
+firewall port is opened. In a Rex app, add the host `bonhart` at
+`https://bonhart.taile97d70.ts.net:7297`; the CLI equivalent is
+`rex hosts add bonhart https://bonhart.taile97d70.ts.net:7297`. The client
+device must be on the tailnet as the same Tailscale login.
 
 Check it from Bonhart with `systemctl status rex-login-server
 rex-tailscale-serve` and `tailscale serve status`. Sessions belong to the
 per-account server, which keeps running when the login server restarts.
+
+### Files
 
 For files, use SFTP or `rsync` over the same SSH alias. Keep source repositories
 in Git. For a one-off transfer, `scp HANDOFF.md bonhart-agent:~/Handoff/` works

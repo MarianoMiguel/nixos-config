@@ -87,6 +87,15 @@ in
   services.displayManager.defaultSession = "gnome";
   # The one session on offer: GNOME through the launcher above.
   services.displayManager.sessionPackages = lib.mkForce [ gnomeSessionsWithDesktopEnv ];
+  # The greeter also lists sessions from the system profile, where yaru-theme
+  # (installed for its icons, themeport.nix) drops Ubuntu's "Yaru session".
+  environment.extraSetup = ''
+    if [ -L "$out/share/wayland-sessions" ]; then
+      rm "$out/share/wayland-sessions"
+    else
+      rm -f "$out/share/wayland-sessions/Yaru.desktop"
+    fi
+  '';
 
   users.groups.greeter = { };
   users.users.greeter = {

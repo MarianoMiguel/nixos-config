@@ -779,33 +779,47 @@ def _gtk_roles(theme: Theme) -> dict[str, str]:
 
 
 def _lights(theme: Theme) -> dict[str, str]:
-    """The window's two lights (close, maximize) and their unfocused grey:
-    Interstellar's palettes carry them; other themes use red and green."""
+    """The window's three lights (close, minimize, maximize) and their
+    unfocused grey: Interstellar's palettes carry them; other themes use red,
+    yellow and green."""
     c = theme.colors
     idle = mix(c["background"], c["foreground"], 0.22)
     return {"light-close": c.get("light_close") or c.get("red") or c["accent"],
+            "light-minimize": c.get("light_minimize") or c.get("yellow") or c["accent"],
             "light-zoom": c.get("light_zoom") or c.get("green") or c["accent"],
             "light-idle": c.get("light_idle") or idle}
 
 
-# Interstellar's window controls: two lights at the start of the title bar
-# (the button order is set in dconf: close,maximize, niri has no minimize),
-# their glyphs only under the pointer, a quiet grey while unfocused.
+# Interstellar's window controls: three lights at the start of the title bar
+# (the button order is set in dconf: close,minimize,maximize), measured as
+# macOS 26 draws them: 14 px circles 23 px apart (9 px between them), the
+# first as far from the window's left edge as from its top (16 px in the 46 px
+# bar). Glyphs show only under the pointer; a quiet grey while unfocused.
+# packages/qt-interstellar-decorations draws the same lights for Qt apps.
 GTK4_LIGHTS = """
-windowcontrols > button { min-width: 0; min-height: 0; padding: 4px 3px; margin: 0; background: none; box-shadow: none; }
-windowcontrols > button > image { -gtk-icon-size: 8px; padding: 2px; color: transparent; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.14); }
+windowcontrols { border-spacing: 1px; }
+windowcontrols.start { margin-left: 6px; }
+windowcontrols > button { min-width: 0; min-height: 0; padding: 0 4px; margin: 0; background: none; box-shadow: none; }
+windowcontrols > button > image { -gtk-icon-size: 8px; padding: 3px; color: transparent; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.14); }
 windowcontrols > button.close > image { background-color: var(--light-close); }
-windowcontrols > button.maximize > image, windowcontrols > button.minimize > image { background-color: var(--light-zoom); }
+windowcontrols > button.minimize > image { background-color: var(--light-minimize); }
+windowcontrols > button.maximize > image { background-color: var(--light-zoom); }
 windowcontrols:hover > button > image { color: rgba(0, 0, 0, 0.6); }
 windowcontrols > button:backdrop > image { background-color: var(--light-idle); box-shadow: none; }
 windowcontrols:hover > button.close:backdrop > image { background-color: var(--light-close); }
+windowcontrols:hover > button.minimize:backdrop > image { background-color: var(--light-minimize); }
 windowcontrols:hover > button.maximize:backdrop > image { background-color: var(--light-zoom); }
 """
 
+# GTK 3's buttons hold a 16 px icon: a -1 px margin on it lets the circle be
+# 14 px. Its header bar pads 6 px and spaces buttons 6 px apart; the margins
+# make up the rest of the 16 px inset and the 9 px gaps.
 GTK3_LIGHTS = """
-headerbar button.titlebutton, .titlebar button.titlebutton { min-width: 12px; min-height: 12px; padding: 0; margin: 0 3px; border: none; border-radius: 50%; background-image: none; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.14); color: transparent; -gtk-icon-shadow: none; }
-headerbar button.titlebutton.close, .titlebar button.titlebutton.close { background-color: @light_close; }
-headerbar button.titlebutton.maximize, .titlebar button.titlebutton.maximize, headerbar button.titlebutton.minimize, .titlebar button.titlebutton.minimize { background-color: @light_zoom; }
+headerbar button.titlebutton, .titlebar button.titlebutton { min-width: 14px; min-height: 14px; padding: 0; margin: 0 2px 0 1px; border: none; border-radius: 50%; background-image: none; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.14); color: transparent; -gtk-icon-shadow: none; }
+headerbar button.titlebutton > image, .titlebar button.titlebutton > image { margin: -1px; }
+headerbar button.titlebutton.close, .titlebar button.titlebutton.close { margin-left: 10px; background-color: @light_close; }
+headerbar button.titlebutton.minimize, .titlebar button.titlebutton.minimize { background-color: @light_minimize; }
+headerbar button.titlebutton.maximize, .titlebar button.titlebutton.maximize { background-color: @light_zoom; }
 headerbar:hover button.titlebutton, .titlebar:hover button.titlebutton { color: rgba(0, 0, 0, 0.6); }
 headerbar button.titlebutton:backdrop, .titlebar button.titlebutton:backdrop { background-color: @light_idle; box-shadow: none; }
 

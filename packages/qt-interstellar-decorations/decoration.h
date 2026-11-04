@@ -5,8 +5,8 @@
  * (https://github.com/FedoraQt/QAdwaitaDecorations), the client-side
  * decorations Qt Wayland also bundles as its "adwaita" plugin.
  * Copyright (C) 2023 Jan Grulich <jgrulich@redhat.com>
- * Copyright (C) 2026 Mariano Miguel (Interstellar's bar: two lights at the
- * start, the theme's colours from kdeglobals, no minimize)
+ * Copyright (C) 2026 Mariano Miguel (Interstellar's bar: three lights at the
+ * start, the theme's colours from kdeglobals)
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -43,9 +43,9 @@ class QWaylandInputDevice;
 namespace Interstellar {
 
 // The title bar: the theme's window colour, the title centred in its text
-// colour, and two lights at the start, close (red) then maximize (green);
-// niri has no minimize. Glyphs show while the pointer is over the lights; both
-// lights go grey while the window is not focused.
+// colour, and three lights at the start: close (red), minimize (yellow),
+// maximize (green). Glyphs show while the pointer is over the lights; all of
+// them go grey while the window is not focused.
 class Decoration : public QtWaylandClient::QWaylandAbstractDecoration
 {
     Q_OBJECT
@@ -63,11 +63,12 @@ protected:
                      Qt::KeyboardModifiers mods) override;
 
 private:
-    enum Light { None, Close, Maximize };
+    enum Light { None, Close, Minimize, Maximize };
 
     bool isActive() const;
     bool isMaximized() const;
     bool isSquare() const;
+    bool canMinimize() const;
     bool canMaximize() const;
 
     QRectF bar() const;

@@ -47,8 +47,9 @@ public:
         QColor text;
         QColor textInactive;
         QColor close;
+        QColor minimize;
         QColor maximize;
-        QColor idle; // both lights while the window is not focused
+        QColor idle; // every light while the window is not focused
         QFont font;
     };
 

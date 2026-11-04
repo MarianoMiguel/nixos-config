@@ -6,8 +6,8 @@
  * decorations Qt Wayland also bundles as its "adwaita" plugin: the margins,
  * resize edges, title-bar mouse handling and repaint requests follow it.
  * Copyright (C) 2023 Jan Grulich <jgrulich@redhat.com>
- * Copyright (C) 2026 Mariano Miguel (Interstellar's bar: two lights at the
- * start, the theme's colours from kdeglobals, no minimize)
+ * Copyright (C) 2026 Mariano Miguel (Interstellar's bar: three lights at the
+ * start, the theme's colours from kdeglobals)
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -46,17 +46,19 @@ namespace Interstellar {
 
 namespace {
 
-// Measured from the GTK title bars (libadwaita header bar with the lights) so
-// bars line up across apps: 46 px tall, 12 px lights 9 px apart, the first one
-// 9 px from the window's edge.
+// As themeport's GTK CSS places the lights, so bars line up across apps, and
+// as macOS 26 draws them: a 46 px bar, 14 px lights 23 px apart (9 px between
+// them), the first as far from the window's left edge as from the bar's top.
 constexpr int titlebarHeight = 46;
-constexpr qreal lightSize = 12;
+constexpr qreal lightSize = 14;
 constexpr qreal lightGap = 9;
-constexpr qreal lightInset = 9;
+constexpr qreal lightInset = (titlebarHeight - lightSize) / 2;
 // Around the lights, the band where the pointer shows the glyphs.
 constexpr qreal lightSlack = 6;
-// Only for compositors that do not tile the window (niri always says tiled):
-// an invisible band to resize from, a hairline frame and niri's corner radius.
+// Only for windows the compositor does not tile or maximize: an invisible
+// band to resize from, a hairline frame and rounded top corners. The hairline
+// lies outside the window's geometry, as GTK's outline does, so the bar and
+// its lights measure from the same edge in Qt and GTK apps.
 constexpr int resizeBand = 10;
 constexpr int borderWidth = 1;
 constexpr qreal cornerRadius = 12;
@@ -100,9 +102,26 @@ bool Decoration::isSquare() const
             || waylandWindow()->toplevelWindowTilingStates() != QWaylandWindow::WindowNoState;
 }
 
+// Like GTK: no minimize light on dialogs unless they ask for one. (Main
+// windows' button hints are unreliable: Dolphin's carry none, so only dialogs
+// read them.)
+bool Decoration::canMinimize() const
+{
+    const QWindow *qwindow = window();
+    if (!qwindow)
+        return true;
+    switch (qwindow->type()) {
+    case Qt::Dialog:
+    case Qt::Sheet:
+    case Qt::Tool:
+        return qwindow->flags().testFlag(Qt::WindowMinimizeButtonHint);
+    default:
+        return true;
+    }
+}
+
 // Like GTK: no maximize light on fixed-size windows, nor on dialogs unless
-// they ask for one. (Main windows' button hints are unreliable: Dolphin's
-// carry none, so only dialogs read them.)
+// they ask for one.
 bool Decoration::canMaximize() const
 {
     const QWindow *qwindow = window();
@@ -127,9 +146,7 @@ QMargins Decoration::margins(MarginsType marginsType) const
 
     const QWaylandWindow::ToplevelWindowTilingStates tiling =
             waylandWindow()->toplevelWindowTilingStates();
-    const int around = marginsType == ShadowsOnly ? resizeBand
-            : marginsType == ShadowsExcluded      ? borderWidth
-                                                  : resizeBand + borderWidth;
+    const int around = marginsType == ShadowsExcluded ? 0 : resizeBand + borderWidth;
     const auto side = [&](QWaylandWindow::ToplevelWindowTilingState edge) {
         return tiling.testFlag(edge) ? 0 : around;
     };
@@ -151,7 +168,10 @@ QRectF Decoration::bar() const
 QRectF Decoration::lightRect(Light light) const
 {
     const QRectF titlebar = bar();
-    const int index = light == Maximize ? 1 : 0;
+    // Lights a window does not have leave no gap, as in GTK.
+    const int index = light == Close ? 0
+            : light == Minimize      ? 1
+                                     : (canMinimize() ? 2 : 1);
     return QRectF(titlebar.left() + lightInset + index * (lightSize + lightGap),
                   titlebar.top() + (titlebar.height() - lightSize) / 2, lightSize, lightSize);
 }
@@ -164,6 +184,8 @@ QRectF Decoration::lightTarget(Light light) const
 QRectF Decoration::lightsArea() const
 {
     QRectF area = lightTarget(Close);
+    if (canMinimize())
+        area |= lightTarget(Minimize);
     if (canMaximize())
         area |= lightTarget(Maximize);
     return area;
@@ -173,6 +195,8 @@ Decoration::Light Decoration::lightAt(const QPointF &local) const
 {
     if (lightTarget(Close).contains(local))
         return Close;
+    if (canMinimize() && lightTarget(Minimize).contains(local))
+        return Minimize;
     if (canMaximize() && lightTarget(Maximize).contains(local))
         return Maximize;
     return None;
@@ -195,13 +219,13 @@ void Decoration::paint(QPaintDevice *device)
     painter.setRenderHint(QPainter::Antialiasing);
 
     if (isSquare()) {
-        // niri tiles every window and rounds its corners itself.
+        // Maximized or tiled: square, flush with the screen's edges.
         painter.fillRect(frame, colors.bar);
     } else {
         painter.fillPath(roundedTop(frame, cornerRadius), colors.bar);
         QColor hairline = colors.text;
         hairline.setAlphaF(0.12);
-        painter.strokePath(roundedTop(frame.adjusted(0.5, 0.5, -0.5, -0.5), cornerRadius - 0.5),
+        painter.strokePath(roundedTop(frame.adjusted(-0.5, -0.5, 0.5, 0.5), cornerRadius + 0.5),
                            QPen(hairline, 1));
     }
 
@@ -224,10 +248,13 @@ void Decoration::paint(QPaintDevice *device)
         m_logged = true;
         qCDebug(lcInterstellarDecoration) << window() << window()->flags() << window()->type()
                                           << window()->minimumSize() << window()->maximumSize()
+                                          << "minimize" << canMinimize()
                                           << "maximize" << canMaximize() << "tiling"
                                           << waylandWindow()->toplevelWindowTilingStates();
     }
     paintLight(painter, Close, colors, active);
+    if (canMinimize())
+        paintLight(painter, Minimize, colors, active);
     if (canMaximize())
         paintLight(painter, Maximize, colors, active);
 }
@@ -238,7 +265,10 @@ void Decoration::paintLight(QPainter &painter, Light light, const Palette::Color
     const QRectF rect = lightRect(light);
     // Grey while the window is not focused, unless the pointer is on the lights.
     const bool lit = active || m_lightsHovered;
-    QColor fill = lit ? (light == Close ? colors.close : colors.maximize) : colors.idle;
+    QColor fill = !lit           ? colors.idle
+            : light == Close    ? colors.close
+            : light == Minimize ? colors.minimize
+                                : colors.maximize;
     if (m_pressed == light)
         fill = fill.darker(125);
 
@@ -255,9 +285,10 @@ void Decoration::paintLight(QPainter &painter, Light light, const Palette::Color
     if (m_lightsHovered) {
         const QColor glyph(0, 0, 0, 153); // black at 60 %, as on the GTK lights
         const QPointF centre = rect.center();
+        const qreal k = lightSize / 12; // the glyphs were drawn for 12 px lights
         if (light == Close) {
             // One path, so the translucent strokes do not darken where they cross.
-            const qreal arm = 2.4;
+            const qreal arm = 2.4 * k;
             QPainterPath cross;
             cross.moveTo(centre + QPointF(-arm, -arm));
             cross.lineTo(centre + QPointF(arm, arm));
@@ -266,6 +297,10 @@ void Decoration::paintLight(QPainter &painter, Light light, const Palette::Color
             painter.setBrush(Qt::NoBrush);
             painter.setPen(QPen(glyph, 1.3, Qt::SolidLine, Qt::RoundCap));
             painter.drawPath(cross);
+        } else if (light == Minimize) {
+            painter.setBrush(Qt::NoBrush);
+            painter.setPen(QPen(glyph, 1.3, Qt::SolidLine, Qt::RoundCap));
+            painter.drawLine(centre + QPointF(-3.0 * k, 0), centre + QPointF(3.0 * k, 0));
         } else {
             // Two arrowheads on the diagonal: outward to maximize, inward to restore.
             painter.setPen(Qt::NoPen);
@@ -273,14 +308,15 @@ void Decoration::paintLight(QPainter &painter, Light light, const Palette::Color
             const bool restore = isMaximized();
             for (const qreal s : { -1.0, 1.0 }) {
                 QPolygonF arrowhead;
+                const qreal t = s * k;
                 if (restore)
-                    arrowhead << centre + QPointF(0.5 * s, 0.5 * s)
-                              << centre + QPointF(0.5 * s, 4.0 * s)
-                              << centre + QPointF(4.0 * s, 0.5 * s);
+                    arrowhead << centre + QPointF(0.5 * t, 0.5 * t)
+                              << centre + QPointF(0.5 * t, 4.0 * t)
+                              << centre + QPointF(4.0 * t, 0.5 * t);
                 else
-                    arrowhead << centre + QPointF(3.0 * s, 3.0 * s)
-                              << centre + QPointF(-0.6 * s, 3.0 * s)
-                              << centre + QPointF(3.0 * s, -0.6 * s);
+                    arrowhead << centre + QPointF(3.0 * t, 3.0 * t)
+                              << centre + QPointF(-0.6 * t, 3.0 * t)
+                              << centre + QPointF(3.0 * t, -0.6 * t);
                 painter.drawPolygon(arrowhead);
             }
         }
@@ -428,6 +464,9 @@ void Decoration::activate(Light light)
     if (light == Close) {
         setLightsHovered(false, nullptr);
         QWindowSystemInterface::handleCloseEvent(window());
+    } else if (light == Minimize) {
+        setLightsHovered(false, nullptr);
+        window()->showMinimized();
     } else if (light == Maximize) {
         window()->setWindowStates(window()->windowStates() ^ Qt::WindowMaximized);
     }

@@ -35,18 +35,20 @@ namespace Interstellar {
 namespace {
 
 // Each theme's lights when themeport's GTK palette is missing: close,
-// maximize, and the grey of both while the window is not focused, as
-// tools/azure-folio/looks.py gives them (light_close, light_zoom, light_idle).
+// minimize, maximize, and the grey of all three while the window is not
+// focused, as tools/azure-folio/looks.py gives them (light_close,
+// light_minimize, light_zoom, light_idle).
 struct Lights
 {
     QRgb close;
+    QRgb minimize;
     QRgb maximize;
     QRgb idle;
 };
-constexpr Lights lumenLight{ 0xff5f57, 0x28c840, 0xd1d1d6 };
-constexpr Lights lumenDark{ 0xff5f57, 0x28c840, 0x48484a };
-constexpr Lights folioLight{ 0xb4473f, 0x3f7d5c, 0xd9d0bf };
-constexpr Lights folioDark{ 0xf09088, 0x8cc5a3, 0x263e5e };
+constexpr Lights lumenLight{ 0xff5f57, 0xfebc2e, 0x28c840, 0xd1d1d6 };
+constexpr Lights lumenDark{ 0xff5f57, 0xfebc2e, 0x28c840, 0x48484a };
+constexpr Lights folioLight{ 0xb4473f, 0xb8892e, 0x3f7d5c, 0xd9d0bf };
+constexpr Lights folioDark{ 0xf09088, 0xe6c27a, 0x8cc5a3, 0x263e5e };
 
 // KDE writes colours as "r,g,b" (QSettings reads that as a list); #rrggbb is
 // accepted too.
@@ -221,6 +223,7 @@ void Palette::load()
     if (gtk.open(QIODevice::ReadOnly))
         css = QString::fromUtf8(gtk.readAll());
     const QColor gtkClose = gtkColor(css, QLatin1StringView("light_close"));
+    const QColor gtkMinimize = gtkColor(css, QLatin1StringView("light_minimize"));
     const QColor gtkZoom = gtkColor(css, QLatin1StringView("light_zoom"));
     const QColor gtkIdle = gtkColor(css, QLatin1StringView("light_idle"));
 
@@ -230,6 +233,7 @@ void Palette::load()
     colors.text = text.isValid() ? text : QColor(dark ? 0xe4e9f0 : 0x263a57);
     colors.textInactive = textInactive.isValid() ? textInactive : mix(colors.text, colors.bar, 0.45);
     colors.close = gtkClose.isValid() ? gtkClose : QColor(lights.close);
+    colors.minimize = gtkMinimize.isValid() ? gtkMinimize : QColor(lights.minimize);
     colors.maximize = gtkZoom.isValid() ? gtkZoom : QColor(lights.maximize);
     colors.idle = gtkIdle.isValid() ? gtkIdle : QColor(lights.idle);
 

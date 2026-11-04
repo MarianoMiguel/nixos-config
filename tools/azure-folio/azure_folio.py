@@ -14,7 +14,6 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
-from render import render_cached
 import looks
 import pictures
 
@@ -135,42 +134,10 @@ def appearance(selection,cat=None):
     return {**selection,'collectionName':collection['name'],'paper':'#f7f4e9' if mode=='light' else '#101d33','inkColor':folio_ink(selection,mode),'look':looks.resolve(selection['theme'],mode,pick(selection)),'muted':'#536177' if mode=='light' else '#9eb0ca','line':'#d9d0bf' if mode=='light' else '#384c69','images':images}
 
 
-def ipc(*args,required=False):
-    try:
-        proc=subprocess.run(['dms','ipc','call',*map(str,args)],capture_output=True,text=True,timeout=15)
-        good=proc.returncode==0 and not proc.stdout.startswith('ERROR:')
-        if required and not good: raise RuntimeError(proc.stdout.strip() or proc.stderr.strip())
-        return proc.stdout.strip() if good else None
-    except (OSError,subprocess.TimeoutExpired):
-        if required: raise
-        return None
-
-
-def display_targets(outputs):
-    """Include disabled connectors so the laptop's render is ready to undock."""
-    result = {}
-    for name, output in outputs.items():
-        modes = output.get('modes', [])
-        index = output.get('current_mode')
-        mode = modes[index] if type(index) is int and 0 <= index < len(modes) else next((m for m in modes if m.get('is_preferred')), None)
-        if not mode: continue
-        width, height = mode['width'], mode['height']
-        transform = (output.get('logical') or {}).get('transform', 'Normal')
-        if transform in ['90', '270', 'Flipped90', 'Flipped270']:
-            width, height = height, width
-        result[name] = (width, height)
-    return result
-
-
-def monitor_outputs():
-    if not os.environ.get('NIRI_SOCKET'): return {}
-    result = subprocess.run(['niri', 'msg', '-j', 'outputs'], capture_output=True, text=True, timeout=10, check=True)
-    return json.loads(result.stdout)
-
-
 def ensure_prints(selection, cat=None):
-    """Your pictures are printed for DMS when chosen, not ahead of time: the
-    chosen one in the selection's ink and mode (shipped plates come printed)."""
+    """Your pictures are printed for the desktop when chosen, not ahead of
+    time: the chosen one in the selection's ink and mode (shipped plates come
+    printed)."""
     cat = cat or catalog()
     collection = collection_of(selection, cat)
     if collection['id'] != MINE: return
@@ -178,62 +145,27 @@ def ensure_prints(selection, cat=None):
     pictures.prints(collection['art'][selection['art']]['id'], ink, mode, cat['inks'][ink][mode])
 
 
-def render_wallpapers(selection, outputs):
-    cat = catalog()
-    collection = collection_of(selection, cat)
-    art = collection['art'][selection['art']]
-    if collection['id'] == MINE:
-        # A renamed picture keeps its renders: only what shapes the crop counts.
-        art = {k: art[k] for k in ('id', 'file', 'generated', 'desktopFocus')}
-    ink = folio_ink(selection, selection['mode'])
-    paper = '#f7f4e9' if selection['mode'] == 'light' else '#101d33'
-    return {name: str(render_cached(data_of(collection), CACHE, art, size, ink, paper))
-            for name, size in display_targets(outputs).items()}
-
-
 def set_wallpaper(selection):
+    """The plate on GNOME's desktop (mariano-set-wallpaper, from themeport.nix):
+    one picture for every display, which GNOME zooms to fill each."""
     ensure_prints(selection)
     selected = appearance(selection)['images'][selection['art']]['desktop']
-    wallpapers = render_wallpapers(selection, monitor_outputs())
-    result = ipc('folioWallpaper', 'apply', selected, json.dumps(wallpapers), required=True)
-    if not result.startswith('SUCCESS:'):
-        raise RuntimeError('DMS Folio wallpaper integration is not ready: ' + result)
-    return wallpapers
-
-
-def refresh_wallpapers(selection):
-    # Hotplug must not replace a personal wallpaper chosen outside Folio.
-    current = ipc('folioWallpaper', 'get')
-    selected = appearance(selection)['images'][selection['art']]['desktop']
-    if not current or Path(current).resolve() != Path(selected).resolve(): return
-    set_wallpaper(selection)
+    subprocess.run(['mariano-set-wallpaper', selected], check=True, capture_output=True, timeout=30)
+    return selected
 
 
 def apply(selection, previous, force=False):
     palette_changed=force or any(selection.get(k)!=previous.get(k) for k in ['theme','mode','ink','customInk','accent','customAccent'])
     if palette_changed:
         # Apps get the palette looks.py derives for this theme, mode and color.
-        subprocess.run(['themeport','look',selection['theme'],selection['mode'],pick(selection),'--no-restart'],check=True)
+        subprocess.run(['themeport','look',selection['theme'],selection['mode'],pick(selection)],check=True)
     doc=appearance(selection)
-    # Live IPC owns DMS settings writes. The Home Manager activation separately
-    # provides the same defaults before the shell has started. Corners, gaps and
-    # transparency are not Folio's: they belong to the workshop's looks.
-    for key,value in {'fontFamily':'Inter','monoFontFamily':'IBM Plex Mono','lockScreenFontFamily':'Jacquard 24','lockScreenShowDate':'true','greeterFontFamily':'Inter','fontWeight':'400','fontScale':'1','terminalsAlwaysDark':'false'}.items():
-        ipc('settings','set',key,value)
-    selected=doc['images'][selection['art']]['desktop']
-    if selection['theme']=='folio': ensure_prints(selection)
-    # Lumen's wallpaper is drawn by the shell; DMS keeps the last plate.
-    if selection['theme']!='folio': pass
-    elif ipc('settings','get','currentThemeName') is not None:
-        set_wallpaper(selection)
-    else:
-        session=Path.home()/'.local/state/nixos-config/dotfiles/dms/session.json'
-        raw=json.loads(session.read_text()) if session.exists() else {}
-        raw.update({'wallpaperPath':selected,'isLightMode':selection['mode']=='light','perMonitorWallpaper':False,'monitorWallpapers':{}})
-        if isinstance(raw.get('monitorWallpapers'),dict): raw['monitorWallpapers']={k:selected for k in raw['monitorWallpapers']}
-        atomic_json(session.resolve(),raw,0o600)
-    # Publish only after the wallpaper/theme apply succeeded. Greeter state is
-    # reconstructed by a root-owned service, never copied as arbitrary paths.
+    # Folio prints its plate on the desktop. Lumen's sky was drawn by the Folio
+    # shell, which GNOME does not run: the desktop keeps its last wallpaper.
+    if selection['theme']=='folio': set_wallpaper(selection)
+    # Publish only after the wallpaper/theme apply succeeded. The login and
+    # boot screens' state is reconstructed from this by a root-owned service
+    # (azure-folio-greeter-state), never copied as arbitrary paths.
     atomic_json(STATE,selection)
     atomic_json(STATE.with_name('appearance.json'),doc)
     print(f"Interstellar · {selection['theme']} · {selection['mode']} · {pick(selection)}")
@@ -267,7 +199,6 @@ def main():
     s=sub.add_parser('set');s.add_argument('--collection',choices=[c['id'] for c in catalog(mine=False)['collections']]+[MINE]);s.add_argument('--mode',choices=['light','dark']);s.add_argument('--theme',choices=looks.THEMES);s.add_argument('--sky',choices=looks.SKIES);s.add_argument('--ink',help='azure, cobalt, slate, custom or #rrggbb');s.add_argument('--accent',help="one of Lumen's colors, custom or #rrggbb");s.add_argument('--art',type=int);s.add_argument('--force',action='store_true')
     sub.add_parser('next')
     sub.add_parser('restore')
-    sub.add_parser('refresh-wallpapers', help='Refresh per-display crops after a display change')
     q=sub.add_parser('publish');q.add_argument('--input',type=Path,required=True);q.add_argument('--output',type=Path,required=True)
     y=sub.add_parser('pictures',help=f'Print the pictures in {pictures.FOLDER} as plates of "{pictures.NAME}"');y.add_argument('--create',action='store_true',help='make the folder first')
     args=p.parse_args()
@@ -276,16 +207,14 @@ def main():
     if args.command=='pictures':
         doc=scan_pictures(args.create)
         print(json.dumps({k:doc[k] for k in ['folder','present','pending','arriving','skipped']}|{'pictures':len(doc['collection']['art'])},ensure_ascii=False));return
-    # Your pictures are read again before they are chosen or cycled, so DMS
-    # (which does not watch the folder as Folio's shell does) sees new ones;
-    # not while a scan is already printing (the shell's): its plates do.
+    # Your pictures are read again before they are chosen or cycled, so new
+    # ones are there to choose; not while a scan is already printing.
     if args.command in ('set','next','restore') and MINE in (getattr(args,'collection',None),stored_collection()): scan_pictures(wait=False)
     if args.command=='status': print(json.dumps(appearance(read_selection()),ensure_ascii=False));return
     STATE.parent.mkdir(parents=True,exist_ok=True)
     with STATE.with_suffix('.lock').open('w') as lock:
         fcntl.flock(lock,fcntl.LOCK_EX)
         previous=read_selection(); selection=dict(previous)
-        if args.command=='refresh-wallpapers': refresh_wallpapers(selection);return
         if args.command=='set':
             for key in ['collection','mode','art','theme','sky']:
                 if getattr(args,key) is not None: selection[key]=getattr(args,key)

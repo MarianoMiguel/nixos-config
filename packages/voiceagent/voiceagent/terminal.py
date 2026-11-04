@@ -31,6 +31,7 @@ class Terminal:
         self.command = command or ["claude"]
         # The one window this agent owns. None until we spawn one.
         self.window_id: int | None = None
+        self._process: asyncio.subprocess.Process | None = None
 
     async def _still_open(self) -> bool:
         if self.window_id is None:
@@ -38,19 +39,22 @@ class Terminal:
         return any(window.get("id") == self.window_id for window in await keys.windows())
 
     async def _spawn(self) -> int | None:
-        for binary in ("ghostty", "niri", "ydotool"):
+        for binary in ("ghostty", "busctl", "systemd-run", "ydotool"):
             if shutil.which(binary) is None:
                 log.error("%s is not on PATH", binary)
                 return None
 
         before = {window.get("id") for window in await keys.windows()}
         log.info("opening a Claude Code terminal in %s", self.cwd)
-        await keys.run(
-            [
-                "niri",
-                "msg",
-                "action",
-                "spawn",
+        # A scope of its own, so restarting voiceagentd never takes the
+        # terminal (and the conversation in it) down with the daemon's cgroup.
+        try:
+            self._process = await asyncio.create_subprocess_exec(
+                "systemd-run",
+                "--user",
+                "--scope",
+                "--quiet",
+                "--collect",
                 "--",
                 "ghostty",
                 f"--class={APP_ID}",
@@ -58,8 +62,13 @@ class Terminal:
                 "--title=Voice Agent",
                 "-e",
                 *self.command,
-            ]
-        )
+                stdin=asyncio.subprocess.DEVNULL,
+                stdout=asyncio.subprocess.DEVNULL,
+                stderr=asyncio.subprocess.DEVNULL,
+            )
+        except OSError as exc:
+            log.error("cannot start the terminal: %s", exc)
+            return None
 
         # Identify the window by what is new rather than by app id, so a second
         # agent window never gets confused with the first.

@@ -101,83 +101,7 @@ class OverlayState(unittest.TestCase):
 
 
 class Theming(unittest.TestCase):
-    """The panel has to match the desktop, including a custom theme file."""
-
-    def setUp(self):
-        import os
-        import tempfile
-
-        self.tmp = tempfile.TemporaryDirectory()
-        root = self.tmp.name
-        os.environ["XDG_CONFIG_HOME"] = root + "/config"
-        os.environ["XDG_STATE_HOME"] = root + "/state"
-        self.config = __import__("pathlib").Path(root) / "config" / "DankMaterialShell"
-        self.state = __import__("pathlib").Path(root) / "state" / "DankMaterialShell"
-        self.config.mkdir(parents=True)
-        self.state.mkdir(parents=True)
-
-    def tearDown(self):
-        self.tmp.cleanup()
-
-    def _write(self, path, payload):
-        path.write_text(json.dumps(payload))
-
-    def test_falls_back_when_nothing_is_readable(self):
-        from voiceagent import theme
-
-        colors = theme.resolve()
-        self.assertEqual(colors, theme.FALLBACK)
-
-    def test_reads_the_builtin_theme(self):
-        from voiceagent import theme
-
-        self._write(self.config / "settings.json", {})
-        self._write(self.config / "theme.json", {"dark": {"primary": "#112233"}})
-        self.assertEqual(theme.resolve()["primary"], "#112233")
-
-    def test_custom_theme_file_wins(self):
-        # This is how the themeport palette reaches the shell; reading
-        # theme.json instead would leave the panel a different colour from
-        # every other surface on the desktop.
-        from voiceagent import theme
-
-        custom = self.config / "themes" / "themeport" / "theme.json"
-        custom.parent.mkdir(parents=True)
-        self._write(custom, {"dark": {"primary": "#d4bd99"}})
-        self._write(self.config / "theme.json", {"dark": {"primary": "#6fb8e3"}})
-        self._write(self.config / "settings.json", {"customThemeFile": str(custom)})
-        self.assertEqual(theme.resolve()["primary"], "#d4bd99")
-
-    def test_light_mode_uses_the_light_variant(self):
-        from voiceagent import theme
-
-        self._write(self.config / "settings.json", {})
-        self._write(
-            self.config / "theme.json",
-            {"dark": {"primary": "#000000"}, "light": {"primary": "#ffffff"}},
-        )
-        self._write(self.state / "session.json", {"isLightMode": True})
-        self.assertEqual(theme.resolve()["primary"], "#ffffff")
-
-    def test_missing_roles_fall_back_individually(self):
-        from voiceagent import theme
-
-        self._write(self.config / "settings.json", {})
-        self._write(self.config / "theme.json", {"dark": {"primary": "#112233"}})
-        colors = theme.resolve()
-        self.assertEqual(colors["primary"], "#112233")
-        self.assertEqual(colors["error"], theme.FALLBACK["error"])
-
-    def test_garbage_values_are_ignored(self):
-        from voiceagent import theme
-
-        self._write(self.config / "settings.json", {})
-        self._write(self.config / "theme.json", {"dark": {"primary": "not-a-colour"}})
-        self.assertEqual(theme.resolve()["primary"], theme.FALLBACK["primary"])
-
-
-class CornerRadius(unittest.TestCase):
-    """The panel must square off with the rest of the desktop."""
+    """The panel follows the palette themeport last applied."""
 
     def setUp(self):
         import os
@@ -185,52 +109,95 @@ class CornerRadius(unittest.TestCase):
         import tempfile
 
         self.tmp = tempfile.TemporaryDirectory()
-        root = self.tmp.name
-        os.environ["XDG_CONFIG_HOME"] = root + "/config"
-        os.environ["XDG_STATE_HOME"] = root + "/state"
-        self.config = pathlib.Path(root) / "config" / "DankMaterialShell"
-        self.toggle = (
-            pathlib.Path(root) / "state" / "nixos-config" / "dotfiles" / "niri" / "toggles" / "radius.kdl"
-        )
-        self.config.mkdir(parents=True)
-        self.toggle.parent.mkdir(parents=True)
+        os.environ.pop("THEMEPORT_STATE", None)
+        os.environ["XDG_STATE_HOME"] = self.tmp.name + "/state"
+        self.meta = pathlib.Path(self.tmp.name) / "state" / "nixos-config" / "dotfiles" / "themeport" / "meta.json"
+        self.meta.parent.mkdir(parents=True)
 
     def tearDown(self):
         self.tmp.cleanup()
 
-    def test_uses_the_dms_setting(self):
+    def test_falls_back_when_nothing_is_readable(self):
         from voiceagent import theme
 
-        self.config.joinpath("settings.json").write_text(json.dumps({"cornerRadius": 18}))
-        self.assertEqual(theme.radius(), 18)
+        self.assertEqual(theme.resolve(), theme.FALLBACK)
 
-    def test_the_squared_off_toggle_wins(self):
-        # Mod+Ctrl+B writes this rule. It only reaches niri windows, and the
-        # panel is a layer-shell surface, so without this it would stay the one
-        # rounded thing on a squared-off desktop.
+    def test_reads_the_accent_and_background(self):
         from voiceagent import theme
 
-        self.config.joinpath("settings.json").write_text(json.dumps({"cornerRadius": 18}))
-        self.toggle.write_text("window-rule {\n    geometry-corner-radius 0\n}\n")
-        self.assertEqual(theme.radius(), 0)
+        self.meta.write_text(json.dumps({"mode": "dark", "accent": "#d4bd99", "background": "#101d33"}))
+        colors = theme.resolve()
+        self.assertEqual(colors["primary"], "#d4bd99")
+        self.assertEqual(colors["surfaceContainer"], "#101d33")
+        self.assertEqual(colors["surfaceText"], theme.FALLBACK["surfaceText"])
 
-    def test_toggle_off_restores_the_dms_setting(self):
+    def test_light_palette_gets_dark_text(self):
         from voiceagent import theme
 
-        self.config.joinpath("settings.json").write_text(json.dumps({"cornerRadius": 18}))
-        self.toggle.write_text("// Window corners use the current DMS radius.\n")
-        self.assertEqual(theme.radius(), 18)
+        self.meta.write_text(json.dumps({"mode": "light", "accent": "#214c94", "background": "#f7f4e9"}))
+        self.assertEqual(theme.resolve()["surfaceText"], theme.LIGHT_TEXT["surfaceText"])
 
-    def test_falls_back_without_config(self):
+    def test_garbage_values_are_ignored(self):
         from voiceagent import theme
 
-        self.assertEqual(theme.radius(), theme.FALLBACK_RADIUS)
+        self.meta.write_text(json.dumps({"accent": "not-a-colour", "background": "#12345"}))
+        colors = theme.resolve()
+        self.assertEqual(colors["primary"], theme.FALLBACK["primary"])
+        self.assertEqual(colors["surface"], theme.FALLBACK["surface"])
 
-    def test_the_toggle_is_part_of_the_change_signature(self):
-        # Otherwise toggling rounding mid-session would not restyle the panel.
+    def test_the_palette_is_part_of_the_change_signature(self):
+        # Otherwise a theme switch mid-session would not restyle the panel.
         from voiceagent import theme
 
-        self.assertIn(str(self.toggle), theme.watched_paths())
+        self.assertIn(str(self.meta), theme.watched_paths())
+
+
+class GnomeWindows(unittest.TestCase):
+    """GNOME Shell's window service replies through busctl as JSON in JSON."""
+
+    def test_list_reply_becomes_windows(self):
+        from voiceagent import keys
+
+        listed = [{"id": 7, "title": "Voice Agent", "wm_class": "mariano.voiceagent", "workspace": 0}]
+        reply = json.dumps({"type": "s", "data": [json.dumps(listed)]})
+        windows = [keys.as_window(raw) for raw in keys.parse_reply(reply)]
+        self.assertEqual(windows, [{"id": 7, "app_id": "mariano.voiceagent", "title": "Voice Agent"}])
+
+    def test_no_focused_window(self):
+        from voiceagent import keys
+
+        reply = json.dumps({"type": "s", "data": ["null"]})
+        self.assertIsNone(keys.as_window(keys.parse_reply(reply)))
+
+    def test_garbage_is_not_a_window(self):
+        from voiceagent import keys
+
+        self.assertIsNone(keys.parse_reply("not json"))
+        self.assertIsNone(keys.as_window({"title": "no id"}))
+
+
+class PanelSwitch(unittest.IsolatedAsyncioTestCase):
+    """GNOME has no layer shell: a disabled panel must never start Quickshell."""
+
+    async def test_disabled_panel_starts_nothing(self):
+        import tempfile
+        import unittest.mock
+        from pathlib import Path
+
+        from voiceagent.overlay import Overlay
+
+        with tempfile.TemporaryDirectory() as tmp:
+            qml = Path(tmp) / "overlay.qml"
+            qml.write_text("")
+            overlay = Overlay("true", qml, enabled=False)
+            with unittest.mock.patch("asyncio.create_subprocess_exec") as spawn:
+                await overlay.start()
+            spawn.assert_not_called()
+
+    def test_off_by_default(self):
+        from voiceagent.config import Config
+
+        self.assertFalse(Config().overlay)
 
 
 class CleanupGuard(unittest.IsolatedAsyncioTestCase):

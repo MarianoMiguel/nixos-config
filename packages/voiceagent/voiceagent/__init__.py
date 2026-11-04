@@ -1,9 +1,10 @@
 """Speak to a real Claude Code terminal.
 
-Bound to Alt+S in niri. A floating panel shows the input level and what was
-heard; the words themselves are typed into an ordinary Ghostty window running
-`claude`, so the work is visible and a follow-up is just more speech into the
-same session. Speech recognition runs on this machine.
+Bound to Alt+S in GNOME (modules/nixos/voice.nix); Alt+A dictates. The words
+are typed into an ordinary Ghostty window running `claude`, so the work is
+visible and a follow-up is just more speech into the same session. Speech
+recognition runs on this machine. The floating level panel is a layer-shell
+surface, which GNOME does not offer, so it is off unless `overlay = true`.
 """
 
 from __future__ import annotations

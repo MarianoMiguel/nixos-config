@@ -145,7 +145,7 @@ local function watch_generated_theme()
   end
 
   local uv = vim.uv or vim.loop
-  local path = vim.fn.stdpath("config") .. "/lua/plugins/dankcolors.lua"
+  local path = vim.fn.stdpath("config") .. "/lua/plugins/themeport.lua"
   if not uv.fs_stat(path) then
     return
   end

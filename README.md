@@ -120,22 +120,37 @@ After installation, remove the USB drive and reboot. The firmware will ask for
 the LUKS password; the desktop uses Mariano's password; `sudo` and admin prompts
 (polkit) use the separate administrator password.
 
-## Consistent Desktop And System Actions
+## Desktop
 
-Niri and Dank Material Shell are the primary desktop. DMS owns networking,
-Bluetooth, audio, displays, wallpaper, notifications and quick settings. GNOME
-remains a stock fallback session, but Plasma, Blueman, NetworkManager's tray
-applet, Discover and PackageKit are deliberately not installed as competing
-control surfaces. KDE applications such as Dolphin, Krita and Kdenlive remain
-available and follow the same GTK-derived light/dark appearance.
+GNOME is the desktop, extended with GNOME Shell extensions packaged or pinned
+in this repository: Vicinae's companions, AppIndicator for tray apps, Dash to
+Dock and CodexBar's quota indicator (`modules/nixos/gnome.nix`,
+`modules/nixos/vicinae.nix`, `extensions/`). Plasma, Blueman,
+NetworkManager's tray applet, Discover and PackageKit are deliberately not
+installed as competing control surfaces. KDE applications such as Dolphin,
+Krita and Kdenlive remain available and follow the same light/dark
+appearance; Qt apps draw Interstellar's title bar
+(`packages/qt-interstellar-decorations`).
 
-### Desktop workshop
+The earlier niri desktop (Dank Material Shell, the Folio shell, the design
+workshop and Pond) is archived on the `archive/interstellar-niri` branch.
 
-The desktop is being redesigned in [`workshop/`](workshop/README.md): Azure
-Folio's colors with Pond's form, tried as saved looks you can switch live.
-`scripts/workshop open` opens the workshop page. On Bonhart, `pond-preview`
-runs [Pond](https://github.com/bflycomputer)'s shell in a nested window as a
-design reference.
+### Login screen
+
+The login screen is still DMS's greeter, running in a bare niri under greetd
+and drawn in Interstellar's look (`modules/nixos/login-screen.nix`,
+`patches/dms-azure-folio-greeter.patch`). GNOME is the only session it
+offers. It stays until a GDM login screen is styled to match the disk-unlock
+screen. A system switch preserves the running greeter; the rebuilt one
+appears when greetd next starts (normally after reboot).
+
+### Launcher and shortcuts
+
+`Alt+Space` opens Vicinae, the application launcher; `Alt+[`, `Alt+]` and
+`Alt+'` center, almost-maximize and hide the other windows. A tap on `Super`
+opens Activities. `Alt+A` dictates into the focused window and `Alt+S` talks
+to the voice agent (below). keyd's Alt layer turns `Alt+D`/`Alt+U` into
+Page Down/Up and `Alt+Left`/`Alt+Right` into Home/End everywhere.
 
 cmux Browser is installed with the workstation applications. Launch `cmux`
 or `cmux-browser`, or search for cmux in the app launcher; `cmux-tui` exposes
@@ -145,56 +160,32 @@ NixOS, and retains Chromium's user-namespace sandbox. Updates are managed by
 changing that package pin and rebuilding, rather than the in-app updater.
 Chrome remains the default web browser.
 
-In Niri, `Alt+Space` opens the DMS application launcher with an empty search
-(`Super+Period` also toggles the launcher), and `Super+Space` opens the separate,
-searchable System Actions menu with the `sys` filter. In GNOME,
-`Alt+Space` opens the Vicinae application launcher and `Super+Space` opens
-System Actions; Vicinae only runs in the GNOME session. System actions are not
-exported as fake applications, so they do not crowd launcher results.
-`mariano-system-menu --categories` offers the same commands as a browsable
-nested menu. Important entries include:
+### Update All
 
-- safe laptop-display toggle, which refuses to turn off the only active screen;
-- DMS display/network settings, Wi-Fi and Bluetooth toggles, and Proton VPN;
-- full, region and video capture plus a remembered system-audio toggle;
-- DMS Power & Sleep settings plus a Focus menu for notification silence,
-  `Stay awake`, reminders, local dictation and Night Light;
-- immediate lock, lock-screen preview, and lock/screen-saver settings;
-- Azure Folio appearance: Doré, European Summer, or Argentina art; light/dark
-  with Azure, Cobalt, or Slate ink, plus window border/gap controls;
-- fingerprint enrollment on Bonhart; and
-- a guarded `Update All NixOS Packages` action in the `Super+Space` menu. It
-  runs the same operation as `sudo mariano-system-update-all`, refreshing every
-  movable flake input—including Codex Desktop—before building and switching.
-  It builds only committed code. It resolves `/etc/nixos` to the
-  administrator's checkout, rejects unsafe ownership or permissions, and
-  refuses a checkout with uncommitted changes or with `.nix` files git does not
-  track (untracked or ignored), since a build from git would leave them out.
-  As the checkout owner it updates the inputs, commits the new `flake.lock`
-  (`flake.lock: update all inputs`, local until you push), lists the commits
-  since the deployed generation, and builds that exact commit
-  (`git+file://…?rev=…`); root only activates the result. Each generation
-  records its commit (`nixos-version --configuration-revision`), and
-  `/var/lib/mariano-system-update/deployed-commit` keeps the last one deployed.
-  If the build or the switch fails, the lock commit is undone. Explicitly
-  commit-pinned inputs remain pinned; `sudo mariano-system-update` remains
-  available for a narrow update of only `nixpkgs`, Home Manager and Disko.
+`sudo mariano-system-update-all` updates the system; twice a week a
+notification reminds you when the locked nixpkgs is more than two weeks old.
+It refreshes every movable flake input—including Codex Desktop—before
+building and switching. It builds only committed code. It resolves
+`/etc/nixos` to the administrator's checkout, rejects unsafe ownership or
+permissions, and refuses a checkout with uncommitted changes or with `.nix`
+files git does not track (untracked or ignored), since a build from git
+would leave them out. As the checkout owner it updates the inputs, commits
+the new `flake.lock` (`flake.lock: update all inputs`, local until you push),
+lists the commits since the deployed generation, and builds that exact commit
+(`git+file://…?rev=…`); root only activates the result. Each generation
+records its commit (`nixos-version --configuration-revision`), and
+`/var/lib/mariano-system-update/deployed-commit` keeps the last one deployed.
+If the build or the switch fails, the lock commit is undone. Explicitly
+commit-pinned inputs remain pinned; `sudo mariano-system-update` remains
+available for a narrow update of only `nixpkgs`, Home Manager and Disko.
 
 The guided installer already installs Steam and Proton VPN as part of the
 workstation closure.
 
-### Fast motion and focus controls
+### Reminders, dictation and quotas
 
-Niri transitions use fixed 40–70 ms timings instead of open-ended springs.
-DMS uses a 40 ms custom base, so its largest expressive transition is 80 ms;
-notification and AI-quota feedback use 60 ms. Long-running spinners and active
-recording/dictation indicators keep their slower cycles because they describe
-ongoing work rather than delaying an interaction.
-
-Search `Focus` with `Super+Space` for notification silence (toggle, one hour, or
-until 08:00 tomorrow), resume notifications, `Stay awake`, reminders,
-dictation and Night Light. DMS shows active Do Not Disturb and idle-inhibitor
-state in the control center. Reminders are stored in a private local queue and
+`mariano-reminder` sets, lists and clears reminders (`mariano-reminder
+interactive` for a menu). They are stored in a private local queue and
 delivered by a persistent user timer, so locking, sleeping or rebooting does
 not discard them.
 
@@ -203,141 +194,71 @@ to stop; a short silence also ends the recording automatically. Speech is
 transcribed by the pinned local Whisper model and typed into the window that
 was focused when dictation began. `Alt+S` is the separate spoken-agent mode,
 which opens a visible Claude Code terminal instead of typing a transcription.
+Under GNOME the agent finds and focuses its terminal through the Vicinae
+GNOME extension's window service; its floating level panel needs a
+layer-shell compositor, so GNOME's microphone indicator is the only cue.
 
-The CodexBar panel keeps its reviewed OAuth-only quota source, but now presents
-Claude, Codex and any other provider through a compact provider switch and one
-focused quota card at a time. It does not crawl AI transcripts or provide an
-agent launcher.
+The CodexBar GNOME extension shows the Claude and Codex quotas in the top
+bar, through the system's `codexbar` CLI with each tool's OAuth sign-in. It
+does not crawl AI transcripts or provide an agent launcher.
 
-### Screenshots and screen recording
+### Screenshots, idle and locking
 
-The Niri session has one consistent capture workflow:
+GNOME's own screenshot and screencast tool (`Print`) captures the screen, a
+window or a region; `Shift+Ctrl+Alt+R` opens it for a screencast.
 
-- `Alt+Shift+3` captures all displays;
-- `Alt+Shift+4` selects and captures a region; and
-- `Alt+Shift+5` selects a region and starts recording. Press it again to stop
-  and finalize the video.
-
-Screenshots are saved privately in `~/Pictures/Screenshots` and copied to the
-clipboard. Recordings are saved privately in `~/Videos/Recordings`. System
-audio defaults to off for privacy. Search for `System · Capture · Toggle system
-audio in recordings` with `Super+Space` to enable or disable it for future
-recordings; that preference survives reboot. The recorder follows the current
-default audio output, so it continues to work when switching between speakers,
-headphones and a dock.
-
-Recording runs only while a capture is active, without root privileges, KMS
-capabilities, a plugin loader or network access. The persistent notification
-shows whether audio is included and reminds you how to stop. The same
-notification is replaced with the saved file path after the recorder has
-finished writing the MP4.
-
-DMS remains the single idle-policy owner. Fresh installs lock after ten minutes
-on AC or five minutes on battery, then power off the displays after another
-minute or thirty seconds respectively. Existing installations receive that
-baseline once and can subsequently change it in DMS Power & Sleep. Automatic
-suspend stays disabled, matching Bonhart's fail-closed hibernation policy and
-avoiding a second Wayland idle daemon with competing state.
-
-The lock screen is intentionally minimal: time and authentication stay visible;
-power actions, system icons, date, profile image, media controls and notification
-content are hidden. The old five-second fade is disabled. Search for `Preview
-lock screen` or `Lock screen & screensaver settings` to inspect it and configure
-DMS's optional video screensaver without creating a second idle daemon.
+GNOME owns idle, blanking and the lock screen. `modules/nixos/power.nix`
+mirrors the hibernate-only policy into GNOME: idle never sleeps on AC, so
+long plugged-in builds finish; idle on battery hibernates; a closed lid
+hibernates, except on AC on Bonhart (`modules/nixos/remote-workstation.nix`),
+which stays online as an unattended host.
 
 ### Bonhart fingerprint enrollment
 
-Bonhart enables `fprintd` for greetd login, DMS unlock and `sudo`. Admin
-prompts (`polkit`) take only the administrator password. Open `Super+Space`, then `Security · Set up fingerprints` to list,
-enroll or delete prints. Mariano's account owns login and unlock fingerprints.
-Because `sudo` intentionally authenticates against the separate root account,
-its submenu uses NixOS's root-owned security wrapper and should enroll a
-different finger for administrator authentication.
-
-The DMS lock screen exposes password and fingerprint as independent parallel
-methods: typing Mariano's password never waits for or consumes a fingerprint
-attempt, and touching the enrolled finger does not require opening the password
-field first.
+Bonhart enables `fprintd` for the login screen, console login and `sudo`.
+Admin prompts (`polkit`) take only the administrator password. Run
+`mariano-fingerprint-manager` in a terminal to list, enroll or delete prints.
+Mariano's account owns login fingerprints. Because `sudo` intentionally
+authenticates against the separate root account, its submenu uses NixOS's
+root-owned security wrapper and should enroll a different finger for
+administrator authentication.
 
 Passwords remain available as the fallback. Enrollment still needs to be
 performed on the physical ThinkPad because the reader must capture the finger.
 
-### Niri Picture-in-Picture
+### Interstellar's look
 
-Browser Picture-in-Picture windows are managed by the pinned niri-pip v0.2.1
-daemon. It recognizes Firefox and Chromium-family PiP windows, floats them
-without taking keyboard focus, remembers their geometry and follows the active
-Niri workspace. Search for
-`System · Windows · Picture-in-Picture controls` with `Super+Space` to resize,
-position, lock or change the follow behavior. `System · Windows · Toggle
-pin focused window` makes any focused window follow you until it is unpinned.
-
-The package and user service are fully declarative. The upstream installer,
-updater and config mutation scripts are not used; the service is Niri-only,
-rootless, limited to Unix sockets and sandboxed to its geometry state plus its
-generated opacity rule. Multi-monitor follow modes other than the default
-`follow-workspace` remain opt-in because they need testing on the physical
-display layout.
-
-### Niri workspace modes
-
-Every workspace has one of three window modes, switched per monitor from the
-`Workspace Modes` widget at the right of the DankBar or with `Mod+Alt+Space`
-(cycle), `Mod+Alt+T` (tile), `Mod+Alt+F` (float) and `Mod+Alt+Return` (focus):
-
-- **Tile** is Niri's native scrollable tiling and the passive default: with a
-  workspace in tile mode the daemon changes nothing.
-- **Float** floats every window on the workspace, including ones that open
-  later. `Super+drag` moves a window, `Super+right-drag` resizes it.
-- **Focus** merges the workspace into a single centered tabbed column at 80%
-  width (`mariano.workspaceModes.focusWidth`), so exactly one app is visible
-  with wallpaper on both sides and zero neighbor peek. `Mod+Alt+Scroll` (or
-  the usual in-column focus keys) steps one app per notch.
-
-Modes apply to exactly one workspace. The `niri-modes` daemon holds the state
-per workspace ID and enforces it with per-window IPC actions, so switching the
-mode on one monitor can never restyle the workspace showing on another. Shell
-surfaces, portals and Picture-in-Picture windows are exempt from enforcement.
-Mode state is in-memory and resets with the session; the daemon is Niri-only
-and talks solely to Niri's local IPC socket plus its own private Unix socket
-(in the per-login runtime directory) for the widget and CLI.
-
-### Azure Folio appearance
-
-Azure Folio is one visual family with three art collections: **Doré**, **European
-Summer**, and **Argentina**. Each contains two plates. All share Inter for the
-interface, IBM Plex Mono for terminals and captions, and Jacquard 24 for the
-large clock. Choose **Daylight / After hours** and **Azure / Cobalt / Slate** in
-`Super+Space → Azure Folio Appearance`. `Choose Wallpaper` picks a plate from
-the active collection. The desktop fills the display with that choice; login and lock screens use the split layout and
-randomize within the collection each time they open.
-
-DMS still owns the launcher, controls, notifications, media, authentication and
-session locking. Small source patches replace only the greeter and lock-screen
-presentation. The greeter reads a validated, root-published selection; it never
-loads user-supplied QML. A system switch preserves the running greeter session;
-the new login screen appears when greetd next starts (normally after reboot).
+The look is a theme, a mode and one color: **Folio** (art printed in ink on
+paper, with three art collections: **Doré**, **European Summer** and
+**Argentina**, two plates each, plus your own pictures from
+`~/Pictures/Folio`) or **Lumen**, each in **Daylight / After hours**. All
+share Inter for the interface, IBM Plex Mono for terminals and captions, and
+Jacquard 24 for the large clock.
 
 ```sh
 azure-folio set --collection summer --mode light --ink azure
 azure-folio next
-azure-folio set --collection argentina --mode dark --ink slate
+azure-folio set --theme lumen --mode dark --accent green
 azure-folio status
 azure-folio restore
 ```
 
+Each change applies the palette to apps through themeport (`themeport look`),
+puts a Folio plate on GNOME's desktop, and publishes the selection for the
+login screen and the disk-unlock screen (`docs/folio-boot.md`). Under GNOME a
+Lumen selection keeps the current wallpaper; its sky was drawn by the
+archived Folio shell.
+
 The six palette slots are implementation details in Themeport's closed,
-immutable catalog. The old theme collection is no longer packaged. Art and
-fonts are bundled offline. `tools/azure-folio/build.py` creates deterministic
-two-color Atkinson-dithered wallpapers at build time; switching never calls an
-image-generation service. Source credits and original illustration prompts are
-in `assets/azure-folio/`.
+immutable catalog. Art and fonts are bundled offline.
+`tools/azure-folio/build.py` creates deterministic two-color
+Atkinson-dithered wallpapers at build time; switching never calls an
+image-generation service. Source credits and original illustration prompts
+are in `assets/azure-folio/`.
 
 Themeport does not register browser URL handlers, download executable themes,
 install theme-declared VS Code extensions or load mutable third-party catalogs.
-DMS's built-in Matugen templates remain available, while mutable user templates
-are disabled. Chrome receives only a validated theme-color policy. Existing
-DMS integrations are flake-pinned source inputs built with the OS.
+Chrome receives only a validated theme-color policy.
 
 ## Personal Payload
 
@@ -392,5 +313,6 @@ nix flake check
 nixos-rebuild dry-build --flake .#standard
 ```
 
-`nix flake check` also runs every script in `tests/` as a hermetic derivation.
-Run one on its own with `nix build .#checks.x86_64-linux.niri-modes`.
+`nix flake check` also runs every script in `tests/` as a hermetic derivation,
+plus `interstellar-boot` for the boot look. Run one on its own with
+`nix build .#checks.x86_64-linux.system-update`.

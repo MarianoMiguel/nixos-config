@@ -1,7 +1,9 @@
 # themeport
 
-Install any Omarchy community theme on this Niri + DankMaterialShell NixOS
-system, live, without a rebuild.
+Apply a palette to every app on this GNOME NixOS system, live, without a
+rebuild. The system's `themeport` wrapper (modules/nixos/themeport.nix) is a
+closed catalog: Interstellar's looks (`themeport look`) and the themes shipped
+in the Nix store; online installs and galleries below are disabled there.
 
 ```
 themeport install sc0ttman/omarchy-one-dark-pro-theme
@@ -21,7 +23,7 @@ your selection. Its **Omarchy Themes** row opens bjarneo's wallpaper-first
 gallery as an additional source: each wallpaper becomes five selectable
 Palette/Warm/Cool/Material/Aether themes. The gallery's large index is fetched
 only after that source is chosen and cached for 24 hours. Everything is also
-reachable from the bottom of `themeport pick`, so Mod+Ctrl+T covers installed
+reachable from the bottom of `themeport pick`, so one picker covers installed
 and not-yet-downloaded themes. Pin extra repos in
 `~/.config/themeport/sources.json` (`{"repos": ["owner/repo"]}`) — useful for
 themes whose repo name doesn't match the `omarchy-<x>-theme` pattern the search
@@ -30,7 +32,7 @@ but isn't required.
 
 `themeport pick` shows **Omarchy Themes** and **Official Omarchy + community**
 as its first two rows, before installed themes, so both sources are visible
-immediately from `Mod+Ctrl+T`.
+immediately.
 
 **Gallery previews:** all picker views render a preview pane on the right —
 the theme's `preview.png` (or first wallpaper) drawn in the terminal via
@@ -38,13 +40,9 @@ chafa, plus palette swatch strips. Not-yet-installed catalog entries fetch
 their preview image lazily into `~/.cache/themeport/previews/`. Wallpaper
 rows preview the image itself.
 
-**Keybindings** (`dotfiles/niri/themeport.kdl`, included from config.kdl):
-`Mod+Ctrl+T` opens the theme picker, `Mod+Ctrl+W` the wallpaper picker — each
-in a floating Ghostty window (`themeport.picker` app-id rule). The binds live
-in their own include because DMS regenerates `dms/binds.kdl` and would drop
-custom entries. A native DMS/Quickshell plugin picker (like dms-codexbar)
-would be a nicer follow-up, but needs to be developed on the Linux box where
-QML can actually run; the fzf pickers are the dependable baseline.
+**No global shortcut** under GNOME: run `themeport pick` or `themeport
+wallpapers` in a terminal. (The niri session bound them to Mod+Ctrl+T and
+Mod+Ctrl+W; a Vicinae command would be the natural successor.)
 
 ## Aether protocol adapter
 
@@ -81,35 +79,34 @@ themeport handle-url 'aether://apply?colors=https%3A%2F%2Fexample.com%2Fcolors.t
    `~/.local/state/nixos-config/dotfiles/themeport/`, independent of where the
    NixOS repository was cloned. Home Manager seeds this state from the checked-in
    defaults the first time a host is activated and preserves later live changes.
-3. **Apply** — DMS is pointed at the generated theme
-   (`~/.config/DankMaterialShell/themes/themeport/theme.json` via settings),
-   and DMS's own matugen cascade re-themes Niri, VS Code, Zed, Firefox, GTK
-   portals and friends upstream of us. themeport only fills the gaps below.
+3. **Apply** — GNOME's color scheme and icon theme are set through
+   gsettings, the wallpaper through `mariano-set-wallpaper`, and every app
+   below reads its rendered file (live where the app allows it).
 
 ## Per-app mechanism
 
 | Target | Mechanism | Live reload |
 |---|---|---|
-| DMS (bar, lock, notifications, launcher) | generated DMS theme JSON + `dms ipc call settings set` | DMS watches the custom theme file and re-runs the matugen cascade; restart only when adopting the themeport slot from another DMS theme |
-| Niri (borders, focus ring) | DMS matugen cascade (`niri/dms/colors.kdl`) | niri auto-reload |
+| Login screen (DMS's greeter, modules/nixos/login-screen.nix) | `dms/theme.json`, linked as `~/.config/DankMaterialShell/themes/themeport/theme.json`, the greeter's custom theme (Interstellar's look binds its main roles) | copied when greetd next starts |
 | Ghostty | theme file `ghostty/themes/themeport` (Omarchy tpl) | new windows; existing: `ctrl+shift+,` |
 | Alacritty | `alacritty/themeport.toml` import (Omarchy tpl) | native live reload |
 | tmux | `tmux/themeport.conf`, sourced from tmux.nix | `tmux source-file` on apply |
 | btop | theme file + `color_theme` edit in btop.conf | next btop start |
-| Neovim | reviewed Themeport template linked as `dankcolors.lua` | built-in fs-watcher hot reload |
+| Neovim | reviewed Themeport template linked as `lua/plugins/themeport.lua` | built-in fs-watcher hot reload |
 | ChatGPT / Codex | generated `codex-desktop.css` injected by the patched Electron main process | refreshes every two seconds and after page loads |
 | Chrome | Themeport request validated into a root-owned `BrowserThemeColor` managed policy | live `--refresh-platform-policy` after the policy bridge updates |
-| VS Code | theme's marketplace extension, else generated local extension; sets `workbench.colorTheme` | VS Code watches settings.json |
-| Wallpapers | copied to `~/Pictures/Wallpapers/themeport/<name>/`, best-effort DMS IPC | on apply |
-| Icons | `icons.theme` → gsettings + DMS settings (Yaru/Adwaita sets pre-installed) | on apply |
+| VS Code | renders `vscode/themeport-color-theme.json`; the system wrapper does not install it (theme metadata never installs extensions) | — |
+| Wallpapers | copied to `~/Pictures/Wallpapers/themeport/<name>/`, set with `mariano-set-wallpaper` (`org.gnome.desktop.background` `picture-uri` and `picture-uri-dark`) | on apply |
+| Icons | `icons.theme` → gsettings (Yaru/Adwaita sets pre-installed) | on apply |
 | GTK 4 / libadwaita (Files, the GNOME file chooser behind the portal) | `gtk-4.0/gtk.css`: libadwaita's CSS variables, light at `:root`, dark under `prefers-color-scheme` | mode switches live; a new palette reaches newly started apps |
 | GTK 3 | `gtk-3.0/gtk.css`: `theme_*` and adw-gtk3 named colors for the current mode | next app start |
-| File pickers / portals | gsettings `color-scheme` (+ DMS `syncModeWithPortal`) | on apply |
-| Obsidian | a theme named Folio (light and dark in one file) copied into every vault in `~/.config/obsidian/obsidian.json`; a vault with no theme chosen is switched to it (and DMS's `dms-colors` snippet turned off) | mode switches live with "Adapt to system"; a new palette when Obsidian reloads the theme |
+| File pickers / portals | gsettings `color-scheme` | on apply |
+| Obsidian | a theme named Folio (light and dark in one file) copied into every vault in `~/.config/obsidian/obsidian.json`; a vault with no theme chosen is switched to it (and a `dms-colors` snippet left from the DMS desktop turned off) | mode switches live with "Adapt to system"; a new palette when Obsidian reloads the theme |
 
-Not covered: Omarchy shell plugins (QML for their shell, not DMS) and anything
-richer than generated color theming in Chromium — Omarchy doesn't do more there
-either.
+Not covered: GNOME Shell itself (top bar, overview, notifications keep
+Adwaita's look), Omarchy shell plugins (QML for their shell) and anything
+richer than generated color theming in Chromium — Omarchy doesn't do more
+there either.
 
 ## Nix wiring (one-time, already in this repo)
 
@@ -135,10 +132,8 @@ download adapters) and rebuild.
 ## Verification status
 
 - Rendering, install, list, set: tested end-to-end (sandboxed) on macOS.
-- Live-verified on bonhart (2026-08-15): DMS file-watch pickup + matugen
-  cascade (no restart — restarting used to kill the 100ms-debounced cascade,
-  and on startup the cascade loses a race against DMS's async matugen check),
-  `dms ipc call wallpaper set` (only reliable when not restarting), Chrome
-  `--refresh-platform-policy` (process detection must match comm `chrome`;
-  the NixOS wrapper name never appears in cmdline), VS Code settings edits
-  (JSONC — must not go through json.loads) and .vsix fallback install.
+- Live-verified on bonhart (2026-08-15): Chrome `--refresh-platform-policy`
+  (process detection must match comm `chrome`; the NixOS wrapper name never
+  appears in cmdline), VS Code settings edits (JSONC — must not go through
+  json.loads) and .vsix fallback install.
+- GNOME wallpaper through gsettings: not yet verified on the live session.

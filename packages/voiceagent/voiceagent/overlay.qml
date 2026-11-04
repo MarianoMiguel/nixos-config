@@ -1,11 +1,10 @@
 // The voice agent's floating panel: a level blurb with the running transcript
 // underneath it.
 //
-// Run standalone by voiceagentd (`quickshell -p overlay.qml`) rather than as a
-// DankMaterialShell plugin, so it appears whether or not DMS is running and
-// survives a shell restart. It is a layer-shell surface, so it floats above the
-// tiling layout without becoming a niri window that steals focus from the
-// terminal we are about to type into.
+// Run standalone by voiceagentd (`quickshell -p overlay.qml`) when the config
+// says `overlay = true`. It is a layer-shell surface, so it floats above the
+// windows without becoming one that steals focus from the terminal we are
+// about to type into. GNOME has no layer shell, so there it stays off.
 //
 // State is a JSON file the daemon rewrites; FileView watches it. A file rather
 // than a socket because the overlay may start after, before, or several times
@@ -30,13 +29,11 @@ ShellRoot {
     // only thing that says where the words are about to go.
     property string target: "agent"
 
-    // Resolved by the daemon from DankMaterialShell's active theme, so the
-    // panel matches the rest of the desktop instead of inventing a palette.
+    // Resolved by the daemon from themeport's palette, so the panel matches
+    // the rest of the desktop instead of inventing a palette.
     property var colors: ({})
 
-    // Follows both the DMS corner radius and the Mod+Ctrl+B squared-off
-    // toggle. Zero means the desktop is in square mode and this panel has no
-    // business being the one rounded thing on screen.
+    // The panel's corner radius; the daemon may send one with the state.
     property int cornerRadius: 12
 
     function role(name, fallback) {

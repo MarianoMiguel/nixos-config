@@ -26,9 +26,9 @@ Other integration changes live beside their owners:
   sent to shell input and running terminal jobs are preserved.
 - Ghostty keeps IBM Plex Mono with explicit BlexMono/Symbols Nerd Font fallback.
   Existing cmux processes must restart once to load new font configuration.
-- The DMS dock resolves an empty app ID with the exact native cmux title to the
-  installed cmux-browser desktop entry. Real application IDs always win; this
-  can be removed when upstream sets the custom Wayland widget's app ID.
+- cmux's custom Wayland widget reports an empty app ID. The DMS dock used to
+  resolve it by title (a patch that went with DMS); GNOME matches the window
+  to the app that launched it instead. Revisit when upstream sets the app ID.
 
 Validation: the unpatched build repeatedly recreated its terminal while idle;
 40 screenshots contained 39 cleared backgrounds and one rendered background.

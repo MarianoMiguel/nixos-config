@@ -75,8 +75,8 @@ def contrast(a, b):
 # ------------------------------------------------------------------ palettes
 
 def folio_palette(looks, mode, pick):
-    """Folio's tokens (dotfiles/quickshell/folio/Common/Theme.qml), in the
-    look's ink.
+    """Folio's tokens (the Folio shell's Common/Theme.qml, archived on the
+    archive/interstellar-niri branch), in the look's ink.
 
     Secondary text uses Folio's higher-contrast setting: this screen is read
     through the KVM's compressed video capture as often as on the panel.
@@ -293,7 +293,7 @@ def print_art(render, source, art, size, ink, paper, moonlit):
     printed in two colours (as azure-folio renders the desktop).
 
     Dark plates print moonlit, as Folio's plate shader does by default
-    (dotfiles/quickshell/folio/shaders/plate.frag): the picture's light
+    (shaders/plate.frag, archived with the shell): the picture's light
     areas print in ink softened 22 % toward night, a fifth of those dots
     thinned through the same interleaved-gradient threshold, and its shadows
     stay night. A static print is the shader with breathe at zero."""
@@ -344,7 +344,7 @@ def sky_lights(looks, mode, pick, style):
 
 
 def sky(looks, mode, pick, style, size):
-    """Lumen's sky (dotfiles/quickshell/folio/shaders/lumen.frag), computed
+    """Lumen's sky (the shell's shaders/lumen.frag, archived), computed
     per pixel as the shader does: orbit (a tilted ring of light with a soft
     trail), prism (ribbons of light through fluted glass), glow (one soft
     luminous shape) or haze (a full-bleed gradient), each with the shader's

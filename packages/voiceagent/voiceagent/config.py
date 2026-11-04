@@ -19,6 +19,10 @@ class Config:
 
     # The visible half: a real Claude Code terminal, and the floating panel.
     terminal_command: list[str] | None = None
+    # The panel is a wlr-layer-shell surface. GNOME's compositor has no layer
+    # shell, so there it would be an ordinary window taking focus from the
+    # one being typed into: off unless a layer-shell compositor runs.
+    overlay: bool = False
     quickshell: str = "quickshell"
     overlay_qml: str = ""
 
@@ -100,6 +104,8 @@ def load(path: Path | None = None) -> Config:
         config.whisper_endpoint = env
     if env := os.environ.get("VOICEAGENT_QUICKSHELL"):
         config.quickshell = env
+    if env := os.environ.get("VOICEAGENT_OVERLAY"):
+        config.overlay = env.lower() in ("1", "true", "yes")
     if env := os.environ.get("VOICEAGENT_OVERLAY_QML"):
         config.overlay_qml = env
 

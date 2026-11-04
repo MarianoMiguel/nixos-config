@@ -1,73 +1,15 @@
-{ lib, pkgs, ... }:
+{ pkgs, ... }:
 
-let
-  # DMS greeter launches the desktop entry's Exec command, but it does not
-  # export DesktopNames as XDG_CURRENT_DESKTOP. GNOME Control Center rejects
-  # the resulting session even though GNOME Shell is running, so give the
-  # GNOME session an explicit environment-importing launcher.
-  gnomeSessionLauncher = pkgs.writeShellScript "gnome-session-with-desktop-env" ''
-    export XDG_CURRENT_DESKTOP=GNOME
-    export XDG_SESSION_DESKTOP=gnome
-    export DESKTOP_SESSION=gnome
-    export GDMSESSION=gnome
-
-    ${pkgs.systemd}/bin/systemctl --user import-environment \
-      XDG_CURRENT_DESKTOP XDG_SESSION_DESKTOP DESKTOP_SESSION GDMSESSION
-    ${pkgs.dbus}/bin/dbus-update-activation-environment \
-      XDG_CURRENT_DESKTOP XDG_SESSION_DESKTOP DESKTOP_SESSION GDMSESSION
-
-    ${pkgs.gnome-session}/bin/gnome-session "$@"
-    sessionStatus=$?
-
-    ${pkgs.systemd}/bin/systemctl --user unset-environment \
-      XDG_CURRENT_DESKTOP XDG_SESSION_DESKTOP DESKTOP_SESSION GDMSESSION
-    exit "$sessionStatus"
-  '';
-
-  gnomeSessionsWithDesktopEnv = pkgs.runCommand "gnome-session-with-desktop-env" {
-    passthru.providedSessions = [ "gnome" ];
-  } ''
-    mkdir -p "$out/share/wayland-sessions"
-    substitute \
-      ${pkgs.gnome-session.sessions}/share/wayland-sessions/gnome.desktop \
-      "$out/share/wayland-sessions/gnome.desktop" \
-      --replace-fail \
-        'Exec=${pkgs.gnome-session}/bin/gnome-session' \
-        'Exec=${gnomeSessionLauncher}'
-  '';
-in
 {
   services.xserver.enable = true;
 
   services.displayManager.sddm.enable = false;
-  services.displayManager.defaultSession = "niri";
+  # GNOME is the only desktop session (gnome.nix adds its extensions). Plasma,
+  # Blueman, NetworkManager's tray applet, Discover and PackageKit stay out as
+  # competing control surfaces. The login screen is login-screen.nix.
   services.desktopManager.gnome.enable = true;
-  # GNOME is the stock fallback; Niri with DMS remains the default. Avoid a
-  # second desktop stack owning Bluetooth, display and package-management UI.
-  services.displayManager.sessionPackages = lib.mkForce [
-    pkgs.niri
-    gnomeSessionsWithDesktopEnv
-  ];
 
-  users.groups.greeter = { };
-  users.users.greeter = {
-    isSystemUser = true;
-    group = "greeter";
-    home = "/var/lib/dms-greeter";
-  };
-
-  services.greetd.settings.default_session.user = "greeter";
-  security.pam.services.greetd.allowNullPassword = lib.mkForce false;
-  systemd.services.greetd.environment = {
-    # DMS does not consume services.displayManager.defaultSession. Its greeter
-    # package uses this explicit fallback when session remembering is disabled.
-    DMS_GREET_DEFAULT_SESSION = "niri";
-    DMS_GREET_REMEMBER_LAST_SESSION = "0";
-    DMS_SAVE_SESSION = "false";
-  };
-
-  # Keep wheel/gesture direction conventional in GNOME. Niri has the matching
-  # compositor-level policy in dotfiles/niri/config.kdl.
+  # Keep wheel/gesture direction conventional.
   home-manager.users.mariano.dconf.settings = {
     "org/gnome/desktop/peripherals/mouse"."natural-scroll" = false;
     "org/gnome/desktop/peripherals/touchpad"."natural-scroll" = false;
@@ -75,31 +17,6 @@ in
     # minimize, maximize, as on macOS. GTK apps read this through the settings
     # portal, Chrome straight from dconf; themeport draws the lights.
     "org/gnome/desktop/wm/preferences"."button-layout" = "close,minimize,maximize:";
-  };
-
-  xdg.portal.config.niri = {
-    default = [
-      "gnome"
-      "gtk"
-    ];
-    "org.freedesktop.impl.portal.Access" = "gtk";
-    "org.freedesktop.impl.portal.AppChooser" = "gtk";
-    "org.freedesktop.impl.portal.Notification" = "gtk";
-    "org.freedesktop.impl.portal.Secret" = "gnome-keyring";
-  };
-
-  # Updating the login artwork must not terminate the active desktop session.
-  # The rebuilt greeter is picked up when greetd next starts.
-  systemd.services.greetd.restartIfChanged = false;
-
-  programs.dms-greeter = {
-    enable = true;
-    compositor.name = "niri";
-    configHome = "/home/mariano";
-    logs = {
-      save = true;
-      path = "/var/lib/dms-greeter/dms-greeter.log";
-    };
   };
 
   # Firmware updates through LVFS. This laptop's config carries several
@@ -183,7 +100,7 @@ in
     XCURSOR_THEME = "Adwaita";
     XCURSOR_SIZE = "24";
     # Interstellar's Qt title bar (packages/qt-interstellar-decorations) for
-    # every Qt app, also those D-Bus or a service starts rather than niri.
+    # every Qt app, also those D-Bus or a service starts.
     QT_WAYLAND_DECORATION = "interstellar";
   };
 
@@ -210,8 +127,8 @@ in
     # bar with this QtWayland decoration plugin: two lights at the start like
     # the GTK apps', the theme's colours from themeport. Qt finds it through
     # the qt module's QT_PLUGIN_PATH (/run/current-system/sw/lib/qt-6/plugins);
-    # niri's environment selects it (QT_WAYLAND_DECORATION). It shows only
-    # when the compositor asks for client-side decorations (no prefer-no-csd).
+    # QT_WAYLAND_DECORATION above selects it. GNOME draws no server-side
+    # decorations, so every Qt window gets it.
     (callPackage ../../packages/qt-interstellar-decorations { })
   ];
 }

@@ -2,9 +2,8 @@
   lib,
   ghostty,
   makeWrapper,
-  niri,
-  quickshell,
   python3Packages,
+  systemd,
   ydotool,
 }:
 
@@ -52,17 +51,16 @@ python3Packages.buildPythonApplication {
   '';
 
   # claude installs itself into ~/.local/bin, which is not on the path of a
-  # systemd user service. codexbar needs the same treatment for the same
-  # reason (see modules/nixos/niri.nix). The rest are the tools the agent
-  # drives: the terminal it types into, the compositor it asks for windows,
-  # and the uinput typist.
+  # systemd user service. The rest are the tools the agent drives: the
+  # terminal it types into, busctl to ask GNOME Shell for windows and
+  # systemd-run to give the terminal its own scope, and the uinput typist.
+  # The optional level panel (overlay = true) finds quickshell on PATH.
   postFixup = ''
     wrapProgram "$out/bin/voiceagent" \
-      --set VOICEAGENT_QUICKSHELL ${lib.getExe quickshell} \
       --prefix PATH : ${
         lib.makeBinPath [
           ghostty
-          niri
+          systemd
           ydotool
         ]
       } \

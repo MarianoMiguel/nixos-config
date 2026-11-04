@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
-"""themeport — install Omarchy community themes on a Niri + DankMaterialShell system.
+"""themeport — apply a palette to every app on a GNOME desktop.
 
-Pipeline: an Omarchy theme (colors.toml + optional per-app extras) is resolved
-into the same color table Omarchy's own `omarchy-theme-color --all` produces,
-then rendered through Omarchy's vendored *.tpl templates (byte-compatible
-output) plus themeport's own targets (DMS theme JSON, tmux, browser policy).
+Pipeline: an Omarchy-format theme (colors.toml + optional per-app extras) is
+resolved into the same color table Omarchy's own `omarchy-theme-color --all`
+produces, then rendered through Omarchy's vendored *.tpl templates
+(byte-compatible output) plus themeport's own targets: GTK 3/4 and libadwaita
+CSS, Qt/KDE kdeglobals, Chrome's theme-color policy, tmux, Vicinae, Obsidian,
+and the login screen's palette (the DMS greeter's custom theme JSON).
 
-The DMS theme is the linchpin: once DankMaterialShell adopts it, DMS's own
-matugen cascade re-themes Niri, VS Code, Zed, Firefox and friends upstream of
-us. themeport only fills the gaps DMS doesn't cover.
+`set` writes the rendered files and applies what can change live: GNOME's
+color scheme and icon theme, the wallpaper, Chrome's policy, Vicinae,
+running terminals.
 
 Stdlib only; Python >= 3.11 (tomllib). `render` is pure and runs anywhere;
 `set`/`install` touch a live Linux system and are guarded.
@@ -377,7 +379,9 @@ def render_template(text: str, colors: dict[str, str]) -> str:
     return out
 
 
-# ------------------------------------------------------------- DMS theme JSON
+# ------------------------------------------- login screen palette (DMS theme JSON)
+# The login screen is DMS's greeter (modules/nixos/login-screen.nix). It loads
+# this file as its custom theme; Interstellar's look then binds the main roles.
 
 
 def _on_color(color: str, colors: dict[str, str], mode: str) -> str:
@@ -622,8 +626,8 @@ TPL_OUTPUTS = {
 }
 
 
-# Fonts match the DMS settings policy (fontFamily / monoFontFamily) so Qt
-# and KDE applications type-set like everything else on the desktop.
+# Fonts match the desktop's (home.nix sets them for GNOME) so Qt and KDE
+# applications type-set like everything else.
 KDE_FONT_FAMILY = "Inter"
 KDE_MONO_FAMILY = "IBM Plex Mono"
 
@@ -1284,34 +1288,6 @@ def _run_quiet(cmd: list[str]) -> bool:
         return False
 
 
-def _dms_ipc(*args: str, timeout: int = 10) -> str | None:
-    """Call `dms ipc call ...`; stdout (stripped) on success, None on failure."""
-    if not shutil.which("dms"):
-        return None
-    try:
-        proc = subprocess.run(
-            ["dms", "ipc", "call", *args], capture_output=True, text=True, timeout=timeout
-        )
-    except Exception:  # noqa: BLE001
-        return None
-    return proc.stdout.strip() if proc.returncode == 0 else None
-
-
-def _dms_get(key: str) -> object | None:
-    out = _dms_ipc("settings", "get", key)
-    if out is None:
-        return None
-    try:
-        return json.loads(out)
-    except json.JSONDecodeError:
-        return out
-
-
-def _dms_set(key: str, value: object) -> bool:
-    out = _dms_ipc("settings", "set", key, str(value))
-    return out is not None and "SUCCESS" in out
-
-
 def _edit_json(path: Path, updates: dict) -> bool:
     """Merge keys into a JSON file, preserving everything else."""
     try:
@@ -1322,97 +1298,6 @@ def _edit_json(path: Path, updates: dict) -> bool:
     data.update(updates)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(data, indent=2) + "\n")
-    return True
-
-
-# matugen cascade output we can observe to confirm DMS actually re-themed
-NIRI_COLORS = Path.home() / ".config/niri/dms/colors.kdl"
-
-
-def _mtime(path: Path) -> float:
-    try:
-        return path.stat().st_mtime
-    except OSError:
-        return 0.0
-
-
-def _wait_newer(path: Path, baseline: float, timeout: float) -> bool:
-    deadline = time.monotonic() + timeout
-    while time.monotonic() < deadline:
-        if _mtime(path) > baseline:
-            return True
-        time.sleep(0.3)
-    return False
-
-
-def apply_dms(state: Path, meta: dict, restart_ok: bool = True) -> bool:
-    """Apply the theme to DMS, live when possible. Returns True if a running
-    shell took it (so later steps may rely on the IPC socket being up).
-
-    A restart is the exception, not the rule: DMS watches the custom theme
-    file and reloads it — including the matugen cascade that re-themes niri,
-    nvim, ghostty & co. Restarting right after writing the file used to kill
-    the (100ms-debounced) cascade before it ran, and on startup the cascade
-    loses a race against DMS's async matugen check, so custom themes came up
-    with stale niri/nvim colors.
-    """
-    dms_config = xdg_config_home() / "DankMaterialShell"
-    theme_path = dms_config / "themes/themeport/theme.json"
-    desired = {
-        "currentThemeCategory": "custom",
-        "currentThemeName": "custom",
-        "customThemeFile": str(theme_path),
-    }
-    icons = {}
-    if meta.get("icons"):
-        icons = {"iconThemeDark": meta["icons"], "iconThemeLight": meta["icons"]}
-
-    if _dms_get("currentThemeName") is None:
-        # shell not reachable: stage everything on disk for its next start
-        if _edit_json(dms_config / "settings.json", {**desired, **icons}):
-            print("  dms: not running — settings staged for next start")
-        theme_doc = json.loads((state / "dms/theme.json").read_text())
-        live_doc = {"name": theme_doc["name"], "dark": theme_doc["dark"], "light": theme_doc["light"]}
-        (dms_config / "theme.json").write_text(json.dumps(live_doc, indent=2) + "\n")
-        return False
-
-    # `settings set` both applies live and persists via DMS itself, so we never
-    # race the shell's own settings writes.
-    needs_repoint = any(_dms_get(k) != v for k, v in desired.items())
-    for key, value in {**desired, **icons}.items():
-        if _dms_get(key) != value and not _dms_set(key, value):
-            print(f"  ! dms: couldn't set {key}")
-
-    if needs_repoint:
-        # Theme.qml doesn't react to customThemeFile changing under it and IPC
-        # can't invoke switchTheme, so adopting the themeport slot from another
-        # theme needs one restart. The cascade re-trigger below papers over the
-        # startup race.
-        if not (restart_ok and shutil.which("systemctl")
-                and _run_quiet(["systemctl", "--user", "restart", "dms.service"])):
-            print("  ! dms: theme repoint pending — run: systemctl --user restart dms.service")
-            return False
-        deadline = time.monotonic() + 15
-        while time.monotonic() < deadline and _dms_get("currentThemeName") is None:
-            time.sleep(0.5)
-        print("  dms: restarted to adopt the themeport theme slot")
-
-    # match the shell's light/dark mode to the theme before it renders
-    _dms_ipc("theme", meta["mode"])
-
-    # (Re)write the watched theme file now that settings are in place; the
-    # FileView watcher reloads it and kicks off the matugen cascade. Verify by
-    # watching the cascade's niri output; one rewrite retry covers a missed
-    # watch event.
-    theme_json = (state / "dms/theme.json").read_text()
-    baseline = _mtime(NIRI_COLORS)
-    for _attempt in range(2):
-        theme_path.write_text(theme_json)
-        if not NIRI_COLORS.exists() or _wait_newer(NIRI_COLORS, baseline, timeout=6.0):
-            break
-    else:
-        print("  ! dms: matugen cascade didn't regenerate niri colors — check: journalctl --user -u dms")
-    print(f"  dms: theme applied live -> {meta['name']}")
     return True
 
 
@@ -1463,14 +1348,8 @@ def apply_wallpapers(theme: Theme, meta: dict) -> None:
         ["mariano-set-wallpaper", str(selected)]
     ):
         print(f"  wallpaper: {selected.name} ({location})")
-    elif _edit_json(
-        xdg_state_home() / "DankMaterialShell/session.json",
-        {"wallpaperPath": str(selected)},
-    ):
-        # shell not reachable: stage it in session state for the next start
-        print(f"  wallpaper: staged {selected.name} for next DMS start ({location})")
     else:
-        print(f"  wallpaper: {location} (set one via the DMS settings UI)")
+        print(f"  ! wallpaper: could not set {selected.name} ({location})")
 
 
 def _edit_jsonc_string_key(path: Path, key: str, value: str) -> bool:
@@ -1804,7 +1683,6 @@ def cmd_set(args: argparse.Namespace) -> int:
 
     apply_mode(meta)
     apply_icons(meta)
-    apply_dms(state, meta, restart_ok=not getattr(args, "no_restart", False))
     apply_wallpapers(theme, meta)
     apply_vscode(state, meta)
     apply_browsers(meta)
@@ -2421,7 +2299,7 @@ def cmd_gallery(args: argparse.Namespace) -> int:
         answer = "n"
     rc = 0
     if answer in ("", "y", "yes"):
-        rc = cmd_set(argparse.Namespace(name=theme.name, pair=None, no_restart=False))
+        rc = cmd_set(argparse.Namespace(name=theme.name, pair=None))
     _hold_open(args)
     return rc
 
@@ -2468,7 +2346,7 @@ def cmd_handle_url(args: argparse.Namespace) -> int:
         )
         theme = load_theme(dest)
         print(f"installed '{theme.name}' ({theme.mode}, {len(theme.backgrounds)} wallpaper)")
-        rc = cmd_set(argparse.Namespace(name=theme.name, pair=None, no_restart=False))
+        rc = cmd_set(argparse.Namespace(name=theme.name, pair=None))
     except (Exception, SystemExit) as exc:
         print(f"import failed: {exc}")
         rc = 1
@@ -2523,7 +2401,7 @@ def cmd_wallpapers(args: argparse.Namespace) -> int:
     ):
         print(f"wallpaper set: {choice}")
     else:
-        print(f"couldn't reach DMS — set it manually: {choice}")
+        print(f"couldn't set the wallpaper — set it manually: {choice}")
     _hold_open(args)
     return 0
 
@@ -2568,7 +2446,7 @@ def main(argv: list[str] | None = None) -> int:
     p_render = sub.add_parser("render", help="render a theme dir to an output dir (pure, no system changes)")
     p_render.add_argument("theme_dir")
     p_render.add_argument("-o", "--output", required=True)
-    p_render.add_argument("--pair", help="second theme dir of the opposite mode (fills the other DMS slot)")
+    p_render.add_argument("--pair", help="second theme dir of the opposite mode (the other light/dark slot)")
     p_render.set_defaults(func=cmd_render)
 
     p_install = sub.add_parser("install", help="download a theme from GitHub into the local theme store")
@@ -2580,10 +2458,7 @@ def main(argv: list[str] | None = None) -> int:
 
     p_set = sub.add_parser("set", help="render a theme into the config repo and apply it live")
     p_set.add_argument("name", help="installed theme name (or a path to a theme dir)")
-    p_set.add_argument("--pair", help="opposite-mode theme for the other DMS light/dark slot")
-    p_set.add_argument("--no-restart", dest="no_restart", action="store_true",
-                       help="never restart dms.service (normal switches don't; only "
-                            "adopting the themeport slot from another DMS theme does)")
+    p_set.add_argument("--pair", help="opposite-mode theme for the other light/dark slot")
     p_set.set_defaults(func=cmd_set)
 
     p_browse = sub.add_parser(

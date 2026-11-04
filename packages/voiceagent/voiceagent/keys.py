@@ -1,8 +1,14 @@
-"""Synthetic keystrokes, and asking niri about windows.
+"""Synthetic keystrokes, and asking GNOME Shell about windows.
 
-ydotool rather than wtype throughout: niri 26.04 still carries
-niri-wm/niri#2314, where the focused window stops receiving physical
-keystrokes once a wtype process exits.
+ydotool types through uinput, so it reaches whatever window has focus without
+a compositor protocol of its own.
+
+Windows come from the Vicinae GNOME Shell extension (`gnomeExtensions.vicinae`,
+installed by modules/nixos/vicinae.nix), which exports
+org.gnome.Shell.Extensions.Windows on the session bus: List, Activate and
+GetFocusedWindowSync, each window as JSON with its id, title and wm_class (the
+Wayland app id). GNOME has no other way to ask for one window by id: Shell's
+own Eval is closed to callers since GNOME 41.
 """
 
 from __future__ import annotations
@@ -16,6 +22,10 @@ log = logging.getLogger("voiceagent.keys")
 
 ENTER = ("28:1", "28:0")
 ESCAPE = ("1:1", "1:0")
+
+SHELL = "org.gnome.Shell"
+WINDOWS_PATH = "/org/gnome/Shell/Extensions/Windows"
+WINDOWS_IFACE = "org.gnome.Shell.Extensions.Windows"
 
 
 async def run(argv: list[str], timeout: float = 20.0) -> tuple[int, str]:
@@ -54,26 +64,48 @@ async def press(*codes: str) -> bool:
     return True
 
 
-async def windows() -> list[dict]:
-    code, out = await run(["niri", "msg", "--json", "windows"])
+async def _call(method: str, *args: str) -> object | None:
+    """One call on the extension's window service; its JSON reply, decoded."""
+    code, out = await run(
+        ["busctl", "--user", "--json=short", "call", SHELL, WINDOWS_PATH, WINDOWS_IFACE, method, *args]
+    )
     if code:
-        log.error("cannot list windows: %s", out.strip())
-        return []
+        log.error("GNOME Shell window service: %s failed: %s", method, out.strip())
+        return None
+    return parse_reply(out)
+
+
+def parse_reply(out: str) -> object | None:
+    """busctl's {"type": "s", "data": ["<json>"]} to the JSON inside, if any."""
     try:
-        return json.loads(out)
-    except ValueError:
+        data = json.loads(out).get("data") or []
+        return json.loads(data[0]) if data and isinstance(data[0], str) else None
+    except (ValueError, AttributeError, IndexError):
+        return None
+
+
+def as_window(raw: object) -> dict | None:
+    """One window in the shape the rest of the agent uses (id, app_id, title)."""
+    if not isinstance(raw, dict) or not isinstance(raw.get("id"), int):
+        return None
+    return {"id": raw["id"], "app_id": raw.get("wm_class") or "", "title": raw.get("title") or ""}
+
+
+async def windows() -> list[dict]:
+    listed = await _call("List")
+    if not isinstance(listed, list):
         return []
+    return [window for window in map(as_window, listed) if window is not None]
 
 
 async def focused_window() -> dict | None:
-    for window in await windows():
-        if window.get("is_focused"):
-            return window
-    return None
+    return as_window(await _call("GetFocusedWindowSync"))
 
 
 async def focus(window_id: int) -> bool:
-    code, out = await run(["niri", "msg", "action", "focus-window", "--id", str(window_id)])
+    code, out = await run(
+        ["busctl", "--user", "call", SHELL, WINDOWS_PATH, WINDOWS_IFACE, "Activate", "u", str(window_id)]
+    )
     if code:
         log.error("cannot focus window %s: %s", window_id, out.strip())
         return False

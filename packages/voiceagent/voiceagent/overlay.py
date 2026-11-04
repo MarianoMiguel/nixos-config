@@ -21,7 +21,6 @@ from typing import Any
 # Imported as a submodule rather than `from . import theme`: the package's
 # __init__ is still initialising when session.py pulls this in, so the
 # attribute does not exist on the package object yet.
-from .theme import radius as theme_radius
 from .theme import resolve as resolve_theme
 from .theme import signature as theme_signature
 
@@ -34,9 +33,11 @@ def state_path() -> Path:
 
 
 class Overlay:
-    def __init__(self, quickshell: str, qml: Path):
+    def __init__(self, quickshell: str, qml: Path, enabled: bool = True):
         self.quickshell = quickshell
         self.qml = qml
+        # Off: the state file is still written, but no panel is started.
+        self.enabled = enabled
         self.path = state_path()
         self._process: asyncio.subprocess.Process | None = None
         self._theme_signature: tuple = ()
@@ -47,23 +48,21 @@ class Overlay:
             "lastSent": "",
             "showing": False,
             "colors": resolve_theme(),
-            "radius": theme_radius(),
         }
 
     def refresh_theme(self, force: bool = False) -> bool:
         """Re-read the desktop palette if it changed.
 
         Polled rather than watched: the panel should follow a theme switch, but
-        not badly enough to justify an inotify watch on four files.
+        not badly enough to justify an inotify watch.
         """
         signature = theme_signature()
         if not force and signature == self._theme_signature:
             return False
         self._theme_signature = signature
         colors = resolve_theme()
-        corner = theme_radius()
-        if colors != self._state.get("colors") or corner != self._state.get("radius"):
-            self.update(colors=colors, radius=corner)
+        if colors != self._state.get("colors"):
+            self.update(colors=colors)
             return True
         return False
 
@@ -86,6 +85,8 @@ class Overlay:
             log.debug("cannot write overlay state: %s", exc)
 
     async def start(self) -> None:
+        if not self.enabled:
+            return
         if self._process is not None and self._process.returncode is None:
             return
         if shutil.which(self.quickshell) is None:

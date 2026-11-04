@@ -62,7 +62,7 @@ class Session:
         self.transcriber = Transcriber(config.whisper_endpoint, config.whisper_timeout)
         self.cleaner = Cleaner(config)
         self.terminal = Terminal(cwd=str(config.cwd), command=config.terminal_command)
-        self.overlay = Overlay(config.quickshell, config.overlay_qml_path())
+        self.overlay = Overlay(config.quickshell, config.overlay_qml_path(), enabled=config.overlay)
 
         self._task: asyncio.Task[None] | None = None
         self._level_task: asyncio.Task[None] | None = None

@@ -3,7 +3,7 @@
 let
   # PAM is serial: applications that use one context for both fingerprint and
   # password authentication cannot reach pam_unix until pam_fprintd returns.
-  # Match DMS's managed greeter policy so a missed scan falls through quickly
+  # One try and a short timeout, so a missed scan falls through quickly
   # instead of leaving password authentication spinning for the module's
   # default timeout.
   fingerprintFallback = {
@@ -17,11 +17,11 @@ in
   # shared with hosts that do not have a fingerprint reader.
   services.fprintd.enable = true;
 
-  # DMS handles its lock screen itself, while greetd and the normal system
-  # authentication surfaces use PAM. DMS's fingerprint settings are enforced
-  # in home.nix so login, lock and sudo all expose the same capability.
-  # Admin prompts (polkit) take the root password only (users.nix makes root
-  # the only administrator identity), so polkit-1 has no fingerprint.
+  # The login screen (greetd, whose greeter offers the reader because
+  # login-screen.nix sets greeterEnableFprint), console login and sudo all
+  # take a finger. Admin prompts (polkit) take the root password only
+  # (users.nix makes root the only administrator identity), so polkit-1 has
+  # no fingerprint.
   security.pam.services = {
     # PAM rule overrides are an experimental NixOS interface and need review
     # when the nixpkgs PAM module changes. Relative ordering remains owned by
@@ -38,18 +38,6 @@ in
     sudo = {
       fprintAuth = true;
       rules.auth.fprintd.settings = fingerprintFallback;
-    };
-    swaylock.rules.auth.fprintd.settings = fingerprintFallback;
-
-    # DMS deliberately runs password and fingerprint authentication in two
-    # parallel PAM contexts. Its password context prefers /etc/pam.d/dankshell
-    # when present; without this service it falls back to `login`, whose first
-    # module is pam_fprintd, so a typed password is stuck behind the fingerprint
-    # prompt and ends as an authentication error. Keep this context password-
-    # only while DMS's separate `fprint` context handles the enrolled finger.
-    dankshell = {
-      allowNullPassword = false;
-      fprintAuth = false;
     };
   };
 

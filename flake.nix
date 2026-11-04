@@ -11,7 +11,8 @@
       url = "github:nix-community/disko";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    dms.url = "github:AvengeMedia/DankMaterialShell";
+    # DMS's greeter, the login screen until a GDM one is styled to match the
+    # disk-unlock screen (modules/nixos/login-screen.nix).
     dank-greeter = {
       url = "github:AvengeMedia/dank-greeter";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -24,47 +25,11 @@
     # It tracks nixos-unstable so `mariano-system-update-all` keeps the VPN
     # daemon current; the stable branch lags several releases behind.
     nixpkgs-tailscale.url = "github:NixOS/nixpkgs/nixos-unstable";
-    quickshell = {
-      url = "github:quickshell-mirror/quickshell";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
     codex-desktop-linux.url = "github:ilysenko/codex-desktop-linux";
-    dms-codexbar = {
-      url = "github:zakstam/dms-codexbar";
-      flake = false;
-    };
-    cat-dms = {
-      url = "github:xi-ve/cat-dms";
-      flake = false;
-    };
-    codeIsland-dms = {
-      url = "github:payprays/codeIsland-dms";
-      flake = false;
-    };
-    niri-pip = {
-      # Keep the reviewed v0.2.1 source immutable. This is intentionally not a
-      # moving tag because the daemon controls compositor windows at runtime.
-      url = "github:t1ktakdev/niri-pip/4f2075ce35697169e43889aadd55f0900f1d4710";
-      flake = false;
-    };
     librepods-rust = {
       url = "github:librepods-org/librepods?ref=linux/rust";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    # Pond's desktop and launcher, through our forks so the reviewed source
-    # survives upstream changes. Tracked in workshop/UPSTREAMS.md.
-    pond-interface = {
-      url = "github:MarianoMiguel/pond-interface";
-      flake = false;
-    };
-    pond-vicinae = {
-      url = "github:MarianoMiguel/pond-vicinae";
-      flake = false;
-    };
-    # Pond's runtime: Qt 6.12 and Quickshell 0.3.2 (its QML needs 6.12), plus
-    # the Vicinae 0.29 recipe its launcher fork builds with. Only the Pond
-    # session uses this set; DMS stays on nixos-26.05.
-    nixpkgs-pond.url = "github:NixOS/nixpkgs/3ec636362e1816bc2f0888fa0fa2c69f1bc9e504";
   };
 
   outputs =
@@ -72,15 +37,9 @@
       self,
       nixpkgs,
       nixpkgs-unstable,
-      nixpkgs-pond,
       home-manager,
       dank-greeter,
-      dms,
-      quickshell,
       codex-desktop-linux,
-      dms-codexbar,
-      cat-dms,
-      codeIsland-dms,
       ...
     }:
     let
@@ -89,7 +48,6 @@
         inherit system;
         config.allowUnfree = true;
       };
-      pkgsPond = import nixpkgs-pond { inherit system; };
       # This configuration's own files, for the copies made from it (the
       # installer's embedded /etc/nixos, the test sandboxes). A `path:`
       # evaluation sees the whole folder, so leave out what never belongs in
@@ -123,11 +81,10 @@
           );
       };
       specialArgs = inputs // {
-        inherit pkgsUnstable pkgsPond repoSource;
+        inherit pkgsUnstable repoSource;
       };
       sharedModules = [
         home-manager.nixosModules.home-manager
-        dms.nixosModules.dank-material-shell
         dank-greeter.nixosModules.default
         {
           # The commit each generation was built from, for `nixos-version
@@ -257,21 +214,9 @@
         virtualhere-client = self.nixosConfigurations.bonhart.pkgs.callPackage ./packages/virtualhere-client.nix { };
         fido-bridge = self.nixosConfigurations.bonhart.pkgs.callPackage ./packages/fido-bridge.nix { };
         librepods = inputs.librepods-rust.packages.${system}.default;
-        niri-pip = self.nixosConfigurations.bonhart.pkgs.callPackage ./packages/niri-pip.nix {
-          src = inputs.niri-pip;
-        };
-        pond-fonts = self.nixosConfigurations.bonhart.pkgs.callPackage ./packages/pond-fonts.nix { };
         qt-interstellar-decorations =
           self.nixosConfigurations.bonhart.pkgs.callPackage ./packages/qt-interstellar-decorations
             { };
-        pond-vicinae = self.nixosConfigurations.bonhart.pkgs.callPackage ./packages/pond-vicinae.nix {
-          inherit pkgsPond;
-          src = inputs.pond-vicinae;
-        };
-        pond-interface = pkgsPond.callPackage ./packages/pond-interface.nix {
-          src = inputs.pond-interface;
-          vicinae = self.packages.${system}.pond-vicinae;
-        };
         installerIso = self.nixosConfigurations.installer.config.system.build.isoImage;
         installerIsoBalerion =
           self.nixosConfigurations."installer-balerion".config.system.build.isoImage;

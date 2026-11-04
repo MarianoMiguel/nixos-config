@@ -4,7 +4,6 @@ let
   home = "/home/mariano";
   dotfiles = ../../dotfiles;
   mutableState = "${home}/.local/state/nixos-config/dotfiles";
-  fingerprintEnabled = config.services.fprintd.enable;
   folio = pkgs.callPackage ../../packages/azure-folio.nix { };
   # The gallery contains only this family's default blue/daylight plates.
   # The native picker applies the current ink and mode through azure-folio.
@@ -15,21 +14,10 @@ let
     done
   '';
   mutableDotfiles = [
-    "dms/plugin-settings.json"
+    # The login screen's (DMS's greeter) settings and session; login-screen.nix
+    # links them where the greeter looks and keeps its settings in line.
     "dms/session.json"
     "dms/settings.json"
-    "dms/theme.json"
-    "niri/dms/alttab.kdl"
-    "niri/dms/binds.kdl"
-    "niri/dms/colors.kdl"
-    "niri/dms/cursor.kdl"
-    "niri/dms/layout.kdl"
-    "niri/dms/outputs.kdl"
-    "niri/dms/windowrules.kdl"
-    "niri/dms/wpblur.kdl"
-    "niri/toggles/gaps.kdl"
-    "niri/toggles/border.kdl"
-    "niri/toggles/radius.kdl"
     "nvim/lazy-lock.json"
     "themeport"
     "vscode/User/settings.json"
@@ -54,7 +42,7 @@ in
     backupFileExtension = "before-nixos";
 
     users.mariano =
-      { config, lib, marianoCodexbar, ... }:
+      { config, lib, ... }:
       let
         mutableDotfile = path: config.lib.file.mkOutOfStoreSymlink "${mutableState}/${path}";
         nvimConfig = pkgs.runCommand "nvim-config" { } ''
@@ -63,11 +51,10 @@ in
           chmod -R u+w "$out"
           rm "$out/lazy-lock.json"
           ln -s ${mutableState}/nvim/lazy-lock.json "$out/lazy-lock.json"
-          rm "$out/lua/plugins/dankcolors.lua"
-          # Themeport renders this from the immutable, reviewed catalog. Link
-          # Neovim to that output directly instead of asking DMS to execute
-          # user Matugen templates merely to update an editor palette.
-          ln -s ${mutableState}/themeport/neovim/generated.lua "$out/lua/plugins/dankcolors.lua"
+          rm "$out/lua/plugins/themeport.lua"
+          # Themeport renders this from the immutable, reviewed catalog; link
+          # Neovim to that output directly.
+          ln -s ${mutableState}/themeport/neovim/generated.lua "$out/lua/plugins/themeport.lua"
         '';
       in
       {
@@ -93,9 +80,9 @@ in
 
         programs.home-manager.enable = true;
 
-        # One typography and cursor for every toolkit. DMS, Themeport's
-        # kdeglobals and the terminal already use Inter and IBM Plex Mono;
-        # without these keys GTK apps and portals fell back to Adwaita Sans.
+        # One typography and cursor for every toolkit. Themeport's kdeglobals,
+        # the login screen and the terminal already use Inter and IBM Plex
+        # Mono; without these keys GNOME, GTK apps and portals use Adwaita Sans.
         # The icon theme is deliberately absent: Themeport sets it per theme.
         dconf.settings."org/gnome/desktop/interface" = {
           font-name = "Inter 11";
@@ -107,7 +94,7 @@ in
 
         # systemd --user reads environment.d before the graphical session
         # starts, so this is the one place a PATH entry reaches everything:
-        # units, the compositor, apps DMS launches and their terminals.
+        # units, GNOME Shell, the apps it launches and their terminals.
         # home.sessionPath above only reaches login shells, behind a guard
         # the graphical session inherits without the PATH it came with.
         systemd.user.sessionVariables.PATH = "$HOME/.opencode/bin:$HOME/.local/bin:$HOME/.lmstudio/bin:$PATH";
@@ -139,165 +126,6 @@ in
           '') mutableDotfiles}
         '';
 
-        # Qt caches plugins under stable /etc paths, while Nix store files all
-        # have the same epoch timestamp. Invalidate compiled QML when the local
-        # plugin sources change so a restart cannot load an earlier catalog.
-        home.activation.refreshDmsPluginCache = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-          marker="${home}/.local/state/nixos-config/dms-plugin-cache-revision"
-          revision="${../../dotfiles/dms-plugins}"
-          previous="$(${pkgs.coreutils}/bin/cat "$marker" 2>/dev/null || true)"
-          if [ "$previous" != "$revision" ]; then
-            $DRY_RUN_CMD ${pkgs.coreutils}/bin/rm -rf "${home}/.cache/quickshell/qmlcache"
-            $DRY_RUN_CMD ${pkgs.coreutils}/bin/mkdir -p "${home}/.local/state/nixos-config"
-            if [ -z "$DRY_RUN_CMD" ]; then
-              printf '%s\n' "$revision" > "$marker"
-            fi
-          fi
-        '';
-
-        # These settings are policy rather than user preferences: they keep one
-        # visual owner, enable Bonhart's biometric surfaces, and prevent mutable
-        # user Matugen templates or third-party launcher entries from executing
-        # as part of a theme switch. Preserve every unrelated DMS preference.
-        home.activation.enforceDmsConsistency = lib.hm.dag.entryAfter [ "seedMutableDotfiles" ] ''
-          # DMS writes these files live, so a crash or a full disk mid-write
-          # can leave a truncated file. Rather than failing every later
-          # activation, keep the damaged copy for inspection and re-seed from
-          # the store so the policy below still applies.
-          ensure_json_object() {
-            file=$1
-            seed=$2
-            if ${pkgs.jq}/bin/jq -e 'type == "object"' "$file" >/dev/null 2>&1; then
-              return 0
-            fi
-            broken="$file.broken-$(${pkgs.coreutils}/bin/date +%Y%m%d%H%M%S)"
-            echo "DMS state $file is not a JSON object; kept at $broken and re-seeded from the store copy." >&2
-            if [ -e "$file" ]; then
-              $DRY_RUN_CMD ${pkgs.coreutils}/bin/mv -f "$file" "$broken"
-            fi
-            $DRY_RUN_CMD ${pkgs.coreutils}/bin/install -m 0600 "$seed" "$file"
-          }
-
-          settings=${lib.escapeShellArg "${mutableState}/dms/settings.json"}
-          ensure_json_object "$settings" ${lib.escapeShellArg "${mutableDotfileSeed}/dms/settings.json"}
-          temporary="$(${pkgs.coreutils}/bin/mktemp)"
-          ${pkgs.jq}/bin/jq --argjson fingerprint ${builtins.toJSON fingerprintEnabled} '
-            .fontFamily = "Inter"
-            | .monoFontFamily = "IBM Plex Mono"
-            | .lockScreenFontFamily = "Jacquard 24"
-            | .greeterFontFamily = "Inter"
-            | .fontWeight = 400
-            | .fontScale = 1
-            # Corners, gaps, borders and transparency belong to the workshop
-            # looks (workshop/looks/, scripts/workshop look apply); the seed
-            # settings.json provides them on a fresh install. No apostrophes
-            # here: this program sits inside a single-quoted shell string.
-            | .widgetRadius = 5
-            | .runUserMatugenTemplates = false
-            | .showThirdPartyPlugins = false
-            | .searchAppActions = true
-            | .launcherStyle = "full"
-            | .dankLauncherV2Size = "medium"
-            | .gtkThemingEnabled = true
-            | .qtThemingEnabled = false
-            | .matugenTemplateGtk = true
-            | .greeterEnableFprint = $fingerprint
-            | .enableFprint = $fingerprint
-            | .lockBeforeSuspend = true
-            | .powerMenuActions = ["lock", "logout", "reboot", "poweroff"]
-            | .powerMenuDefaultAction = "lock"
-            | .powerMenuGridLayout = false
-            | .powerActionConfirm = true
-            # Idle policy for the niri session, mirroring power.nix: plain
-            # suspend is refused there, so idle on battery hibernates (DMS
-            # behaviour 1) after fifteen minutes, and idle on AC never sleeps
-            # so long plugged-in builds finish. Without this the session only
-            # locked and blanked, leaving a "sleeping" laptop fully awake.
-            # Balerion has no battery, so only the AC line applies there.
-            | .acSuspendTimeout = 0
-            | .batterySuspendTimeout = 900
-            | .batterySuspendBehavior = 1
-            | .animationSpeed = 4
-            | .customAnimationDuration = 90
-            | .syncComponentAnimationSpeeds = true
-            | .reduceMotion = false
-            | .springBounce = 0
-            | .popoutAnimationSpeed = 4
-            | .popoutCustomAnimationDuration = 90
-            | .modalAnimationSpeed = 4
-            | .modalCustomAnimationDuration = 90
-            | .notificationAnimationSpeed = 4
-            | .notificationCustomAnimationDuration = 90
-            | .controlCenterShowIdleInhibitorIcon = false
-            | .controlCenterShowDoNotDisturbIcon = false
-            | .controlCenterWidgets = (
-                (.controlCenterWidgets // []) as $widgets
-                | if any($widgets[]?; .id == "builtin_tailscale") then
-                    [$widgets[] | if .id == "builtin_tailscale" then . + {enabled: true, width: 100} else . end]
-                  else
-                    $widgets + [{id: "builtin_tailscale", enabled: true, width: 100}]
-                  end
-              )
-            | .fadeToLockEnabled = false
-            | .fadeToLockGracePeriod = 0
-            | .lockScreenShowPowerActions = false
-            | .lockScreenShowSystemIcons = false
-            | .lockScreenShowTime = true
-            | .lockScreenShowDate = true
-            | .lockScreenShowProfileImage = false
-            | .lockScreenShowPasswordField = true
-            | .lockScreenShowMediaPlayer = false
-            | .lockScreenNotificationMode = 0
-            | .lockScreenVideoEnabled = false
-            | .barConfigs = [.barConfigs[] | . + {
-                leftWidgets: ["launcherButton", "workspaceSwitcher", "focusedWindow"],
-                centerWidgets: ["clock"],
-                rightWidgets: ["systemTray", "battery", {id:"folioSidebar",enabled:true}],
-                spacing: 8, innerPadding: 2, bottomGap: 0,
-                transparency: 1, widgetTransparency: 0,
-                squareCorners: false, noBackground: false,
-                borderEnabled: true, borderColor: "outlineVariant", borderOpacity: 1,
-                borderThickness: 1, widgetPadding: 8,
-                shadowIntensity: 0, shadowOpacity: 0
-              }]
-
-          ' "$settings" > "$temporary"
-          $DRY_RUN_CMD ${pkgs.coreutils}/bin/install -m 0600 "$temporary" "$settings"
-          ${pkgs.coreutils}/bin/rm -f "$temporary"
-
-          # System-wide plugin installation and mutable enablement are separate
-          # in DMS. Keep the three reviewed launcher providers active on both
-          # upgrades and fresh installs while preserving every other plugin's
-          # settings.
-          plugin_settings=${lib.escapeShellArg "${mutableState}/dms/plugin-settings.json"}
-          ensure_json_object "$plugin_settings" ${lib.escapeShellArg "${mutableDotfileSeed}/dms/plugin-settings.json"}
-          temporary="$(${pkgs.coreutils}/bin/mktemp)"
-          ${pkgs.jq}/bin/jq \
-            --arg codexbar ${lib.escapeShellArg "${marianoCodexbar}/bin/codexbar"} '
-            .folioSidebar.enabled = true
-            | .focus.enabled = true
-            | .codexBar.enabled = true
-            | .codexBar.codexbarPath = $codexbar
-            | .codexBar.refreshInterval = "60000"
-            | .codexBar.sourceMode = "oauth"
-            | .systemMenu.enabled = true
-            | .themePicker.enabled = true
-            | .wallpaperPicker.enabled = true
-            | .workspaceModes.enabled = true
-            | .worldClock.enabled = true
-            | .batteryLimit.enabled = true
-          ' "$plugin_settings" > "$temporary"
-          $DRY_RUN_CMD ${pkgs.coreutils}/bin/install -m 0600 "$temporary" "$plugin_settings"
-          ${pkgs.coreutils}/bin/rm -f "$temporary"
-
-          # Keep Niri's DMS application launcher and dedicated system-menu
-          # bindings consistent even if an older generation seeded this
-          # mutable file. Vicinae is reserved for GNOME.
-          $DRY_RUN_CMD ${pkgs.coreutils}/bin/install -m 0600 \
-            ${dotfiles}/niri/dms/binds.kdl \
-            ${lib.escapeShellArg "${mutableState}/niri/dms/binds.kdl"}
-        '';
-
         # Vicinae owns a writable settings file so its GUI can keep managing
         # preferences. Merge only the two palette pointers instead of replacing
         # that file with an immutable Home Manager link.
@@ -327,21 +155,6 @@ in
           ' "$source_json" > "$temporary"
           $DRY_RUN_CMD ${pkgs.coreutils}/bin/install -m 0600 "$temporary" "$settings"
           ${pkgs.coreutils}/bin/rm -f "$temporary" "$source_json"
-        '';
-
-        # A rebuild swaps the niri/config.kdl symlink to a new store path, but
-        # niri's inotify watch is on the old target and never fires, so it keeps
-        # the old config in memory until the next relogin. Poke it to re-read
-        # the freshly linked config. Best-effort: niri may not be the running
-        # compositor (no socket to find), and a reload must never fail
-        # activation. niri msg needs NIRI_SOCKET set explicitly — it does not
-        # discover the socket on its own — so resolve it from the runtime dir.
-        home.activation.reloadNiri = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
-          runtime="''${XDG_RUNTIME_DIR:-/run/user/$(${pkgs.coreutils}/bin/id -u)}"
-          socket="$(${pkgs.findutils}/bin/find "$runtime" -maxdepth 1 -name 'niri.*.sock' 2>/dev/null | ${pkgs.coreutils}/bin/head -n1)"
-          if [ -n "$socket" ]; then
-            $DRY_RUN_CMD env NIRI_SOCKET="$socket" ${pkgs.niri}/bin/niri msg action load-config-file || true
-          fi
         '';
 
         # Shell memory: atuin makes history searchable (Ctrl+R) and keeps the
@@ -398,40 +211,6 @@ in
           "ghostty/config".source = ../../dotfiles/ghostty/config.ghostty;
           "ghostty/config.ghostty".source = ../../dotfiles/ghostty/config.ghostty;
           "alacritty/alacritty.toml".source = ../../dotfiles/alacritty/alacritty.toml;
-
-          "niri/config.kdl".source = ../../dotfiles/niri/config.kdl;
-          "niri/manifesto.kdl".source = ../../dotfiles/niri/manifesto.kdl;
-          "niri/modes.kdl".source = ../../dotfiles/niri/modes.kdl;
-          "niri/resize.kdl".source = ../../dotfiles/niri/resize.kdl;
-          "niri/style-toggles.kdl".source = ../../dotfiles/niri/style-toggles.kdl;
-          "niri/themeport.kdl".source = ../../dotfiles/niri/themeport.kdl;
-          "niri/voice.kdl".source = ../../dotfiles/niri/voice.kdl;
-          "niri/dms/alttab.kdl".source = mutableDotfile "niri/dms/alttab.kdl";
-          "niri/dms/binds.kdl".source = mutableDotfile "niri/dms/binds.kdl";
-          "niri/dms/colors.kdl".source = mutableDotfile "niri/dms/colors.kdl";
-          "niri/dms/cursor.kdl".source = mutableDotfile "niri/dms/cursor.kdl";
-          "niri/dms/layout.kdl".source = mutableDotfile "niri/dms/layout.kdl";
-          "niri/dms/outputs.kdl".source = mutableDotfile "niri/dms/outputs.kdl";
-          "niri/dms/windowrules.kdl".source = mutableDotfile "niri/dms/windowrules.kdl";
-          "niri/dms/wpblur.kdl".source = mutableDotfile "niri/dms/wpblur.kdl";
-          "niri/toggles/gaps.kdl".source = mutableDotfile "niri/toggles/gaps.kdl";
-          "niri/toggles/border.kdl".source = mutableDotfile "niri/toggles/border.kdl";
-          "niri/toggles/radius.kdl".source = mutableDotfile "niri/toggles/radius.kdl";
-
-          # Standalone Quickshell instance (qs -c desktop-click), spawned by the
-          # niri config: exposed wallpaper jumps to the nearest empty workspace
-          # on that display. See dotfiles/quickshell/desktop-click/shell.qml.
-          "quickshell/desktop-click/shell.qml".source =
-            ../../dotfiles/quickshell/desktop-click/shell.qml;
-
-          "matugen/config.toml".source = ../../dotfiles/matugen/config.toml;
-          "matugen/templates/neovim-dankcolors.lua".source =
-            ../../dotfiles/matugen/templates/neovim-dankcolors.lua;
-
-          "DankMaterialShell/theme.json".source = mutableDotfile "dms/theme.json";
-          "DankMaterialShell/themes/themeport/theme.json".source = mutableDotfile "themeport/dms/theme.json";
-          "DankMaterialShell/settings.json".source = mutableDotfile "dms/settings.json";
-          "DankMaterialShell/plugin_settings.json".source = mutableDotfile "dms/plugin-settings.json";
 
           # AirPods need WirePlumber's AVRCP player so their stem gestures can
           # control MPRIS-aware players. Do not also enable mpris-proxy; upstream
@@ -495,7 +274,6 @@ in
             # the two out-of-store symlinks above.
             force = true;
           };
-          ".local/state/DankMaterialShell/session.json".source = mutableDotfile "dms/session.json";
           "Fonts/.keep".text = "";
           ".local/share/fonts/.keep".text = "";
           "Pictures/Wallpapers" = {

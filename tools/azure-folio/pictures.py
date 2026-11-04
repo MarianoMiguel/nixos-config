@@ -3,8 +3,8 @@
 Any JPEG, PNG or WebP directly in that folder becomes a plate of one more
 collection, "Your pictures" (id "mine"), printed exactly as the shipped plates
 are: build.masks and render.desktop_mask crop and dither it, build.print_plate
-prints the light azure render the shell's Plate re-prints in any ink, and
-render.render_cached crops each display for DMS. The pictures stay on this
+prints the light azure render, and the chosen one is printed in the
+selection's ink for the desktop. The pictures stay on this
 computer: never in the repository, never in the Nix store. `azure-folio
 pictures` reads the folder and keeps what it prints in a store in the cache,
 $XDG_CACHE_HOME/azure-folio/pictures, keyed by content (renaming a picture
@@ -14,7 +14,7 @@ costs nothing; the folder alone decides what is there):
   sources/<id>.png                    the picture in gray, re-encoded
   art/<id>/mask-<layout>.png          its 1-bit masks (desktop, portrait)
   art/<id>/azure-light-<layout>.png   the plates the shell prints from
-  art/<id>/<ink>-<mode>-<layout>.png  DMS's copy, printed when it is chosen
+  art/<id>/<ink>-<mode>-<layout>.png  the desktop's copy, printed when chosen
 
 A picture may have a sidecar beside it, named like it with .json in place of
 (or after) its extension, `2pac.json` or `2pac.jpg.json`:
@@ -170,7 +170,7 @@ def save(image, path):
 
 
 def prints(ident, ink, mode, color, store=None):
-    """The plate printed in one of the catalog's inks, for DMS: made once, from its masks."""
+    """The plate printed in one of the catalog's inks, for the desktop: made once, from its masks."""
     folder = art_dir(ident, store)
     for layout in LAYOUTS:
         target = folder / f'{ink}-{mode}-{layout}.png'
@@ -341,7 +341,7 @@ def _remove(entry):
 
 
 def collect(store, renders, keep):
-    """Forget the pictures no longer in the folder: their prints and DMS's renders of them."""
+    """Forget the pictures no longer in the folder: their prints and any renders of them."""
     for sub, pattern in (('art', ART_ID), ('sources', SOURCE)):
         if not (store / sub).is_dir(): continue
         with os.scandir(store / sub) as entries:
@@ -373,7 +373,7 @@ def scan(ink, folder=None, store=None, renders=None, create=False, wait=True):
     """Bring the store in line with the folder; returns the catalog document.
 
     ink: the light azure every shell plate prints in (the catalog's).
-    renders: DMS's per-display render cache, cleaned of removed pictures.
+    renders: the per-display render cache, cleaned of removed pictures.
     wait: False returns the catalog as it is while another scan runs."""
     folder, store = folder or FOLDER, store or STORE
     if create: folder.mkdir(parents=True, exist_ok=True)

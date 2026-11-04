@@ -1,14 +1,10 @@
 {
   lib,
   pkgs,
-  quickshell,
   ...
 }:
 
 let
-  system = pkgs.stdenv.hostPlatform.system;
-  quickshellPackage = quickshell.packages.${system}.default;
-
   folio = pkgs.callPackage ../../packages/azure-folio.nix { };
 
   themeportUnwrapped = pkgs.stdenvNoCC.mkDerivation {
@@ -21,7 +17,7 @@ let
       substituteInPlace themeport.py \
         --replace-fail \
           '    apply_vscode(state, meta)' \
-          '    # VS Code is themed by DMS Matugen; theme metadata never installs extensions.'
+          '    # VS Code is left alone: theme metadata never installs extensions.'
       install -Dm0444 themeport.py "$out/share/themeport/themeport.py"
       cp -R templates "$out/share/themeport/templates"
       mkdir -p "$out/share/themeport/themes"
@@ -33,34 +29,21 @@ let
     '';
   };
 
-  # Give the renderer exactly one DMS executable without exposing the rest of
-  # the user's PATH. The DMS CLI delegates IPC transport to Quickshell, so make
-  # qs visible only inside this bridge rather than in Themeport's outer PATH.
-  dmsBridge = pkgs.writeShellScriptBin "dms" ''
-    export PATH=${lib.makeBinPath [ quickshellPackage ]}
-    exec /run/current-system/sw/bin/dms "$@"
-  '';
-
-  # One DMS IPC transaction updates the shared wallpaper for present and
-  # future displays. No per-monitor writes or screen-discovery races.
+  # GNOME's wallpaper, for the light and the dark style alike: a theme's
+  # wallpaper belongs to the palette, not to the color scheme.
   wallpaperSetter = pkgs.writeShellApplication {
     name = "mariano-set-wallpaper";
-    runtimeInputs = [ dmsBridge pkgs.coreutils ];
+    runtimeInputs = [ pkgs.coreutils pkgs.glib pkgs.python3 ];
     text = ''
       set -eu
       if [ "$#" -ne 1 ] || [ ! -f "$1" ]; then
         echo "Usage: mariano-set-wallpaper IMAGE" >&2
         exit 2
       fi
-      wallpaper=$(realpath "$1")
-      if ! response=$(dms ipc call wallpaper setAll "$wallpaper" 2>&1); then
-        printf '%s\n' "$response" >&2
-        exit 1
-      fi
-      case "$response" in
-        "SUCCESS:"*) printf '%s\n' "$response" ;;
-        *) printf '%s\n' "$response" >&2; exit 1 ;;
-      esac
+      uri=$(python3 -c 'import pathlib, sys; print(pathlib.Path(sys.argv[1]).resolve().as_uri())' "$1")
+      gsettings set org.gnome.desktop.background picture-uri "$uri"
+      gsettings set org.gnome.desktop.background picture-uri-dark "$uri"
+      printf 'wallpaper: %s\n' "$uri"
     '';
   };
 
@@ -146,7 +129,6 @@ let
     pkgs.systemd
     pkgs.tmux
     chromeBridge
-    dmsBridge
     wallpaperSetter
     vicinaeBridge
   ];
@@ -174,8 +156,8 @@ Themeport (trusted catalog)
 
   themeport list
   themeport pick [--hold]
-  themeport set THEME [--pair THEME] [--no-restart]
-  themeport look folio|lumen light|dark COLOR [--no-restart]
+  themeport set THEME [--pair THEME]
+  themeport look folio|lumen light|dark COLOR
   themeport wallpapers [--all] [--list] [--hold]
 
 Themes are shipped inside the immutable NixOS system. Online installs,
@@ -216,7 +198,6 @@ HELP
           shift
           validate_theme "$theme"
           pair=""
-          no_restart=0
           while [ "$#" -gt 0 ]; do
             case "$1" in
               --pair)
@@ -224,10 +205,6 @@ HELP
                 pair=$2
                 validate_theme "$pair"
                 shift 2
-                ;;
-              --no-restart)
-                no_restart=1
-                shift
                 ;;
               *)
                 usage >&2
@@ -238,9 +215,6 @@ HELP
           set -- "$theme"
           if [ -n "$pair" ]; then
             set -- "$@" --pair "$pair"
-          fi
-          if [ "$no_restart" -eq 1 ]; then
-            set -- "$@" --no-restart
           fi
           exec python3 "$renderer" set "$@"
           ;;
@@ -264,21 +238,13 @@ HELP
           case "$look_pick" in
             ""|*[!#0-9A-Za-z]*) echo "Unknown color: $look_pick" >&2; exit 2 ;;
           esac
-          no_restart=0
-          if [ "''${1:-}" = --no-restart ]; then
-            no_restart=1
-            shift
-          fi
           [ "$#" -eq 0 ] || { usage >&2; exit 2; }
           generated="''${XDG_STATE_HOME:-$HOME/.local/state}/themeport/looks"
           mkdir -p "$generated"
           python3 ${folio}/share/azure-folio/looks.py themeport \
             --theme "$look_theme" --mode "$look_mode" --pick "$look_pick" --out "$generated"
-          set -- "$generated/interstellar-$look_theme-$look_mode" --pair "$generated/interstellar-$look_theme-$look_other"
-          if [ "$no_restart" -eq 1 ]; then
-            set -- "$@" --no-restart
-          fi
-          exec python3 "$renderer" set "$@"
+          exec python3 "$renderer" set "$generated/interstellar-$look_theme-$look_mode" \
+            --pair "$generated/interstellar-$look_theme-$look_other"
           ;;
         pick)
           hold=0
@@ -338,7 +304,7 @@ HELP
             "$wallpaper_root"/*)
               [ -f "$choice" ] || { echo "Wallpaper no longer exists." >&2; exit 2; }
               # Preserve the library path instead of resolving its immutable
-              # symlink. DMS uses the active file's parent as its gallery.
+              # symlink, so GNOME's settings show it from the library.
               resolved=$choice
               ;;
             "$trusted"/*)
@@ -451,8 +417,8 @@ in
     themeport
     folio
     wallpaperSetter
-    # Export previews and backgrounds at /run/current-system/sw/share/themeport
-    # for the native DMS pickers; the command wrapper itself contains only bin/.
+    # Export previews and backgrounds at /run/current-system/sw/share/themeport;
+    # the command wrapper itself contains only bin/.
     themeportUnwrapped
     pkgs.yaru-theme
     pkgs.adwaita-icon-theme

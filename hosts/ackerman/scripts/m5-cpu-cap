@@ -1,0 +1,22 @@
+#!/bin/bash
+# m5-cpu-cap [KHZ|off] - the J716C's interim CPU frequency cap (docs/status.md, the CPU check), as root:
+# every cpufreq policy's scaling_max_freq goes to its highest frequency at or below KHZ (default
+# CAP_KHZ from /etc/default/m5-cpu-cap, else 3000000: 2964 MHz on the M clusters, 2880 MHz on the
+# P cluster); "off" restores cpuinfo_max_freq. Run at boot by m5-cpu-cap.service.
+# Undo, one line:  sudo systemctl disable --now m5-cpu-cap   (its ExecStop runs "m5-cpu-cap off")
+set -eu
+CAP=${1:-}
+if [ -z "$CAP" ]; then
+    [ -r /etc/default/m5-cpu-cap ] && . /etc/default/m5-cpu-cap
+    CAP=${CAP_KHZ:-3000000}
+fi
+for p in /sys/devices/system/cpu/cpufreq/policy*; do
+    if [ "$CAP" = off ]; then
+        f=$(cat "$p/cpuinfo_max_freq")
+    else
+        f=$(tr ' ' '\n' < "$p/scaling_available_frequencies" | awk -v c="$CAP" '$1 && $1 <= c && $1 > m { m = $1 } END { print m + 0 }')
+        [ "$f" -gt 0 ] || { echo "m5-cpu-cap: no frequency <= $CAP in ${p##*/}" >&2; exit 1; }
+    fi
+    echo "$f" > "$p/scaling_max_freq"
+    echo "m5-cpu-cap: ${p##*/} scaling_max_freq $(cat "$p/scaling_max_freq")"
+done

@@ -1,0 +1,68 @@
+// ackerman (hosts/ackerman/session.nix): included last by config.kdl, which is DMS's own niri config
+// as `dms setup` writes it. Only what ackerman needs on top of stock niri + stock DMS: the M5 Max,
+// no motion, bonhart's input feel, and Mariano's app keys (they win over DMS's binds).
+
+// The GPU renders (zink over the Asahi Vulkan driver); simpledrm scans out until the display driver
+// lands
+debug {
+    render-drm-device "/dev/dri/renderD128"
+}
+
+// The built-in panel at his scale (simpledrm gives no EDID; niri's guess is 1.0)
+output "eDP-1" {
+    scale 1.5
+}
+
+// No motion on ackerman (Mariano, 2026-11-08)
+animations {
+    off
+}
+
+// As on bonhart (GNOME's settings there, 2026-11-09): US and Spanish, Shift+Caps switches, Right Alt
+// composes; repeat after 500 ms, every 30 ms; tap to click, two- and three-finger clicks, no
+// natural scrolling (config.kdl leaves out DMS's dms/input.kdl, whose natural-scroll niri can't
+// switch off again), flat speed; no middle-click paste. (keyd's Alt remaps: comfort.nix.)
+input {
+    keyboard {
+        xkb {
+            layout "us,es"
+            options "grp:shift_caps_toggle,compose:ralt"
+        }
+        repeat-delay 500
+        repeat-rate 33
+    }
+    touchpad {
+        tap
+        dwt
+        click-method "clickfinger"
+        accel-speed 0.0
+    }
+    mouse {
+        accel-speed 0.0
+    }
+}
+
+clipboard {
+    disable-primary
+}
+
+binds {
+    // His app keys
+    Super+Return hotkey-overlay-title="Open Terminal" { spawn "ghostty"; }
+    Super+B hotkey-overlay-title="Open Browser" { spawn "google-chrome-stable"; }
+    Super+E hotkey-overlay-title="Open Files" { spawn "nautilus"; }
+    // Alt+Space opens the launcher too (DMS's own Alt+Space is its Spotlight Bar)
+    Alt+Space hotkey-overlay-title="Application Launcher" { spawn "dms" "ipc" "call" "spotlight" "toggle"; }
+    // Captures (the MacBook has no Print key)
+    Alt+Shift+3 repeat=false hotkey-overlay-title="Capture All Displays" { spawn "mariano-capture" "screenshot-full"; }
+    Alt+Shift+4 repeat=false hotkey-overlay-title="Capture Region" { spawn "mariano-capture" "screenshot-region"; }
+    Alt+Shift+5 repeat=false hotkey-overlay-title="Start or Stop Region Recording" { spawn "mariano-capture" "video-toggle"; }
+
+    // The MacBook's top row: F3 Mission Control, F4 Spotlight; the keyboard backlight on Ctrl+F1/F2
+    XF86LaunchA repeat=false { toggle-overview; }
+    XF86Search repeat=false { spawn "dms" "ipc" "call" "spotlight" "toggle"; }
+    Ctrl+XF86MonBrightnessUp allow-when-locked=true { spawn "brightnessctl" "-d" "kbd_backlight" "set" "10%+"; }
+    Ctrl+XF86MonBrightnessDown allow-when-locked=true { spawn "brightnessctl" "-d" "kbd_backlight" "set" "10%-"; }
+    XF86KbdBrightnessUp allow-when-locked=true { spawn "brightnessctl" "-d" "kbd_backlight" "set" "10%+"; }
+    XF86KbdBrightnessDown allow-when-locked=true { spawn "brightnessctl" "-d" "kbd_backlight" "set" "10%-"; }
+}

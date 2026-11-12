@@ -1,0 +1,24 @@
+#!/bin/bash
+# m5max-linux listening-test guard (his LISTENING-TEST.md stop rules), root. On any trip: mute the default
+# sink and switch the speakers off; logs to /root/listen-guard.log. Never kills processes.
+log=/root/listen-guard.log
+# Power trip, per speaker and per daemon period (85 ms). 0.10 W while the kernel capped the speakers at
+# -30 dB (about 0.01 W for a full-scale tone). Without the cap (2026-11-09) it is a backstop above
+# the J716 profile's sustained limits (0.89 W a woofer, 0.59 W a tweeter): above it, something reads
+# or acts wrong, so stop. Its other rules (a daemon panic, gain limiting, negative power, amp faults,
+# the daemon stopping or starting) are unchanged.
+max_w=1.5
+trip() { echo "$(date +%T) TRIP: $*" >> $log
+  runuser -u mariano -- env XDG_RUNTIME_DIR=/run/user/1001 wpctl set-mute @DEFAULT_AUDIO_SINK@ 1 2>/dev/null
+  amixer -c AppleJ716 cset name="Speaker Switch" off >/dev/null 2>&1 || amixer -c AppleJ716 sset Speaker off >/dev/null 2>&1
+  echo "$(date +%T) speakers switched off, sink muted" >> $log; }
+echo "$(date +%T) guard up" >> $log
+journalctl -k -f -n 0 -o cat | while read -r l; do case "$l" in *tas2764*ault*|*TAS2764*ault*) trip "kernel: $l";; esac; done &
+journalctl -u speakersafetyd -f -n 0 -o cat | while read -r l; do
+  case "$l" in *"speakersafetyd::types"*" Power "*) ;; *"speakersafetyd::types"*) continue;; esac   # skip config lines (limits), keep the verbose per-speaker Power lines
+  case "$l" in *anic*|*"gain limited"*|*"Gain limited"*|*egative*|*Starting*|*Stopped*) trip "speakersafetyd: $l"; continue;; esac
+  for w in $(echo "$l" | grep -o -E "[-]?[0-9]+\.[0-9]+ ?W" | tr -d " W"); do
+    awk -v w="$w" -v max="$max_w" "BEGIN{exit !(w > max || w < 0)}" && trip "power $w W: $l"
+  done
+done &
+wait

@@ -37,6 +37,43 @@
       url = "github:librepods-org/librepods?ref=linux/rust";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    # ackerman (the M5 Max): its per-unit and Apple files, the kernel with this unit's GPU
+    # voltages, m1n1 and the board's firmware (nixos/ in the private bring-up repository, plain
+    # git, so this fetch skips LFS). Only nixosConfigurations.ackerman reads it; other hosts never
+    # fetch it.
+    ackerman-private = {
+      url = "git+ssh://git@github.com/MarianoMiguel/m5max-linux-private";
+      flake = false;
+    };
+    # ackerman's desktop: niri with the Folio shell, and DMS as Folio's fallback
+    # (modules/nixos/niri-folio.nix, restored from archive/interstellar-niri).
+    # Only nixosConfigurations.ackerman reads these.
+    #
+    # DMS stays at the revision the niri desktop last ran: patches/dms-*.patch
+    # are made against it. Move it together with them.
+    dms.url = "github:AvengeMedia/DankMaterialShell/4d5bac28c9ed977e49bf3fc12e4b3c21c34c925f";
+    quickshell = {
+      url = "github:quickshell-mirror/quickshell";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+    dms-codexbar = {
+      url = "github:zakstam/dms-codexbar";
+      flake = false;
+    };
+    cat-dms = {
+      url = "github:xi-ve/cat-dms";
+      flake = false;
+    };
+    codeIsland-dms = {
+      url = "github:payprays/codeIsland-dms";
+      flake = false;
+    };
+    niri-pip = {
+      # Keep the reviewed v0.2.1 source immutable. This is intentionally not a
+      # moving tag because the daemon controls compositor windows at runtime.
+      url = "github:t1ktakdev/niri-pip/4f2075ce35697169e43889aadd55f0900f1d4710";
+      flake = false;
+    };
   };
 
   outputs =
@@ -119,6 +156,16 @@
       nixosDevSystem = mkSystem [
         ./hosts/nixos-dev/configuration.nix
       ];
+      # ackerman is aarch64 (the M5 Max); it is built on itself, not on bonhart.
+      ackermanSystem = nixpkgs.lib.nixosSystem {
+        specialArgs = specialArgs // {
+          pkgsUnstable = import nixpkgs-unstable {
+            system = "aarch64-linux";
+            config.allowUnfree = true;
+          };
+        };
+        modules = sharedModules ++ [ ./hosts/ackerman/configuration.nix ];
+      };
     in
     {
       nixosConfigurations = {
@@ -154,6 +201,14 @@
         # half the USB. Use these when the target machine is known.
         "installer-balerion" = mkInstaller [ "balerion" ];
         "installer-bonhart" = mkInstaller [ "bonhart" ];
+
+        ackerman = ackermanSystem;
+        # ackerman's first install: the boot and the desktop only, without the big apps that build
+        # from source on aarch64 (modules/nixos/app-sets.nix). The same host (hostname ackerman), so
+        # `nixos-rebuild --flake .#ackerman` adds them afterwards.
+        ackerman-core = ackermanSystem.extendModules {
+          modules = [ { mariano.bigApps.enable = false; } ];
+        };
       };
 
       nixosModules.workstation = {

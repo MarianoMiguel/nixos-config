@@ -1,0 +1,91 @@
+#!/bin/bash
+# m5-session-guard - the GPU session's thermal watch (docs/status.md, the GPU daily candidate), run by
+# m5-session-guard.service on every boot; on a boot without the aurora GPU it exits at once.
+# Every 250 ms it logs the hottest die sensor (SMC keys Tp*, Tm*, TVD*, Tg*, TCMb), TCMb, the
+# soc-die-thermal zone and its cooling states, both fans, the SMC's Total System Power and whether a
+# compositor runs, to /var/log/m5-session-guard/<boot time>.csv (latest.csv links the newest; files
+# older than 7 days are pruned). Escalation (2026-11-08, after a build pushed the session to 95 C):
+#   >= M5_GUARD_FREEZE_C (90): freeze the Nix build: SIGSTOP every nixbld* process and every
+#      per-connection nix-daemon (not the service's listener, not sshd, so an ssh-ng build pauses
+#      and its connection stays up);
+#   >= M5_GUARD_LIMIT_C (95), with the build frozen for 5 s or nothing to freeze: end the compositor
+#      (Hyprland, niri: TERM, then KILL after 3 s);
+#   < M5_GUARD_RESUME_C (80), frozen for at least 10 s: SIGCONT the build.
+# Each step goes to the journal (-t m5-session-guard) and the log's event column. The CPU backstop
+# (passive at 100 C) is the second line. Reading every die channel costs some CPU; set
+# M5_GUARD_KEYS="TCMb TVD0 ..." in /etc/default/m5-session-guard to watch fewer.
+set -u
+[ -r /etc/default/m5-session-guard ] && . /etc/default/m5-session-guard
+LIMIT=${M5_GUARD_LIMIT_C:-95}
+FREEZE=${M5_GUARD_FREEZE_C:-90}
+RESUME=${M5_GUARD_RESUME_C:-80}
+gpu=
+for c in /sys/class/drm/card[0-9]*; do
+    [ "$(basename "$(readlink -f "$c/device/driver")" 2>/dev/null)" = aurora ] && gpu=1
+done
+[ -n "$gpu" ] || { echo "m5-session-guard: no aurora GPU on this boot, nothing to guard"; exit 0; }
+H=$(dirname "$(grep -l macsmc_hwmon /sys/class/hwmon/hwmon*/name | head -1)")
+S=() T=
+for f in "$H"/temp*_label; do
+    l=$(cat "$f")
+    if [ -n "${M5_GUARD_KEYS:-}" ]; then [[ " $M5_GUARD_KEYS " == *" $l "* ]] || continue
+    else [[ $l =~ ^(Tp|Tm|TVD|Tg|TCMb) ]] || continue; fi
+    S+=("${f%_label}_input"); [ "$l" = TCMb ] && T=${f%_label}_input
+done
+[ ${#S[@]} -gt 0 ] || { echo "m5-session-guard: no die sensors" >&2; exit 1; }
+P=/dev/null; for f in "$H"/power*_label; do [ "$(cat "$f")" = "Total System Power" ] && P=${f%_label}_input; done
+Z=; for z in /sys/class/thermal/thermal_zone*; do [ "$(cat "$z/type")" = soc-die-thermal ] && Z=$z; done
+CD=(); [ -n "$Z" ] && for c in "$Z"/cdev[0-9]*; do [ -L "$c" ] && CD+=("$(readlink -f "$c")"); done
+D=/var/log/m5-session-guard; mkdir -p "$D"
+find "$D" -name '*.csv' -mtime +7 -delete 2>/dev/null
+L=$D/$(date +%Y%m%d-%H%M%S).csv; ln -sfn "$(basename "$L")" "$D/latest.csv"
+{ printf 'time,hottest_c,tcmb_c,zone_c,fan1,fan2,system_w,compositor,event'
+  for c in "${CD[@]}"; do printf ',%s' "$(cat "$c/type")"; done; echo; } > "$L"
+logger -t m5-session-guard "watching ${#S[@]} die sensors, zone ${Z:+$(basename "$Z")}, limit $LIMIT C, log $L"
+rd() { local v=0; read -r v < "$1" 2>/dev/null; echo "${v:-0}"; }
+# The build's processes: every nixbld* user's, and nix-daemon workers (not the service's MainPID)
+build_pids() {
+    local main; main=$(systemctl show -p MainPID --value nix-daemon.service 2>/dev/null)
+    ps -eo pid=,user=,comm= | awk -v main="${main:-0}" '$2 ~ /^nixbld/ || ($3 == "nix-daemon" && $1 != main) {print $1}'
+}
+frozen=0 frozen_at=0
+freeze_build() {
+    local p n=0
+    for p in $(build_pids); do kill -STOP "$p" 2>/dev/null && n=$((n + 1)); done
+    echo "$n"
+}
+thaw_build() {
+    local p n=0
+    for p in $(build_pids); do kill -CONT "$p" 2>/dev/null && n=$((n + 1)); done
+    echo "$n"
+}
+trap 'thaw_build >/dev/null; exit 0' TERM INT
+thaw_build >/dev/null   # a guard that died while the build was frozen leaves it stopped
+refreeze=0
+last_kill=0
+while :; do
+    m=0; for f in "${S[@]}"; do v=$(rd "$f"); [ "$v" -gt "$m" ] && m=$v; done
+    h=$((m / 1000)); comp=$(pgrep -x 'Hyprland|niri' | head -1); ev=
+    if [ "$h" -ge "$FREEZE" ] && [ "$frozen" = 0 ]; then
+        n=$(freeze_build); frozen=1 frozen_at=$SECONDS
+        if [ "$n" -gt 0 ]; then
+            ev="freeze build ($n) at $h C"
+            logger -t m5-session-guard -p user.warning "die at $h C >= $FREEZE C: froze the Nix build ($n processes)"
+        else frozen_at=$((SECONDS - 5)); fi   # nothing to freeze: the compositor step needn't wait
+    elif [ "$frozen" = 1 ] && [ "$h" -lt "$RESUME" ] && [ $((SECONDS - frozen_at)) -ge 10 ]; then
+        n=$(thaw_build); frozen=0
+        [ "$n" -gt 0 ] && { ev="resume build ($n) at $h C"; logger -t m5-session-guard "die at $h C < $RESUME C: resumed the Nix build ($n processes)"; }
+    elif [ "$frozen" = 1 ] && [ $((SECONDS - refreeze)) -ge 2 ]; then
+        freeze_build >/dev/null; refreeze=$SECONDS   # builders started just before the freeze
+    fi
+    if [ "$h" -ge "$LIMIT" ] && [ -n "$comp" ] && [ "$frozen" = 1 ] && [ $((SECONDS - frozen_at)) -ge 5 ] && [ $((SECONDS - last_kill)) -ge 5 ]; then
+        ev="kill $comp at $h C"; last_kill=$SECONDS
+        logger -t m5-session-guard -p user.warning "die at $h C >= $LIMIT C: ending the compositor ($comp)"
+        pkill -TERM -x 'Hyprland|niri'
+        ( sleep 3; pkill -KILL -x 'Hyprland|niri' ) &
+    fi
+    line="$(date +%T.%N | cut -c1-12),$h,$(( $(rd "${T:-/dev/null}") / 1000 )),$([ -n "$Z" ] && echo $(( $(rd "$Z/temp") / 1000 ))),$(rd "$H/fan1_input"),$(rd "$H/fan2_input"),$(( $(rd "$P") / 1000000 )),${comp:+up},$ev"
+    for c in "${CD[@]}"; do line+=",$(rd "$c/cur_state")"; done
+    echo "$line" >> "$L"
+    sleep 0.25
+done

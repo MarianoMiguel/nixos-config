@@ -9,6 +9,8 @@
 
 let
   system = pkgs.stdenv.hostPlatform.system;
+  # The big apps (app-sets.nix): `big p` is p, or null (filtered out below) when they are off
+  big = p: if config.mariano.bigApps.enable then p else null;
   codexDesktopSource = pkgs.runCommand "codex-desktop-linux-themeport-source" { } ''
     cp -R ${codex-desktop-linux.outPath}/. "$out/"
     chmod -R u+w "$out"
@@ -234,6 +236,8 @@ let
 in
 
 {
+  imports = [ ./app-sets.nix ];
+
   programs.firefox.enable = true;
   programs.appimage = {
     enable = true;
@@ -289,7 +293,10 @@ in
 
   services.flatpak.enable = true;
 
-  environment.systemPackages =
+  # ackerman (the M5 Max) is aarch64: the apps that ship only for x86_64
+  # (Chrome, Spotify, Slack, DaVinci Resolve, the AppImages, ...) stay off it.
+  # On x86_64 every one of them is available and the list is unchanged.
+  environment.systemPackages = lib.filter (p: p != null && lib.meta.availableOn pkgs.stdenv.hostPlatform p) (
     with pkgs;
     [
       brave
@@ -299,7 +306,7 @@ in
       telegram-desktop
       beeperDesktop
       lmstudio
-      obsidian
+      (big obsidian)
       fluent-reader
       obsbotCameraControl
       figmaDesktop
@@ -307,7 +314,7 @@ in
       vscode
       gearlever
       font-manager
-      zedEditorWithCli
+      (big zedEditorWithCli)
       localsend
       mpv
       qbittorrent
@@ -316,7 +323,7 @@ in
       kdePackages.kio-extras
       kdePackages.kdenlive
       handbrake
-      krita
+      (big krita)
       inkscape
       gimp
       darktable
@@ -324,16 +331,18 @@ in
       orca-slicer
       # pencilDev
     ]
+    # The Resolve wrappers carry no platforms of their own; ask the package.
+    ++ lib.optional (lib.meta.availableOn pkgs.stdenv.hostPlatform pkgsUnstable.davinci-resolve) davinciResolve
     ++ [
-      davinciResolve
-      codexDesktop
+      (big codexDesktop)
       # SSH starts a login shell without the desktop app's injected PATH.
       # Expose the matching bundled CLI for remote projects and admin sessions.
-      (pkgs.writeShellScriptBin "codex" ''
+      (big (pkgs.writeShellScriptBin "codex" ''
         exec ${codexDesktop}/opt/codex-desktop/resources/codex "$@"
-      '')
+      ''))
       cmuxBrowser
       granola
       herdr
-    ];
+    ]
+  );
 }

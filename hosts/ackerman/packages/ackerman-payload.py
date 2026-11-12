@@ -85,7 +85,7 @@ def initrd_with_secrets(top):
 RESCUE = "rd.systemd.unit=ackerman-rescue.target rd.luks=0"
 
 
-def build(top, daily, rescue=False, extra="", hold=False):
+def build(top, daily, rescue=False, extra="", hold=False, dtb_file=None):
     top = pathlib.Path(os.path.realpath(top))
     m1n1 = M1N1.read_bytes()
     if len(m1n1) != M1N1_SIZE:
@@ -94,7 +94,8 @@ def build(top, daily, rescue=False, extra="", hold=False):
     n, raw = gz_members(kernel, "kernel")
     if n != 1 or raw[56:60] != b"ARM\x64":
         die("kernel is not one gzip member of an arm64 Image")
-    dtb = (top / "dtbs" / DTB_NAME).read_bytes()
+    # --dtb: another device tree for this payload (the PMP-off variant, ...)
+    dtb = pathlib.Path(dtb_file).read_bytes() if dtb_file else (top / "dtbs" / DTB_NAME).read_bytes()
     if dtb[:4] != b"\xd0\x0d\xfe\xed" or struct.unpack(">I", dtb[4:8])[0] != len(dtb) or b"apple,j716c" not in dtb:
         die(f"{DTB_NAME}: not a J716C device tree")
     initrd = initrd_with_secrets(top)
@@ -195,11 +196,12 @@ def main():
     p = sub.add_parser("build"); p.add_argument("toplevel"); p.add_argument("out"); p.add_argument("--daily", action="store_true")
     p.add_argument("--rescue", action="store_true")
     p.add_argument("--hold", action="store_true"); p.add_argument("--extra", default="")
+    p.add_argument("--dtb", default=None)
     sub.add_parser("promote")
     sub.add_parser("status")
     a = ap.parse_args()
     if a.cmd == "build":
-        blob, args = build(a.toplevel, a.daily, a.rescue, a.extra, a.hold)
+        blob, args = build(a.toplevel, a.daily, a.rescue, a.extra, a.hold, a.dtb)
         pathlib.Path(a.out).write_bytes(blob)
         print(f"{a.out}: {len(blob)} bytes, sha256 {sha(blob)}\nbootargs {args}")
     elif a.cmd == "install":

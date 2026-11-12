@@ -29,6 +29,7 @@ let
     name = "ackerman-selftest";
     runtimeInputs = with pkgs; [
       coreutils
+      gnugrep
       iproute2
       iputils
       util-linux
@@ -39,6 +40,10 @@ let
       sleep 90
       if ip route get 1.1.1.1 >/dev/null 2>&1 && ping -c1 -W3 1.1.1.1 >/dev/null 2>&1; then
         echo "network OK: keeping this generation"
+        if grep -qw m5.hold=1 /proc/cmdline; then
+          echo "held (m5.hold=1): not promoting; check the desktop, then run ackerman-payload promote"
+          exit 0
+        fi
         ackerman-payload promote
         exit 0
       fi

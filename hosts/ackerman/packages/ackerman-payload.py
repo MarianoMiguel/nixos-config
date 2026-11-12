@@ -85,7 +85,7 @@ def initrd_with_secrets(top):
 RESCUE = "rd.systemd.unit=ackerman-rescue.target rd.luks=0"
 
 
-def build(top, daily, rescue=False):
+def build(top, daily, rescue=False, extra="", hold=False):
     top = pathlib.Path(os.path.realpath(top))
     m1n1 = M1N1.read_bytes()
     if len(m1n1) != M1N1_SIZE:
@@ -100,6 +100,14 @@ def build(top, daily, rescue=False):
     initrd = initrd_with_secrets(top)
     params = (top / "kernel-params").read_text().strip()
     args = f"init={top}/init {params}" + ("" if daily or rescue else " m5.selftest=1")
+    # --hold: the self-test reverts a boot without network but doesn't promote it; promote by hand
+    # once the desktop is checked (a boot can pass the network test with a black screen)
+    if hold and not daily and not rescue:
+        args += " m5.hold=1"
+    # --extra: switches for this payload only (of_disable=..., pmc.agents=0, ...); a hand promote
+    # keeps them
+    if extra.strip():
+        args += " " + " ".join(extra.split())
     if rescue:
         args += " " + RESCUE
     if "\n" in args or not args.isascii() or len(args) >= MAX_ARGS:
@@ -148,9 +156,9 @@ def log(line):
         f.write(f"{datetime.datetime.now().isoformat(timespec='seconds')} {line}\n")
 
 
-def install(top, daily, reason="install"):
+def install(top, daily, reason="install", extra="", hold=False):
     esp_ready()
-    blob, args = build(top, daily)
+    blob, args = build(top, daily, extra=extra, hold=hold)
     need = 2 * len(blob) + 20 * 2**20
     free = shutil.disk_usage(ESP).free
     if free < need:
@@ -173,7 +181,7 @@ def install(top, daily, reason="install"):
         write_verified(prev, cur.read_bytes())
         note = f"boot.bin.prev = the payload running now ({sha(prev.read_bytes())[:16]})"
     write_verified(cur, blob)
-    mode = "daily" if daily else "self-test"
+    mode = "daily" if daily else ("self-test, held" if hold else "self-test")
     log(f"{reason}: boot.bin = {digest[:16]} ({mode}, {len(blob)} bytes) {os.path.realpath(top)}; {note}")
     print(f"boot.bin = {digest[:16]}, {mode}, {len(blob) >> 20} MB, for {os.path.realpath(top)}")
     print(note)
@@ -183,17 +191,19 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
     p = sub.add_parser("install"); p.add_argument("toplevel"); p.add_argument("--daily", action="store_true")
+    p.add_argument("--hold", action="store_true"); p.add_argument("--extra", default="")
     p = sub.add_parser("build"); p.add_argument("toplevel"); p.add_argument("out"); p.add_argument("--daily", action="store_true")
     p.add_argument("--rescue", action="store_true")
+    p.add_argument("--hold", action="store_true"); p.add_argument("--extra", default="")
     sub.add_parser("promote")
     sub.add_parser("status")
     a = ap.parse_args()
     if a.cmd == "build":
-        blob, args = build(a.toplevel, a.daily, a.rescue)
+        blob, args = build(a.toplevel, a.daily, a.rescue, a.extra, a.hold)
         pathlib.Path(a.out).write_bytes(blob)
         print(f"{a.out}: {len(blob)} bytes, sha256 {sha(blob)}\nbootargs {args}")
     elif a.cmd == "install":
-        install(a.toplevel, a.daily)
+        install(a.toplevel, a.daily, extra=a.extra, hold=a.hold)
     elif a.cmd == "promote":
         if "m5.selftest=1" not in cmdline():
             die("this boot is not a self-test: nothing to promote")
@@ -208,7 +218,11 @@ def main():
             print(f"boot.bin is {m.group(1).decode()}, installed since this boot ({booted}): not promoting over it")
             log(f"promote skipped: boot.bin is {m.group(1).decode()}, not the booted {booted}")
             return
-        install("/run/booted-system", daily=True, reason="promote (self-test passed)")
+        # The switches this payload was built with (--extra) stay in the daily
+        params = (pathlib.Path(booted) / "kernel-params").read_text().split()
+        skip = set(params) | {"m5.selftest=1", "m5.hold=1"}
+        extra = " ".join(t for t in cmdline().split() if t not in skip and not t.startswith("init="))
+        install("/run/booted-system", daily=True, reason="promote (self-test passed)", extra=extra)
     elif a.cmd == "status":
         esp_ready()
         for f in sorted(DIR.glob("boot.bin*")):

@@ -139,7 +139,14 @@ in
     # seven cores, `cntd x9` after `paciasp`). Without the hwcaps, Chrome and the like stay on their
     # NEON paths, and this kernel's untested SME context switching never runs.
     "arm64.nosme"
-  ];
+  ]
+  # Route B for x86 programs (x86.nix): user4k=on lets a process tree run with 4K pages on this 16K
+  # kernel (CONFIG_ARM64_USER4K_EXPERIMENTAL, Aurora's experimental per-process page sizes), which
+  # FEX needs. The kernel has it built in and off; this turns it on for the boot (it costs 32 bytes
+  # of page_ext per 16K page, about 0.2 % of RAM). It goes with ackerman.x86.enable: set that to
+  # false and the next generation boots without it. Check after boot: the "4K userspace translation
+  # granule" capability line in dmesg, and `userpages --status`.
+  ++ lib.optional config.ackerman.x86.enable "user4k=on";
   boot.consoleLogLevel = 4;
   # The camera driver is loaded by hand, attended (m5max-linux docs/camera.md)
   boot.blacklistedKernelModules = [ "apple_isp" ];

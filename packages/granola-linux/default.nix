@@ -103,7 +103,12 @@ stdenv.mkDerivation {
     homepage = "https://www.granola.ai/";
     license = lib.licenses.unfree;
     mainProgram = "granola";
-    platforms = [ "x86_64-linux" ];
+    # The app is JavaScript from the Windows installer on nixpkgs' Electron; its one native module
+    # (better-sqlite3) is compiled here, so it builds for aarch64 too (ackerman)
+    platforms = [
+      "x86_64-linux"
+      "aarch64-linux"
+    ];
     sourceProvenance = with lib.sourceTypes; [ binaryNativeCode ];
   };
 }

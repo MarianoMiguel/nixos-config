@@ -22,6 +22,10 @@ in
     ./apps-extra.nix
     ./parity.nix
     ./tailscale.nix
+    # x86_64 programs through FEX in 4K-page trees (route B; ackerman.x86.enable)
+    ./x86.nix
+    # bonhart's apps from their vendors' arm64 builds, and LibrePods
+    ./apps-arm64.nix
     ../../modules/nixos/nix.nix
     # Mariano's apps, as on his other machines. The desktop is stock niri + stock DMS (session.nix,
     # 2026-11-09), not his niri + Folio desktop (niri-folio.nix). Not here:

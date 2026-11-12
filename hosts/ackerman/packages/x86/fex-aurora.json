@@ -1,0 +1,66 @@
+{
+  "repository": "https://github.com/aurora-silicon/fex",
+  "commit": "0c08727ae4c0c30601c962d982d4864b77dd17a2",
+  "version": "2610",
+  "source_url": "https://codeload.github.com/aurora-silicon/fex/tar.gz/0c08727ae4c0c30601c962d982d4864b77dd17a2",
+  "nix_hash": "sha256-sOkLaPTrAJwCFH2IWcIRG6ryV97pFpJL56yDPgk3lmU=",
+  "submodules_commit": "0c08727ae4c0c30601c962d982d4864b77dd17a2",
+  "extra_sources": {
+    "Vulkan-Headers": {
+      "repository": "https://github.com/KhronosGroup/Vulkan-Headers",
+      "commit": "ee2ec5fd83dafce291024683b50dc89219333076",
+      "path": "External/Vulkan-Headers",
+      "source_url": "https://codeload.github.com/KhronosGroup/Vulkan-Headers/tar.gz/ee2ec5fd83dafce291024683b50dc89219333076",
+      "nix_hash": "sha256-33oVI4Gn/a+Y423ncWuNbW6td2dkvHbRoa75BJ0byok="
+    },
+    "cpp-optparse": {
+      "repository": "https://github.com/Sonicadvance1/cpp-optparse",
+      "commit": "9f94388a339fcbb0bc95c17768eb786c85988f6e",
+      "path": "Source/Common/cpp-optparse",
+      "source_url": "https://codeload.github.com/Sonicadvance1/cpp-optparse/tar.gz/9f94388a339fcbb0bc95c17768eb786c85988f6e",
+      "nix_hash": "sha256-aOa1AIkCcFF9Imq7w2EBNd4WAN3eKfRMm2jMpeKhf2A="
+    },
+    "drm-headers": {
+      "repository": "https://github.com/FEX-Emu/drm-headers",
+      "commit": "3e49836995c1dcb3df709440ad2f270b569c6a5f",
+      "path": "External/drm-headers",
+      "source_url": "https://codeload.github.com/FEX-Emu/drm-headers/tar.gz/3e49836995c1dcb3df709440ad2f270b569c6a5f",
+      "nix_hash": "sha256-PTZThB+B6lvhoVzUtFjwSMH/+82X/MgIRUp/vnzxpVU="
+    },
+    "jemalloc": {
+      "repository": "https://github.com/FEX-Emu/jemalloc",
+      "commit": "8436195ad5e1bc347d9b39743af3d29abee59f06",
+      "path": "External/jemalloc_glibc",
+      "source_url": "https://codeload.github.com/FEX-Emu/jemalloc/tar.gz/8436195ad5e1bc347d9b39743af3d29abee59f06",
+      "nix_hash": "sha256-gAzAZT9bwvDtLMe7OD+O7aH/lLLonq7gzMV71fsAL+Q="
+    },
+    "range-v3": {
+      "repository": "https://github.com/ericniebler/range-v3",
+      "commit": "ca1388fb9da8e69314dda222dc7b139ca84e092f",
+      "path": "External/range-v3",
+      "source_url": "https://codeload.github.com/ericniebler/range-v3/tar.gz/ca1388fb9da8e69314dda222dc7b139ca84e092f",
+      "nix_hash": "sha256-V6b8pdYKhbhOjv7MYvDKBk5rH4m5e1EyhP5/W9Q9Ses="
+    },
+    "rpmalloc": {
+      "repository": "https://github.com/FEX-Emu/rpmalloc",
+      "commit": "ed227446afce6ff505b312bae1e10a3daaeeea39",
+      "path": "External/rpmalloc",
+      "source_url": "https://codeload.github.com/FEX-Emu/rpmalloc/tar.gz/ed227446afce6ff505b312bae1e10a3daaeeea39",
+      "nix_hash": "sha256-8UdhzAyJdq7WaUdQhwIWYfJpaZ74KXiFtmXu1LdksIc="
+    },
+    "unordered_dense": {
+      "repository": "https://github.com/martinus/unordered_dense",
+      "commit": "3234af2c03549bc85656bfd3a86993bf1cd8aef1",
+      "path": "External/unordered_dense",
+      "source_url": "https://codeload.github.com/martinus/unordered_dense/tar.gz/3234af2c03549bc85656bfd3a86993bf1cd8aef1",
+      "nix_hash": "sha256-qmjXfviEddtxC/ZHAX9cyxPO7G9V8976N+mVsEPrmQs="
+    },
+    "vixl": {
+      "repository": "https://github.com/FEX-Emu/vixl",
+      "commit": "6561d40650885ad24fbd0aa0cdb20ccb4808d444",
+      "path": "External/vixl",
+      "source_url": "https://codeload.github.com/FEX-Emu/vixl/tar.gz/6561d40650885ad24fbd0aa0cdb20ccb4808d444",
+      "nix_hash": "sha256-A8qgOZDuAsbUh4E2gzLEuQGewhAa3as6op6zWbt9dlM="
+    }
+  }
+}

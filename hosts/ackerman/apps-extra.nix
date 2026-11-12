@@ -4,9 +4,10 @@
 # of that kind (2026-11-09: Zed, Krita, Codex, Proton VPN, printing, Avahi, ...).
 # Left out on purpose: the GNOME session and its X server, bonhart's own hardware (fingerprint,
 # Thunderbolt, battery limit, the FIDO bridge, the tablet), and apps with no aarch64 package yet:
-# Spotify, Slack, Steam, DaVinci, Figma and Fluent Reader have no arm64 Linux build (x86 route:
-# m5max-linux docs/x86.md); Beeper, Paper, herdr, OnlyOffice and CodexBar publish arm64 builds that
-# aren't packaged here yet; Obsidian, Codex Desktop and LibrePods build on the Mac (app-sets.nix).
+# Steam, DaVinci, Figma and Fluent Reader have no arm64 Linux build; Spotify and Slack run as x86_64
+# programs through FEX (x86.nix, m5max-linux docs/x86.md); Beeper, Paper, herdr, OnlyOffice and
+# CodexBar come from their arm64 builds (apps-arm64.nix, packages/beeper.nix); Obsidian, Codex
+# Desktop and LibrePods build on the Mac (app-sets.nix, apps-arm64.nix).
 { pkgs, rex, ... }:
 
 {
@@ -52,7 +53,7 @@
     xprop
     xrandr
     # Spotify in a terminal (Spotify Connect, Premium for playback): Spotify has no aarch64 Linux
-    # client, so apps.nix's spotify stays out here
+    # client; the official one runs through FEX (x86.nix)
     spotify-player
   ];
 

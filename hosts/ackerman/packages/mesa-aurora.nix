@@ -1,12 +1,31 @@
-# Mesa for the M5 Max GPU: Aurora's agx3c branch at a8e86a80cdc4 plus aurora-silicon/mesa#185's
-# one commit (G17C, the Max's four-cluster GPU), the tree the Arch daily runs from /opt/mesa-aurora
-# (m5max-linux docs/gpu.md, E3). Only the Asahi drivers and the software fallbacks are built; GL
-# runs on zink over the Asahi Vulkan driver (MESA_LOADER_DRIVER_OVERRIDE=zink in desktop.nix).
+# Mesa for the M5 Max GPU: aurora-silicon/mesa aurora-wip at 67df98cac686 (2026-11-12 22:20 UTC, the
+# merge of #214). Besides everything before it, it has #185 (hk keeps M5 command memory until its
+# submissions complete), #194 (native Gallium GL on G17S/G17C), #202-#206 (robustness; #205 admits
+# the M5 Max without ASAHI_M5_BRINGUP), #207, #219, #239-#241 (Erik's M5 Max compute set), #256 and
+# #258 (the two fixes for native GL in real apps: dword uniform ranges, without which Alacritty's text
+# drew nothing; the narrowing move after the projective multiply, glmark2), and #257 (the M5 family's
+# native programs cached per linked shader). Until 2026-11-12 this was agx3c a8e86a80cdc4 plus #185.
+#
+# The kernel ABI (checked offline against the wave kernel's header, 2026-11-12): aurora-wip's
+# asahi_drm.h names the M5 commands differently from the kernel's (agx3c's header is the kernel's),
+# but the layouts agree (clang record layouts): the kernel's 448-byte drm_asahi_cmd_render is
+# aurora-wip's drm_asahi_cmd_render_with_ray_query, its 200-byte drm_asahi_cmd_compute is
+# drm_asahi_cmd_compute_with_prior, and the shorter forms are prefixes the kernel zero-extends. The
+# forms that would collide (stage prefixes v1, compute stage barriers: features 24/25) are never
+# reported by the kernel (g17/mod.rs RETIRED_FEATURES), so this Mesa never sends them; GEM_USERPTR
+# (#242) is appended to the ioctl list and gated on feature bit 37, which the kernel doesn't report;
+# vm_create's HAL200 flag is optional. Aurora's distributions run the same pairing
+# (integration/aurora's header is the wave kernel's).
+#
+# Only the Asahi drivers and the software fallbacks are built. GL is native (Gallium asahi) or zink
+# over the Asahi Vulkan driver, chosen per session (ackerman.gl.driver in desktop.nix).
+#
+# The same file builds the x86_64 Mesa that x86 programs use under FEX (x86.nix): one source for
+# both, as Aurora requires.
 {
   lib,
   mesa,
   fetchFromGitHub,
-  fetchpatch,
 }:
 
 (mesa.override {
@@ -26,22 +45,18 @@
 }).overrideAttrs
   (old: {
     pname = "mesa-aurora";
-    version = "26.3.0-devel-agx3c-a8e86a80";
+    version = "26.3.0-devel-wip-67df98ca";
 
     src = fetchFromGitHub {
       owner = "aurora-silicon";
       repo = "mesa";
-      rev = "a8e86a80cdc4695d00e7e63b8ebea263e557431b";
-      hash = "sha256-awYcpEfIgZuF38kS7hBSVx9Afh5tszOBVc8CPdWVxL8=";
+      rev = "67df98cac68658f9f9e4ba51b8fe1a2970ec05ea";
+      hash = "sha256-YBx1q+kMA01QB/c9wynpo3t+zr1dyGRzWS6mbPaouao=";
     };
 
-    patches = [
-      # aurora-silicon/mesa#185: hk keeps M5 command memory until its submissions complete
-      (fetchpatch {
-        url = "https://github.com/aurora-silicon/mesa/commit/f8d40b042cfbc4f54c671240131cf75b0ee54b75.patch";
-        hash = "sha256-Cl8lFkgz98JcNAyX0vu13Hmw7UJ9X3Rs3hbhpre1qWQ=";
-      })
-    ];
+    # Everything it needs is merged; none of nixpkgs' patches apply to this tree (opencl.patch's
+    # meson part is in postPatch below)
+    patches = [ ];
 
     # nixpkgs checks that Mesa's GL headers match its separate mesa-gl-headers package; this
     # tree is newer than that package, so skip the check (the headers it removes stay removed).

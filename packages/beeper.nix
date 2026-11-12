@@ -9,10 +9,20 @@
 let
   pname = "beeper";
   version = "4.3.34";
-  src = fetchurl {
-    url = "https://beeper-desktop.download.beeper.com/builds/Beeper-${version}-x86_64.AppImage";
-    hash = "sha256-Y05Ce4CVjjg+T8qlFaMBFiiKREr7Yz0OTEqcVdH/TUI=";
-  };
+  # Beeper publishes the same release for x86_64 and arm64 (ackerman, the M5 Max)
+  src =
+    {
+      x86_64-linux = fetchurl {
+        url = "https://beeper-desktop.download.beeper.com/builds/Beeper-${version}-x86_64.AppImage";
+        hash = "sha256-Y05Ce4CVjjg+T8qlFaMBFiiKREr7Yz0OTEqcVdH/TUI=";
+      };
+      aarch64-linux = fetchurl {
+        url = "https://beeper-desktop.download.beeper.com/builds/Beeper-${version}-arm64.AppImage";
+        hash = "sha256-qE3Jl/KSj6dAbwLMH0UOLHNZTTHNa78mxPf5dqY90KU=";
+      };
+    }
+    .${stdenvNoCC.hostPlatform.system}
+      or (throw "beeper: no AppImage for ${stdenvNoCC.hostPlatform.system}");
   # Beeper's current AppImage omits the legacy AI\x02 marker that
   # appimageTools.extract checks, although its bundled runtime can still
   # extract the SquashFS payload normally. Use that runtime for extraction.
@@ -78,7 +88,10 @@ appimageTools.wrapAppImage {
     homepage = "https://www.beeper.com/";
     license = lib.licenses.unfree;
     mainProgram = "beeper";
-    platforms = [ "x86_64-linux" ];
+    platforms = [
+      "x86_64-linux"
+      "aarch64-linux"
+    ];
     sourceProvenance = with lib.sourceTypes; [ binaryNativeCode ];
   };
 }

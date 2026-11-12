@@ -2,8 +2,8 @@
 // as `dms setup` writes it. Only what ackerman needs on top of stock niri + stock DMS: the M5 Max,
 // no motion, bonhart's input feel, and Mariano's app keys (they win over DMS's binds).
 
-// The GPU renders (zink over the Asahi Vulkan driver); simpledrm scans out until the display driver
-// lands
+// The GPU renders (GL native or on zink over the Asahi Vulkan driver: ackerman-gl, desktop.nix);
+// simpledrm scans out until the display driver lands
 debug {
     render-drm-device "/dev/dri/renderD128"
 }

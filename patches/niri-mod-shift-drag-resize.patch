@@ -1,0 +1,29 @@
+--- a/src/input/mod.rs	2026-09-02 01:22:27.354695070 -0300
++++ b/src/input/mod.rs	2026-09-02 01:22:27.369166658 -0300
+@@ -2876,8 +2876,14 @@
+             if let Some(mapped) = self.niri.window_under_cursor() {
+                 let window = mapped.window.clone();
+ 
++                // Mod+Shift+LeftDrag starts an interactive resize, same as
++                // Mod+RightDrag, which is awkward on trackpads.
++                let shift_resize = button == Some(MouseButton::Left)
++                    && mods.shift
++                    && modifiers_from_state(mods).contains(mod_key.to_modifiers());
++
+                 // Check if we need to start an interactive move.
+-                if button == Some(MouseButton::Left) && !pointer.is_grabbed() {
++                if button == Some(MouseButton::Left) && !shift_resize && !pointer.is_grabbed() {
+                     let mod_down = modifiers_from_state(mods).contains(mod_key.to_modifiers());
+                     if is_overview_open || mod_down {
+                         let location = pointer.current_location();
+@@ -2912,7 +2918,9 @@
+                     }
+                 }
+                 // Check if we need to start an interactive resize.
+-                else if button == Some(MouseButton::Right) && !pointer.is_grabbed() {
++                else if (button == Some(MouseButton::Right) || shift_resize)
++                    && !pointer.is_grabbed()
++                {
+                     let mod_down = modifiers_from_state(mods).contains(mod_key.to_modifiers());
+                     if mod_down {
+                         let location = pointer.current_location();

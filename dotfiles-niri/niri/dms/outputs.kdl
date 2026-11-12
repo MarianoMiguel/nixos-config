@@ -1,0 +1,7 @@
+// The built-in panel. Scale 2 = 1728x1117 logical; the top 37 logical px are
+// the notch band (m1n1's chosen.asahi,show-notch=1), where the bar goes. DMS
+// rewrites this file when its display settings change.
+output "eDP-1" {
+    mode "3456x2234@60"
+    scale 2
+}

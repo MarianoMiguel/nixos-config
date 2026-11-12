@@ -1,0 +1,14 @@
+{
+  "codexBar": {
+    "enabled": true
+  },
+  "catWidget": {
+    "enabled": true
+  },
+  "focus": {
+    "enabled": true
+  },
+  "networkSpeed": {
+    "enabled": true
+  }
+}

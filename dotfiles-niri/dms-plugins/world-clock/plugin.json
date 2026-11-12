@@ -1,0 +1,13 @@
+{
+  "id": "worldClock",
+  "name": "World Clock",
+  "description": "Times for Campana, New York, Los Angeles and Sydney behind a globe icon",
+  "version": "1.0.0",
+  "author": "Mariano Miguel",
+  "type": "widget",
+  "capabilities": ["dankbar-widget"],
+  "icon": "public",
+  "component": "./WorldClockWidget.qml",
+  "requires_dms": ">=1.5.0",
+  "permissions": ["process"]
+}

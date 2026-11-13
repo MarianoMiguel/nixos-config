@@ -38,6 +38,10 @@ ESP = pathlib.Path("/boot")
 DIR = ESP / "m1n1"
 LOG = DIR / "ackerman-payloads.log"
 MAX_ARGS = 1024                           # m1n1's MAX_VAR_SIZE
+# The system's own m1n1 variables on top of CHOSEN (boot-m1n1.nix, ackerman.payload.chosen), as
+# "key=value key=value": the DCP hand-off, chosen.m5,t6050-display=1, is one
+CHOSEN_EXTRA = "@chosen@"
+VAR = re.compile(r"[A-Za-z0-9,._-]+")
 
 
 def die(msg):
@@ -85,7 +89,46 @@ def initrd_with_secrets(top):
 RESCUE = "rd.systemd.unit=ackerman-rescue.target rd.luks=0"
 
 
-def build(top, daily, rescue=False, extra="", hold=False, dtb_file=None):
+def chosen_vars(add="", drop="", base=None):
+    """A payload's m1n1 variables, in order: CHOSEN, then the system's (CHOSEN_EXTRA), or `base`
+    (a payload's own, for promote); then --chosen KEY=VALUE adds or changes, --no-chosen KEY removes."""
+    v = {}
+    tokens = list(add.split())
+    if base is None:
+        for line in CHOSEN.decode().splitlines():
+            k, _, val = line[len("chosen."):].partition("=")
+            v[k] = val
+        tokens = CHOSEN_EXTRA.split() + tokens
+    else:
+        v = dict(base)
+    for t in tokens:
+        k, eq, val = t.partition("=")
+        if not eq or not VAR.fullmatch(k) or not (val == "" or VAR.fullmatch(val)) or k == "bootargs":
+            die(f"chosen variable {t!r}: not KEY=VALUE (letters, digits and ,._-; not bootargs)")
+        v[k] = val
+    for k in drop.split():
+        v.pop(k, None)
+    return v
+
+
+def payload_parts(blob):
+    """What a payload was built with: its chosen.* variables (bootargs apart) and its DTB."""
+    v, pos = {}, M1N1_SIZE
+    while blob[pos:pos + 7] == b"chosen.":
+        end = blob.index(b"\n", pos)
+        k, _, val = blob[pos + 7:end].decode().partition("=")
+        if k != "bootargs":
+            v[k] = val
+        pos = end + 1
+    d = zlib.decompressobj(31)
+    d.decompress(blob[pos:])
+    rest = d.unused_data
+    if not d.eof or rest[:4] != b"\xd0\x0d\xfe\xed":
+        die("boot.bin: no kernel and DTB where a payload has them")
+    return v, rest[:struct.unpack(">I", rest[4:8])[0]]
+
+
+def build(top, daily, rescue=False, extra="", hold=False, dtb_file=None, chosen=None, dtb_bytes=None):
     top = pathlib.Path(os.path.realpath(top))
     m1n1 = M1N1.read_bytes()
     if len(m1n1) != M1N1_SIZE:
@@ -94,8 +137,12 @@ def build(top, daily, rescue=False, extra="", hold=False, dtb_file=None):
     n, raw = gz_members(kernel, "kernel")
     if n != 1 or raw[56:60] != b"ARM\x64":
         die("kernel is not one gzip member of an arm64 Image")
-    # --dtb: another device tree for this payload (the PMP-off variant, ...)
-    dtb = pathlib.Path(dtb_file).read_bytes() if dtb_file else (top / "dtbs" / DTB_NAME).read_bytes()
+    # --dtb: another device tree for this payload (the PMP-off variant, ...); a promote passes the
+    # booted payload's own
+    if dtb_bytes is not None:
+        dtb = dtb_bytes
+    else:
+        dtb = pathlib.Path(dtb_file).read_bytes() if dtb_file else (top / "dtbs" / DTB_NAME).read_bytes()
     if dtb[:4] != b"\xd0\x0d\xfe\xed" or struct.unpack(">I", dtb[4:8])[0] != len(dtb) or b"apple,j716c" not in dtb:
         die(f"{DTB_NAME}: not a J716C device tree")
     initrd = initrd_with_secrets(top)
@@ -113,7 +160,10 @@ def build(top, daily, rescue=False, extra="", hold=False, dtb_file=None):
         args += " " + RESCUE
     if "\n" in args or not args.isascii() or len(args) >= MAX_ARGS:
         die(f"bootargs must be one ASCII line under {MAX_ARGS} bytes ({len(args)})")
-    blob = m1n1 + f"chosen.bootargs={args}\n".encode() + CHOSEN + kernel + dtb + initrd
+    if chosen is None:
+        chosen = chosen_vars()
+    lines = "".join(f"chosen.{k}={v}\n" for k, v in chosen.items()).encode()
+    blob = m1n1 + f"chosen.bootargs={args}\n".encode() + lines + kernel + dtb + initrd
     return blob, args
 
 
@@ -157,13 +207,17 @@ def log(line):
         f.write(f"{datetime.datetime.now().isoformat(timespec='seconds')} {line}\n")
 
 
-def install(top, daily, reason="install", extra="", hold=False):
+def install(top, daily, reason="install", extra="", hold=False, chosen=None, dtb_bytes=None):
     esp_ready()
-    blob, args = build(top, daily, extra=extra, hold=hold)
-    need = 2 * len(blob) + 20 * 2**20
+    blob, args = build(top, daily, extra=extra, hold=hold, chosen=chosen, dtb_bytes=dtb_bytes)
+    # write_verified puts the new file beside the old one, then renames it over: boot.bin needs one
+    # payload's room, and boot.bin.prev another unless it is pinned (then it isn't written)
+    copies = 1 if (DIR / "prev.pinned").exists() else 2
+    need = copies * len(blob) + 20 * 2**20
     free = shutil.disk_usage(ESP).free
     if free < need:
-        die(f"ESP has {free >> 20} MB free, needs {need >> 20}: prune /boot/r1-logs first")
+        die(f"ESP has {free >> 20} MB free, needs {need >> 20}: prune /boot/r1-logs, or the boot "
+            f"menu's entries (ackerman-uboot-entries remove), first")
     cur = DIR / "boot.bin"
     digest = sha(blob)
     if cur.exists() and sha(cur.read_bytes()) == digest:
@@ -197,13 +251,17 @@ def main():
     p.add_argument("--rescue", action="store_true")
     p.add_argument("--hold", action="store_true"); p.add_argument("--extra", default="")
     p.add_argument("--dtb", default=None)
+    # m1n1 variables for this payload only: --chosen "m5,t6050-isp=aura", --no-chosen "m5,t6050-display"
+    p.add_argument("--chosen", default=""); p.add_argument("--no-chosen", default="")
     sub.add_parser("promote")
     sub.add_parser("status")
     a = ap.parse_args()
     if a.cmd == "build":
-        blob, args = build(a.toplevel, a.daily, a.rescue, a.extra, a.hold, a.dtb)
+        chosen = chosen_vars(a.chosen, a.no_chosen)
+        blob, args = build(a.toplevel, a.daily, a.rescue, a.extra, a.hold, a.dtb, chosen=chosen)
         pathlib.Path(a.out).write_bytes(blob)
         print(f"{a.out}: {len(blob)} bytes, sha256 {sha(blob)}\nbootargs {args}")
+        print("chosen   " + " ".join(f"{k}={v}" for k, v in chosen.items()))
     elif a.cmd == "install":
         install(a.toplevel, a.daily, extra=a.extra, hold=a.hold)
     elif a.cmd == "promote":
@@ -220,11 +278,18 @@ def main():
             print(f"boot.bin is {m.group(1).decode()}, installed since this boot ({booted}): not promoting over it")
             log(f"promote skipped: boot.bin is {m.group(1).decode()}, not the booted {booted}")
             return
-        # The switches this payload was built with (--extra) stay in the daily
+        # The switches this payload was built with stay in the daily: --extra (from the command
+        # line), and its m1n1 variables and DTB (--chosen/--no-chosen, --dtb: from boot.bin, which
+        # is the booted payload once its init= matches)
         params = (pathlib.Path(booted) / "kernel-params").read_text().split()
         skip = set(params) | {"m5.selftest=1", "m5.hold=1"}
         extra = " ".join(t for t in cmdline().split() if t not in skip and not t.startswith("init="))
-        install("/run/booted-system", daily=True, reason="promote (self-test passed)", extra=extra)
+        chosen = dtb = None
+        if m:
+            base, dtb = payload_parts(cur.read_bytes())
+            chosen = chosen_vars(base=base)
+        install("/run/booted-system", daily=True, reason="promote (self-test passed)", extra=extra,
+                chosen=chosen, dtb_bytes=dtb)
     elif a.cmd == "status":
         esp_ready()
         for f in sorted(DIR.glob("boot.bin*")):

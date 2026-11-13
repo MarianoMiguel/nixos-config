@@ -14,13 +14,15 @@
 }:
 
 let
+  cfg = config.ackerman.payload;
   # A copy, so the system's closure holds this one file and not the whole private input
-  m1n1 = pkgs.runCommand "m1n1-stage2-n1warm-gpu" { } ''
-    install -Dm644 ${ackerman-private}/nixos/m1n1/m1n1-stage2-n1warm-gpu.bin $out
+  m1n1 = pkgs.runCommand cfg.m1n1Name { } ''
+    install -Dm644 ${ackerman-private}/nixos/m1n1/${cfg.m1n1Name}.bin $out
   '';
   payload = pkgs.runCommand "ackerman-payload" { buildInputs = [ pkgs.python3 ]; } ''
     install -Dm755 ${./packages/ackerman-payload.py} $out/bin/ackerman-payload
-    substituteInPlace $out/bin/ackerman-payload --replace-fail "@m1n1@" "${m1n1}"
+    substituteInPlace $out/bin/ackerman-payload --replace-fail "@m1n1@" "${m1n1}" \
+      --replace-fail "@chosen@" ${lib.escapeShellArg (lib.concatStringsSep " " cfg.chosen)}
     patchShebangs --host $out/bin/ackerman-payload
   '';
 
@@ -66,33 +68,56 @@ let
   };
 in
 {
-  boot.loader.grub.enable = false;
-  boot.loader.systemd-boot.enable = false;
-  boot.loader.external = {
-    enable = true;
-    installHook = pkgs.writeShellScript "ackerman-install-payload" ''
-      exec ${payload}/bin/ackerman-payload install "$1"
-    '';
+  options.ackerman.payload = {
+    m1n1Name = lib.mkOption {
+      type = lib.types.strMatching "[A-Za-z0-9._-]+";
+      default = "m1n1-stage2-n1warm-gpu";
+      description = ''
+        The m1n1 stage-2 every payload starts with: nixos/m1n1/NAME.bin in the private input
+        (exactly 0x420000 bytes; ackerman-payload checks).
+      '';
+    };
+    chosen = lib.mkOption {
+      type = lib.types.listOf (lib.types.strMatching "[A-Za-z0-9,._-]+=[A-Za-z0-9,._-]*");
+      default = [ ];
+      example = [ "m5,t6050-display=1" ];
+      description = ''
+        m1n1 variables every payload carries on top of the fixed ones (show-notch, the N1, the GPU),
+        as KEY=VALUE. A payload variant can add or drop one (ackerman-payload build --chosen,
+        --no-chosen), and a promote keeps the booted payload's.
+      '';
+    };
   };
-  # The payload builder appends the initrd secrets (the initrd SSH host key) itself.
-  boot.loader.supportsInitrdSecrets = true;
 
-  environment.systemPackages = [ payload ];
+  config = {
+    boot.loader.grub.enable = false;
+    boot.loader.systemd-boot.enable = false;
+    boot.loader.external = {
+      enable = true;
+      installHook = pkgs.writeShellScript "ackerman-install-payload" ''
+        exec ${payload}/bin/ackerman-payload install "$1"
+      '';
+    };
+    # The payload builder appends the initrd secrets (the initrd SSH host key) itself.
+    boot.loader.supportsInitrdSecrets = true;
 
-  systemd.services.ackerman-selftest = {
-    description = "ackerman: self-reverting test boot (m5.selftest=1)";
-    unitConfig.ConditionKernelCommandLine = "m5.selftest=1";
-    after = [ "network-online.target" ];
-    wants = [ "network-online.target" ];
-    wantedBy = [ "multi-user.target" ];
-    # Once per boot: a switch must not run it again (2026-11-08 22:08, a switch restarted
-    # wait-online, the self-test ran again and promoted the booted generation over the new one).
-    restartIfChanged = false;
-    stopIfChanged = false;
-    serviceConfig = {
-      Type = "oneshot";
-      RemainAfterExit = true;
-      ExecStart = lib.getExe selftest;
+    environment.systemPackages = [ payload ];
+
+    systemd.services.ackerman-selftest = {
+      description = "ackerman: self-reverting test boot (m5.selftest=1)";
+      unitConfig.ConditionKernelCommandLine = "m5.selftest=1";
+      after = [ "network-online.target" ];
+      wants = [ "network-online.target" ];
+      wantedBy = [ "multi-user.target" ];
+      # Once per boot: a switch must not run it again (2026-11-08 22:08, a switch restarted
+      # wait-online, the self-test ran again and promoted the booted generation over the new one).
+      restartIfChanged = false;
+      stopIfChanged = false;
+      serviceConfig = {
+        Type = "oneshot";
+        RemainAfterExit = true;
+        ExecStart = lib.getExe selftest;
+      };
     };
   };
 }

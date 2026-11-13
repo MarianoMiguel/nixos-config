@@ -14,7 +14,8 @@
 let
   priv = "${ackerman-private}/nixos";
   kernel = pkgs.callPackage ./packages/kernel.nix {
-    src = "${priv}/kernel";
+    # kernel-select.nix: the daily's tree, or j716c-next
+    src = "${priv}/${if config.ackerman.kernel == "next" then "kernel-next" else "kernel"}";
     kernelPatches = [ ]; # not pkgs.kernelPatches, which callPackage would pass
   };
 

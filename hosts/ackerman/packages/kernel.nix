@@ -70,11 +70,12 @@ stdenvNoCC.mkDerivation {
     # from the bundle kernel on); m1n1's payloads take Image.gz
     if [ -e vmlinuz.efi ]; then install -Dm644 vmlinuz.efi $out/vmlinuz.efi; fi
     install -Dm644 t6050-j716c.dtb $out/dtbs/apple/t6050-j716c.dtb
-    # The PMP-off device tree, for a payload variant: ackerman-payload build ... --dtb
-    # /run/current-system/dtbs/apple/t6050-j716c-nopmp.dtb (from the bundle kernel on)
-    if [ -e t6050-j716c-nopmp.dtb ]; then
-      install -Dm644 t6050-j716c-nopmp.dtb $out/dtbs/apple/t6050-j716c-nopmp.dtb
-    fi
+    # The variants beside it, for the payload's dtbName or a one-boot ackerman-payload build ... --dtb
+    # /run/current-system/dtbs/apple/<name>: the PMP-off one (from the bundle kernel on), j716c-next's
+    # speakers-off one
+    for f in t6050-j716c-*.dtb; do
+      [ -e "$f" ] && install -Dm644 "$f" "$out/dtbs/apple/$f"
+    done
     install -Dm644 config $out/config
     install -Dm644 recipe.txt $out/recipe.txt
     mkdir -p $out/lib/modules

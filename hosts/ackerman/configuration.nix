@@ -10,6 +10,8 @@ let
 in
 {
   imports = [
+    # Which kernel tree: the daily's (avd) or j716c-next (ackerman.kernel)
+    ./kernel-select.nix
     ./hardware.nix
     ./boot-m1n1.nix
     # The boot menu's systemd-boot entries for boot.bin.uboot (off unless ackerman.uboot.enable)
@@ -127,6 +129,10 @@ in
     yubikey-manager
     pcsc-tools
   ];
+
+  # Branch m5max-next: j716c-next (m5max-linux docs/j716c-next-daily-plan.md), speakers off until the
+  # attended speaker check
+  ackerman.kernel = "next";
 
   system.stateVersion = "26.05";
 }

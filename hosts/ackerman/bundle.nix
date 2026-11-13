@@ -5,7 +5,7 @@
 # Switches for one boot are payload variants, not generations (ackerman-payload build TOP OUT
 # --hold ...): the DCP off is `--no-chosen m5,t6050-display`, the PMP off is
 # `--dtb TOP/dtbs/apple/t6050-j716c-nopmp.dtb`, the camera is `--chosen m5,t6050-isp=aura`.
-{ ackerman-private, ... }:
+{ ackerman-private, config, ... }:
 
 {
   ackerman.payload = {
@@ -15,7 +15,13 @@
     chosen = [ "m5,t6050-display=1" ];
     # The PMP-off DTB until a PMP boot passes on this kernel (2026-11-12: the bundle kernel lacked the
     # PMP driver; the GPU waits on a running PMP)
-    dtbName = "apple/t6050-j716c-nopmp.dtb";
+    # j716c-next (kernel-select.nix): the speakers off until the attended speaker check; upstream leaves
+    # the J716C's PMP off, so it has no PMP-off variant
+    dtbName =
+      if config.ackerman.kernel == "next" then
+        "apple/t6050-j716c-nosound.dtb"
+      else
+        "apple/t6050-j716c-nopmp.dtb";
   };
 
   # The entries for boot.bin.uboot, written beside the payload; boot.bin.uboot itself is never

@@ -28,6 +28,7 @@
   config,
   lib,
   pkgs,
+  pkgsUnstable,
   utils,
   ...
 }:
@@ -44,7 +45,8 @@ let
     overlays = [ ];
   };
 
-  fex = pkgs.callPackage ./packages/x86/fex-aurora.nix { };
+  # Newer kernel headers for the fork's io_uring opcodes (fex-aurora.nix)
+  fex = pkgs.callPackage ./packages/x86/fex-aurora.nix { uapiHeaders = pkgsUnstable.linuxHeaders; };
   userpages = pkgs.callPackage ./packages/x86/aurora-userpages.nix { };
 
   # The host's Mesa recipe and source, built for x86_64 (Aurora: the guest Mesa must be the host's

@@ -10,11 +10,17 @@
 #
 # The binary is `FEX` (2610 has no FEXInterpreter). nixpkgs' recipe turns its checks off on a
 # 16K-page builder, as the Mac is.
+#
+# Kernel headers: the fork uses io_uring opcodes newer than this nixpkgs' (6.18 has no
+# IORING_OP_URING_CMD128; the build stopped there on the Mac, 2026-11-12 21:33). nixos-aurora builds
+# on a newer nixpkgs; here `uapiHeaders` (nixpkgs-unstable's linuxHeaders, 7.1) go first on the
+# include path: a build input is -isystem, ahead of glibc's own copy (-idirafter).
 {
   lib,
   fex,
   fetchurl,
   runCommand,
+  uapiHeaders,
 }:
 
 let
@@ -48,6 +54,7 @@ fex.overrideAttrs (
     # nixpkgs' postPatch and OVERRIDE_VERSION make FEX-<version> the version string
     version = "${pin.version}-aurora-g${short}";
     inherit src;
+    buildInputs = [ uapiHeaders ] ++ (old.buildInputs or [ ]);
     cmakeFlags = old.cmakeFlags ++ [ (lib.cmakeFeature "TUNE_CPU" "none") ];
     passthru = (old.passthru or { }) // {
       inherit (pin) commit;

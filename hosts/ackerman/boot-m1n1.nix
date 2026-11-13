@@ -87,6 +87,15 @@ in
         --no-chosen), and a promote keeps the booted payload's.
       '';
     };
+    afterInstall = lib.mkOption {
+      type = lib.types.lines;
+      default = "";
+      internal = true;
+      description = ''
+        Shell lines the boot-loader hook runs after the payload install succeeded ($1 is the
+        toplevel); uboot.nix's systemd-boot entries.
+      '';
+    };
   };
 
   config = {
@@ -94,9 +103,17 @@ in
     boot.loader.systemd-boot.enable = false;
     boot.loader.external = {
       enable = true;
-      installHook = pkgs.writeShellScript "ackerman-install-payload" ''
-        exec ${payload}/bin/ackerman-payload install "$1"
-      '';
+      installHook = pkgs.writeShellScript "ackerman-install-payload" (
+        if cfg.afterInstall == "" then
+          ''
+            exec ${payload}/bin/ackerman-payload install "$1"
+          ''
+        else
+          ''
+            ${payload}/bin/ackerman-payload install "$1" || exit $?
+            ${cfg.afterInstall}
+          ''
+      );
     };
     # The payload builder appends the initrd secrets (the initrd SSH host key) itself.
     boot.loader.supportsInitrdSecrets = true;

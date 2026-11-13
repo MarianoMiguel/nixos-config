@@ -12,6 +12,8 @@ in
   imports = [
     ./hardware.nix
     ./boot-m1n1.nix
+    # The boot menu's systemd-boot entries for boot.bin.uboot (off unless ackerman.uboot.enable)
+    ./uboot.nix
     ./disk.nix
     ./network.nix
     ./desktop.nix

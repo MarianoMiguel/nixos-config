@@ -3,11 +3,11 @@
     "ackerman-private": {
       "flake": false,
       "locked": {
-        "lastModified": 1794600596,
-        "narHash": "sha256-FWxGRC0nmPfJaSiqoHthavrdlz/fg2Rb2WR2nn0ZLiQ=",
+        "lastModified": 1794604005,
+        "narHash": "sha256-DgCcfIKhdzzd7BWe+AMDAQfuVzh0HI2wv/2oWZow3vQ=",
         "ref": "refs/heads/main",
-        "rev": "20c9ddf1a2dbc56307ceab62e3cb13b103cca53b",
-        "revCount": 21,
+        "rev": "a3ecfeaa38a00325d3e30583411f4f6eac7ce4e2",
+        "revCount": 22,
         "type": "git",
         "url": "ssh://git@github.com/MarianoMiguel/m5max-linux-private"
       },

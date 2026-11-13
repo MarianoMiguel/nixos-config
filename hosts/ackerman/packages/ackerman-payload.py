@@ -213,6 +213,12 @@ def log(line):
 
 def install(top, daily, reason="install", extra="", hold=False, chosen=None, dtb_bytes=None):
     esp_ready()
+    # /boot/m1n1/night-hold: boot.bin is being kept on a chosen payload (an unattended night, a held
+    # test): a switch's install must not replace it. Logged; remove the file to install again.
+    if (DIR / "night-hold").exists() and reason == "install":
+        log(f"install skipped (night-hold): {os.path.realpath(top)}; boot.bin stays {sha((DIR / 'boot.bin').read_bytes())[:16]}")
+        print("night-hold: boot.bin left as it is")
+        return
     blob, args = build(top, daily, extra=extra, hold=hold, chosen=chosen, dtb_bytes=dtb_bytes)
     # write_verified puts the new file beside the old one, then renames it over: boot.bin needs one
     # payload's room, and boot.bin.prev another unless it is pinned (then it isn't written)

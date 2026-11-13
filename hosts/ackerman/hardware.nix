@@ -148,8 +148,11 @@ in
   # granule" capability line in dmesg, and `userpages --status`.
   ++ lib.optional config.ackerman.x86.enable "user4k=on";
   boot.consoleLogLevel = 4;
-  # The camera driver is loaded by hand, attended (m5max-linux docs/camera.md)
-  boot.blacklistedKernelModules = [ "apple_isp" ];
+  # The camera (apple_isp, /dev/v4l/by-path/platform-580000000.isp-video-index0, "FaceTime HD
+  # Camera", NV12 1920x1080 and 1280x720) loads at boot since the device tree's soc@200000000 ranges
+  # cover the ISP's capture-watchdog window (2026-11-13, aurora-silicon/linux#1854; m5max-linux
+  # docs/camera.md). Idle, its power states are off; the decoder (avd) is not a capture device, so
+  # apps list only the camera. Off for one boot: module_blacklist=apple_isp.
 
   hardware.deviceTree = {
     enable = true;

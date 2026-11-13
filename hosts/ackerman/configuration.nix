@@ -18,6 +18,8 @@ in
     ./bundle.nix
     ./disk.nix
     ./network.nix
+    # Kernel messages to bonhart over the tether (off unless ackerman.netconsole.enable)
+    ./netconsole.nix
     ./desktop.nix
     ./session.nix
     ./comfort.nix

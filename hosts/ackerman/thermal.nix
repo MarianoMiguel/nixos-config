@@ -46,7 +46,8 @@ in
   };
 
   systemd.services.m5-session-guard = {
-    description = "J716C GPU session thermal watch (freezes the Nix build at 90 C, ends the compositor at 95 C)";
+    description = "J716C GPU session thermal watch (a lower CPU cap at 88 C, the Nix build frozen at 85 C in a session and 90 C otherwise, the compositor ended at 95 C)";
+    environment.M5_CPU_CAP = "${./scripts/m5-cpu-cap}";
     after = [ "systemd-modules-load.service" ];
     wantedBy = [ "multi-user.target" ];
     inherit path;

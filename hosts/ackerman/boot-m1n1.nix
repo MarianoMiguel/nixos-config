@@ -112,16 +112,30 @@ in
     boot.loader.systemd-boot.enable = false;
     boot.loader.external = {
       enable = true;
+      # Gently: the payload's gzip of a 127 MB initrd (and the boot menu's xz) runs at full CPU for a
+      # minute otherwise, and on 2026-11-13 00:15 a switch did that while he used the Mac and the
+      # session guard ended niri at 95 C. So the hook runs itself again inside a scope: one CPU's
+      # worth, on CPUs 16-17, at the lowest priority. Without systemd (an install from elsewhere) it
+      # runs as it is.
       installHook = pkgs.writeShellScript "ackerman-install-payload" (
-        if cfg.afterInstall == "" then
-          ''
-            exec ${payload}/bin/ackerman-payload install "$1"
-          ''
-        else
-          ''
-            ${payload}/bin/ackerman-payload install "$1" || exit $?
-            ${cfg.afterInstall}
-          ''
+        ''
+          if [ -z "''${ACKERMAN_HOOK_SCOPED:-}" ] && [ -d /run/systemd/system ]; then
+            ACKERMAN_HOOK_SCOPED=1 exec ${pkgs.systemd}/bin/systemd-run --scope --quiet \
+              -p CPUQuota=100% -p AllowedCPUs=16-17 \
+              ${pkgs.coreutils}/bin/nice -n 19 "$0" "$@"
+          fi
+        ''
+        + (
+          if cfg.afterInstall == "" then
+            ''
+              exec ${payload}/bin/ackerman-payload install "$1"
+            ''
+          else
+            ''
+              ${payload}/bin/ackerman-payload install "$1" || exit $?
+              ${cfg.afterInstall}
+            ''
+        )
       );
     };
     # The payload builder appends the initrd secrets (the initrd SSH host key) itself.

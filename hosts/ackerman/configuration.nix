@@ -14,6 +14,8 @@ in
     ./boot-m1n1.nix
     # The boot menu's systemd-boot entries for boot.bin.uboot (off unless ackerman.uboot.enable)
     ./uboot.nix
+    # The bundle: the bundle stage-2, the DCP hand-off on, the boot menu's entries
+    ./bundle.nix
     ./disk.nix
     ./network.nix
     ./desktop.nix

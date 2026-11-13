@@ -37,6 +37,20 @@ let
     startupNotify = true;
     startupWMClass = "librepods";
   };
+  # Slack as an app window of his Google Chrome (Mariano, 2026-11-13: "Do it from chrome"), not the x86
+  # client (x86.nix). Chrome on Wayland gives an --app window the app_id chrome-<host>__<path>-Default,
+  # which StartupWMClass matches, so niri and DMS treat it as its own app. His Chrome profile and
+  # policies are untouched; he logs in himself.
+  slackApp = pkgs.makeDesktopItem {
+    name = "slack";
+    desktopName = "Slack";
+    genericName = "Team chat";
+    comment = "Slack in a Google Chrome app window";
+    exec = "google-chrome-stable --app=https://app.slack.com/client";
+    icon = "slack";
+    categories = [ "Network" "InstantMessaging" ];
+    startupWMClass = "chrome-app.slack.com__client-Default";
+  };
   # LibrePods lives in the tray: DMS's (Quickshell's StatusNotifierWatcher) here, GNOME's
   # AppIndicator on bonhart
   waitForStatusNotifierWatcher = pkgs.writeShellScript "wait-for-status-notifier-watcher" ''
@@ -61,6 +75,7 @@ in
   };
 
   config = lib.mkMerge [
+    { environment.systemPackages = [ slackApp ]; }
     (lib.mkIf config.ackerman.arm64Apps.enable {
       environment.systemPackages = [
         (pkgs.callPackage ./packages/arm64/herdr.nix { })

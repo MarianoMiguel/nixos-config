@@ -23,7 +23,7 @@
 #   - ackerman.x86.binfmt = false: no transparent launching (`x86-run PROGRAM` and the app launchers
 #     still work);
 #   - per launch: ACKERMAN_X86_GPU=0 (llvmpipe instead of the GPU), ACKERMAN_X86_NO_SANDBOX=1
-#     (Chromium's sandbox off in Spotify and Slack, should it not start under FEX).
+#     (Chromium's sandbox off in Spotify, should it not start under FEX).
 {
   config,
   lib,
@@ -38,7 +38,7 @@ let
 
   # x86_64-linux packages from the same nixpkgs. No overlays: none of this repository's touch these
   # packages, and leaving them out keeps the derivations the ones bonhart already has (Spotify and
-  # Slack are bonhart's own).
+  # its Spotify is bonhart's own).
   pkgsX86 = import pkgs.path {
     localSystem = "x86_64-linux";
     config.allowUnfree = true;
@@ -113,6 +113,9 @@ let
       grep -q '^Exec=${execTo}' $out/share/applications/${desktopFile}
     '';
 
+  # Slack is a Chrome app (apps-arm64.nix): its x86 client under FEX dies in Chromium's zygote
+  # ("zygote_host_impl_linux.cc Check failed: Invalid argument": the namespace sandbox's clone),
+  # and Mariano chose Chrome over an unsandboxed client (2026-11-13)
   apps = {
     spotify = x86App {
       name = "spotify";
@@ -120,13 +123,6 @@ let
       desktopFile = "spotify.desktop";
       execFrom = "spotify ";
       execTo = "${placeholder "out"}/bin/spotify ";
-    };
-    slack = x86App {
-      name = "slack";
-      package = pkgsX86.slack;
-      desktopFile = "slack.desktop";
-      execFrom = "${pkgsX86.slack}/bin/slack ";
-      execTo = "${placeholder "out"}/bin/slack ";
     };
   };
 in
@@ -138,7 +134,7 @@ in
       description = ''
         x86_64 programs through FEX in 4K-page process trees (route B): user4k=on on the kernel
         command line, Aurora's FEX and userpages, the x86_64 Aurora Mesa, x86-run, and Spotify and
-        Slack as launchers. False removes all of it.
+        Spotify as a launcher. False removes all of it.
       '';
     };
     binfmt = lib.mkOption {
@@ -190,7 +186,7 @@ in
     # x86_64 derivation whose closure is every x86_64 path this system needs; then nix copy it to
     # the Mac
     system.build.ackermanX86 = pkgsX86.linkFarm "ackerman-x86" {
-      inherit (pkgsX86) spotify slack;
+      inherit (pkgsX86) spotify;
       mesa = mesaX86;
     };
   };

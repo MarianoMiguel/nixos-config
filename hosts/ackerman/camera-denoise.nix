@@ -15,7 +15,12 @@
 #     Without it, Chrome opens the raw V4L2 camera, as before.
 #   - apple_isp.meta_exposure stays off: its gain read is unverified on T6050. The temporal filter
 #     doesn't need it.
-# Off: ackerman.cameraDenoise.enable = false (the filter, and Chrome's flag).
+# Off by default since 2026-11-13 (Mariano, on the first generation with it: "camera actually feels
+# worse now. still noisy in parts, but also kind of lowering the overall quality"). On this Mac it
+# runs only its CPU fallback: moving areas restart their average and stay noisy, and the smoothing
+# pass softens the rest. macOS does this on the video encoder's MCTF (and the Neural Engine in low
+# light), which this kernel can't reach yet. Revisit when the encoder path works.
+# On: ackerman.cameraDenoise.enable = true (the filter, and Chrome's flag).
 # For one session: systemctl --user stop aurora-camera-denoise.
 {
   config,
@@ -67,7 +72,7 @@ in
 {
   options.ackerman.cameraDenoise.enable = lib.mkOption {
     type = lib.types.bool;
-    default = true;
+    default = false;
     description = "Aurora's camera noise filter, and Chrome's PipeWire camera feature to use it.";
   };
 

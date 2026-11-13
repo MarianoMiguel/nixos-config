@@ -30,6 +30,8 @@ in
     ./x86.nix
     # bonhart's apps from their vendors' arm64 builds, and LibrePods
     ./apps-arm64.nix
+    # Hardware video decoding (the AVD): firmware, the VA-API driver, vainfo
+    ./avd.nix
     ../../modules/nixos/nix.nix
     # Mariano's apps, as on his other machines. The desktop is stock niri + stock DMS (session.nix,
     # 2026-11-09), not his niri + Folio desktop (niri-folio.nix). Not here:

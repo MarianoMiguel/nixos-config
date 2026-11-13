@@ -1,0 +1,49 @@
+# From aurora-silicon/nixos-aurora 9713718d (MIT; firmware/check-avd.py beside it): Aurora's open AVD
+# firmware, built with clang 22; the check enforces the eight images' expected hashes.
+{ lib, stdenvNoCC, meson, ninja, python3, llvmPackages_22, src, version }:
+stdenvNoCC.mkDerivation {
+  pname = "aurora-avd-fw";
+  inherit src version;
+  outputs = [ "out" "debug" ];
+  nativeBuildInputs = [ meson ninja python3 llvmPackages_22.clang-unwrapped
+    llvmPackages_22.llvm llvmPackages_22.lld ];
+  # The upstream queue test runs natively; firmware still uses unwrapped clang.
+  CC_FOR_BUILD = "${llvmPackages_22.clang}/bin/clang";
+  strictDeps = true;
+  dontStrip = true;
+  configurePhase = ''
+    runHook preConfigure
+    unset CFLAGS CXXFLAGS CPPFLAGS LDFLAGS
+    meson setup --cross-file llvm.ini --prefix="$out" --libdir=lib \
+      build
+    runHook postConfigure
+  '';
+  buildPhase = ''
+    runHook preBuild
+    meson compile -C build
+    runHook postBuild
+  '';
+  doCheck = true;
+  checkPhase = ''
+    runHook preCheck
+    meson test -C build --print-errorlogs
+    python3 ${./check-avd.py} build
+    runHook postCheck
+  '';
+  installPhase = ''
+    runHook preInstall
+    mkdir -p "$out/lib/firmware/apple" "$debug/lib/debug/firmware/apple"
+    find build -type f -name 'avd-fw-*.bin' \
+      -exec install -m644 -t "$out/lib/firmware/apple" {} +
+    install -m644 build/avd-fw-*.elf "$debug/lib/debug/firmware/apple/"
+    install -Dm644 LICENSE "$out/share/licenses/aurora-avd-fw/LICENSE"
+    runHook postInstall
+  '';
+  meta = {
+    description = "Open Aurora firmware for Apple Video Decoder v2 through v5";
+    homepage = "https://github.com/aurora-silicon/avd-fw";
+    license = lib.licenses.mit;
+    # ARM target code from any build host (ackerman builds it on bonhart, x86_64)
+    platforms = lib.platforms.linux;
+  };
+}

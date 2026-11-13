@@ -1,24 +1,47 @@
 #!/bin/bash
-# m5max-linux listening-test guard (his LISTENING-TEST.md stop rules), root. On any trip: mute the default
-# sink and switch the speakers off; logs to /root/listen-guard.log. Never kills processes.
+# m5max-listen-guard - the speaker guard (severe-only since 2026-11-12) after the loud test (Mariano, 2026-11-12: "keep a guard in
+# case something goes very off"), root. speakersafetyd stays the protection; this only catches what
+# is far off. On a trip: mute the default sink and switch the speakers off; logs to
+# /root/listen-guard.log. Never kills processes.
+# Trips on:
+#   - a TAS2764 amp fault (kernel);
+#   - speakersafetyd panicking or stopping, or starting again later (a restart);
+#   - negative power (a sense or sign error);
+#   - a speaker held at its minimum gain (woofers -13.96 dB, tweeters -15.74 dB: the model at its
+#     floor);
+#   - a 2 s running mean over twice the J716 profile's sustained limit (0.89 W a woofer, 0.59 W a
+#     tweeter): the per-period 1.5 W rule tripped on music transients at normal levels (23:25).
+# The daemon's own "Starting up" within the guard's first 30 s is the boot order, not a restart
+# (it tripped the strict guard at 23:09:33).
 log=/root/listen-guard.log
-# Power trip, per speaker and per daemon period (85 ms). 0.10 W while the kernel capped the speakers at
-# -30 dB (about 0.01 W for a full-scale tone). Without the cap (2026-11-09) it is a backstop above
-# the J716 profile's sustained limits (0.89 W a woofer, 0.59 W a tweeter): above it, something reads
-# or acts wrong, so stop. Its other rules (a daemon panic, gain limiting, negative power, amp faults,
-# the daemon stopping or starting) are unchanged.
-max_w=1.5
-trip() { echo "$(date +%T) TRIP: $*" >> $log
+t0=$(date +%s)
+off() {
   runuser -u mariano -- env XDG_RUNTIME_DIR=/run/user/1001 wpctl set-mute @DEFAULT_AUDIO_SINK@ 1 2>/dev/null
   amixer -c AppleJ716 cset name="Speaker Switch" off >/dev/null 2>&1 || amixer -c AppleJ716 sset Speaker off >/dev/null 2>&1
-  echo "$(date +%T) speakers switched off, sink muted" >> $log; }
-echo "$(date +%T) guard up" >> $log
+}
+trip() { echo "$(date +%T) TRIP: $*" >> $log; off; echo "$(date +%T) speakers switched off, sink muted" >> $log; }
+export -f off
+echo "$(date +%T) guard up (severe-only)" >> $log
 journalctl -k -f -n 0 -o cat | while read -r l; do case "$l" in *tas2764*ault*|*TAS2764*ault*) trip "kernel: $l";; esac; done &
 journalctl -u speakersafetyd -f -n 0 -o cat | while read -r l; do
-  case "$l" in *"speakersafetyd::types"*" Power "*) ;; *"speakersafetyd::types"*) continue;; esac   # skip config lines (limits), keep the verbose per-speaker Power lines
-  case "$l" in *anic*|*"gain limited"*|*"Gain limited"*|*egative*|*Starting*|*Stopped*) trip "speakersafetyd: $l"; continue;; esac
-  for w in $(echo "$l" | grep -o -E "[-]?[0-9]+\.[0-9]+ ?W" | tr -d " W"); do
-    awk -v w="$w" -v max="$max_w" "BEGIN{exit !(w > max || w < 0)}" && trip "power $w W: $l"
-  done
-done &
+  case "$l" in *"speakersafetyd::types"*" Power "*) echo "$l"; continue;; *"speakersafetyd::types"*) continue;; esac
+  case "$l" in
+    *anic*|*Stopped*|*egative*) trip "speakersafetyd: $l" ;;
+    *Starting*)
+      if [ $(( $(date +%s) - t0 )) -lt 30 ]; then echo "$(date +%T) at guard start, not a restart: $l" >> $log
+      else trip "speakersafetyd restarted: $l"; fi ;;
+  esac
+done | gawk -v logf="$log" '
+  function trip(msg) { print strftime("%T") " TRIP: " msg >> logf; close(logf)
+    system("bash -c off"); print strftime("%T") " speakers switched off, sink muted" >> logf; close(logf) }
+  match($0, /\] +([A-Za-z]+ [A-Za-z]+( [0-9])?): Coil .* Power +(-?[0-9.]+) W +Gain +(-?[0-9.]+) dB/, m) {
+    name = m[1]; w = m[3] + 0; g = m[4] + 0
+    tw = (name ~ /Tweeter/)
+    if (w < 0) { trip("negative power " w " W: " name); next }
+    if (g <= (tw ? -15.74 : -13.96) + 0.05) { trip(name " at its minimum gain (" g " dB)"); next }
+    n = ++cnt[name]; buf[name, n % 24] = w
+    s = 0; for (j = 0; j < 24; j++) s += buf[name, (n - j) % 24]
+    lim = tw ? 1.18 : 1.78
+    if (n >= 24 && s / 24 > lim && !tripped[name]++) trip(name " 2 s mean " s / 24 " W > " lim " W")
+  }' &
 wait

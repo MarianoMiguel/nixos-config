@@ -13,6 +13,11 @@ output "eDP-1" {
     scale 1.5
 }
 
+// The same panel through the display driver (DCP), which names it eDP-2; 120 Hz is its preferred mode
+output "eDP-2" {
+    scale 1.5
+}
+
 // No motion on ackerman (Mariano, 2026-11-08)
 animations {
     off

@@ -22,7 +22,8 @@ let
   payload = pkgs.runCommand "ackerman-payload" { buildInputs = [ pkgs.python3 ]; } ''
     install -Dm755 ${./packages/ackerman-payload.py} $out/bin/ackerman-payload
     substituteInPlace $out/bin/ackerman-payload --replace-fail "@m1n1@" "${m1n1}" \
-      --replace-fail "@chosen@" ${lib.escapeShellArg (lib.concatStringsSep " " cfg.chosen)}
+      --replace-fail "@chosen@" ${lib.escapeShellArg (lib.concatStringsSep " " cfg.chosen)} \
+      --replace-fail "@dtb@" ${lib.escapeShellArg cfg.dtbName}
     patchShebangs --host $out/bin/ackerman-payload
   '';
 
@@ -75,6 +76,14 @@ in
       description = ''
         The m1n1 stage-2 every payload starts with: nixos/m1n1/NAME.bin in the private input
         (exactly 0x420000 bytes; ackerman-payload checks).
+      '';
+    };
+    dtbName = lib.mkOption {
+      type = lib.types.strMatching "[A-Za-z0-9/._-]+\\.dtb";
+      default = "apple/t6050-j716c.dtb";
+      description = ''
+        The device tree, in the kernel package's dtbs/, that a payload takes unless built with
+        --dtb: the generation's own by default; bundle.nix picks the PMP-off one.
       '';
     };
     chosen = lib.mkOption {

@@ -13,6 +13,9 @@
     # hand-off, both off unless their variable is set
     m1n1Name = "m1n1-stage2-bundle";
     chosen = [ "m5,t6050-display=1" ];
+    # The PMP-off DTB until a PMP boot passes on this kernel (2026-11-12: the bundle kernel lacked the
+    # PMP driver; the GPU waits on a running PMP)
+    dtbName = "apple/t6050-j716c-nopmp.dtb";
   };
 
   # The entries for boot.bin.uboot, written beside the payload; boot.bin.uboot itself is never

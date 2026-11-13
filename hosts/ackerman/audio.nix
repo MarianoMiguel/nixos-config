@@ -36,8 +36,11 @@ in
     "${lib.getExe audio.speakersafetyd} -c ${audio.speakersafetyd}/share/speakersafetyd/ -m 7 -v"
   ];
 
-  # The listening test's stop rules (his LISTENING-TEST.md): on a TAS2764 fault or a
-  # speakersafetyd trip, mute the default sink and switch the speakers off. Never kills processes.
+  # The speaker guard, severe-only since the loud test (Mariano, 2026-11-12: "keep a guard in case
+  # something goes very off"): on an amp fault, the daemon panicking, stopping or restarting,
+  # negative power, a speaker at its minimum gain, or a 2 s mean over twice the profile's sustained
+  # limit, mute the default sink and switch the speakers off. speakersafetyd stays the protection.
+  # Never kills processes.
   systemd.services.m5max-listen-guard = {
     description = "Speaker stop-rule guard (m5max-linux)";
     after = [ "speakersafetyd.service" ];

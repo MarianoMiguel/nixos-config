@@ -86,7 +86,7 @@ let
     PAYLOAD_M1N1 = ${builtins.toJSON (if m1n1File == null then "" else "${m1n1File}")}
     # As ackerman-payload.py's CHOSEN, plus the marker build-uboot.sh puts in boot.bin.uboot
     CHOSEN = b"chosen.asahi,show-notch=1\nchosen.m5pro,n1=4\nchosen.m5pro,gpu=1\nchosen.ackerman,payload=uboot\n"
-    DTB_NAME = "apple/t6050-j716c.dtb"
+    DTB_NAME = ${builtins.toJSON config.ackerman.payload.dtbName}
     MARK = "# ackerman-uboot"
     PREFIX = "ackerman-uboot-gen"
     MiB = 1 << 20

@@ -32,7 +32,9 @@ import argparse, datetime, gzip, hashlib, os, pathlib, re, shutil, struct, subpr
 
 M1N1 = pathlib.Path("@m1n1@")            # the stage-2, from the private input
 M1N1_SIZE = 0x420000                      # n1warm-gpu, exactly
-DTB_NAME = "apple/t6050-j716c.dtb"
+# The generation's DTB a payload takes by default (boot-m1n1.nix, ackerman.payload.dtbName): the PMP-off
+# one while the PMP is unproven on this kernel
+DTB_NAME = "@dtb@"
 CHOSEN = b"chosen.asahi,show-notch=1\nchosen.m5pro,n1=4\nchosen.m5pro,gpu=1\n"
 ESP = pathlib.Path("/boot")
 DIR = ESP / "m1n1"
@@ -112,12 +114,14 @@ def chosen_vars(add="", drop="", base=None):
 
 
 def payload_parts(blob):
-    """What a payload was built with: its chosen.* variables (bootargs apart) and its DTB."""
-    v, pos = {}, M1N1_SIZE
+    """What a payload was built with: its chosen.* variables, its DTB and its bootargs."""
+    v, pos, args = {}, M1N1_SIZE, ""
     while blob[pos:pos + 7] == b"chosen.":
         end = blob.index(b"\n", pos)
         k, _, val = blob[pos + 7:end].decode().partition("=")
-        if k != "bootargs":
+        if k == "bootargs":
+            args = val
+        else:
             v[k] = val
         pos = end + 1
     d = zlib.decompressobj(31)
@@ -125,7 +129,7 @@ def payload_parts(blob):
     rest = d.unused_data
     if not d.eof or rest[:4] != b"\xd0\x0d\xfe\xed":
         die("boot.bin: no kernel and DTB where a payload has them")
-    return v, rest[:struct.unpack(">I", rest[4:8])[0]]
+    return v, rest[:struct.unpack(">I", rest[4:8])[0]], args
 
 
 def build(top, daily, rescue=False, extra="", hold=False, dtb_file=None, chosen=None, dtb_bytes=None):
@@ -278,16 +282,22 @@ def main():
             print(f"boot.bin is {m.group(1).decode()}, installed since this boot ({booted}): not promoting over it")
             log(f"promote skipped: boot.bin is {m.group(1).decode()}, not the booted {booted}")
             return
-        # The switches this payload was built with stay in the daily: --extra (from the command
-        # line), and its m1n1 variables and DTB (--chosen/--no-chosen, --dtb: from boot.bin, which
-        # is the booted payload once its init= matches)
+        # The switches this payload was built with stay in the daily: its --extra, m1n1 variables
+        # and DTB (--chosen/--no-chosen, --dtb), all from boot.bin, which is the booted payload once
+        # its init= matches. Not from /proc/cmdline: m1n1 appends its own arguments there (the bundle
+        # stage-2's idle=nop arm64.nowfxt), and a promote would copy them in again each time.
         params = (pathlib.Path(booted) / "kernel-params").read_text().split()
         skip = set(params) | {"m5.selftest=1", "m5.hold=1"}
-        extra = " ".join(t for t in cmdline().split() if t not in skip and not t.startswith("init="))
         chosen = dtb = None
+        extra = ""
         if m:
-            base, dtb = payload_parts(cur.read_bytes())
+            base, dtb, args = payload_parts(cur.read_bytes())
             chosen = chosen_vars(base=base)
+            seen = []
+            for tok in args.split():
+                if tok not in skip and not tok.startswith("init=") and tok not in seen:
+                    seen.append(tok)
+            extra = " ".join(seen)
         install("/run/booted-system", daily=True, reason="promote (self-test passed)", extra=extra,
                 chosen=chosen, dtb_bytes=dtb)
     elif a.cmd == "status":
